@@ -19,7 +19,7 @@ impl Command {
             match arg {
                 Arg::Short('h') | Arg::Long("help") => return Ok(Command::Help),
                 Arg::Short('V') | Arg::Long("version") => return Ok(Command::Version),
-                Arg::Long("ordinal") => opts.ordinal = true,
+                Arg::Short('j') | Arg::Long("ordinal") => opts.ordinal = true,
                 Arg::Short('O') | Arg::Long("old-style") => {
                     opts.ospolicy = OldStylePolicy::PostReform;
                 }
@@ -65,7 +65,7 @@ impl Command {
                 println!("Convert Julian dates to & from calendar dates");
                 println!();
                 println!("Options:");
-                println!("  --ordinal         Output calendar dates in the form \"YYYY-DDD\"");
+                println!("  -j, --ordinal     Output calendar dates in the form \"YYYY-DDD\"");
                 println!();
                 println!(
                     "                    The part after the hyphen is the day of the year from 001"
@@ -379,6 +379,30 @@ mod tests {
                 ordinal: false,
                 ospolicy: Never,
                 whole_seconds: true,
+                verbose: false,
+            },
+            Vec::new(),
+        )
+    )]
+    #[case(
+        vec!["julian", "-j"],
+        Command::Run(
+            Options {
+                ordinal: true,
+                ospolicy: Never,
+                whole_seconds: false,
+                verbose: false,
+            },
+            Vec::new(),
+        )
+    )]
+    #[case(
+        vec!["julian", "--ordinal"],
+        Command::Run(
+            Options {
+                ordinal: true,
+                ospolicy: Never,
+                whole_seconds: false,
                 verbose: false,
             },
             Vec::new(),
