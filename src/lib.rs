@@ -131,7 +131,10 @@ impl Date {
         } else if self.year == 1582 {
             GREG_REFORM + idays.checked_sub_unsigned(YDAY_REFORM).unwrap()
         } else {
-            START1583 + days_since_1582(self.year) + idays
+            let base = self.year - 1201;
+            let days_since_1582 =
+                (base - 382) * 365 + (base - 380) / 4 - (base - 300) / 100 + base / 400;
+            START1583 + days_since_1582 + idays
         };
         match self.seconds {
             None => JulianDate {
@@ -520,16 +523,6 @@ fn is_leap_year(year: YearT) -> bool {
     year % 4 == 0 && (year <= 1582 || year % 100 != 0 || year % 400 == 0)
 }
 
-/// Returns the number of days in the years [1583..year-1] combined.  Returns 0
-/// for years < 1583.
-fn days_since_1582(year: YearT) -> JulianDayT {
-    if year < 1583 {
-        return 0;
-    }
-    let base = year - 1201;
-    (base - 382) * 365 + (base - 380) / 4 - (base - 300) / 100 + base / 400
-}
-
 fn break_seconds(mut seconds: SecondsT) -> (u32, u32, u32) {
     // TODO: Check for too-large values
     let hour = seconds / SECONDS_IN_HOUR;
@@ -633,6 +626,7 @@ mod tests {
         assert_eq!(cal.year, year);
         assert_eq!(cal.month, month);
         assert_eq!(cal.mday, mday);
+        assert_eq!(cal.seconds, None);
     }
 
     #[apply(julian_days)]
@@ -668,6 +662,32 @@ mod tests {
             seconds: Some(4 * 3600 + 18 * 60 + 44),
         };
         assert_eq!(cal.to_julian_date(), jd);
+    }
+
+    #[test]
+    fn test_julian_with_seconds_before_midnight_to_calendar() {
+        let jd = JulianDate {
+            days: 2460055,
+            seconds: Some(4 * 3600 + 18 * 60 + 44),
+        };
+        let cal = jd.to_gregorian();
+        assert_eq!(cal.year, 2023);
+        assert_eq!(cal.month, 4);
+        assert_eq!(cal.mday, 20);
+        assert_eq!(cal.seconds, Some(16 * 3600 + 18 * 60 + 44));
+    }
+
+    #[test]
+    fn test_julian_with_seconds_after_midnight_to_calendar() {
+        let jd = JulianDate {
+            days: 2460054,
+            seconds: Some(19 * 3600 + 30 * 60 + 13),
+        };
+        let cal = jd.to_gregorian();
+        assert_eq!(cal.year, 2023);
+        assert_eq!(cal.month, 4);
+        assert_eq!(cal.mday, 20);
+        assert_eq!(cal.seconds, Some(7 * 3600 + 30 * 60 + 13));
     }
 
     #[rstest]
