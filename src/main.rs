@@ -5,36 +5,37 @@ use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq)]
 enum Command {
-    Run(Arguments),
+    Run(Options, Vec<Argument>),
     Help,
     Version,
 }
 
 impl Command {
     fn from_parser(mut parser: Parser) -> Result<Command, lexopt::Error> {
-        let mut args = Arguments::default();
+        let mut opts = Options::default();
+        let mut dates = Vec::new();
         while let Some(arg) = parser.next()? {
             match arg {
                 Arg::Short('h') | Arg::Long("help") => return Ok(Command::Help),
                 Arg::Short('V') | Arg::Long("version") => return Ok(Command::Version),
-                Arg::Long("ordinal") => args.ordinal = true,
+                Arg::Long("ordinal") => opts.ordinal = true,
                 Arg::Short('O') | Arg::Long("old-style") => {
-                    args.ospolicy = OldStylePolicy::PostReform;
+                    opts.ospolicy = OldStylePolicy::PostReform;
                 }
                 Arg::Short('o') | Arg::Long("old-style-uk") => {
-                    args.ospolicy = OldStylePolicy::UkDelay;
+                    opts.ospolicy = OldStylePolicy::UkDelay;
                 }
                 Arg::Short('s') | Arg::Long("whole-seconds") => {
-                    args.whole_seconds = true;
+                    opts.whole_seconds = true;
                 }
-                Arg::Short('v') | Arg::Long("verbose") => args.verbose = true,
+                Arg::Short('v') | Arg::Long("verbose") => opts.verbose = true,
                 Arg::Short(c) if c.is_ascii_digit() => {
                     let mut s = String::from_iter(['-', c]);
                     if let Some(v) = parser.optional_value() {
                         s.push_str(&(v.string()?));
                     }
                     match s.parse::<Argument>() {
-                        Ok(d) => args.dates.push(d),
+                        Ok(d) => dates.push(d),
                         Err(e) => {
                             return Err(Error::ParsingFailed {
                                 value: s,
@@ -43,11 +44,11 @@ impl Command {
                         }
                     }
                 }
-                Arg::Value(val) => args.dates.push(val.parse::<Argument>()?),
+                Arg::Value(val) => dates.push(val.parse::<Argument>()?),
                 _ => return Err(arg.unexpected()),
             }
         }
-        Ok(Command::Run(args))
+        Ok(Command::Run(opts, dates))
     }
 
     fn run(self) {
@@ -87,21 +88,20 @@ impl Command {
             Command::Version => {
                 println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
             }
-            Command::Run(args) => args.run(),
+            Command::Run(opts, dates) => opts.run(dates),
         }
     }
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-struct Arguments {
+struct Options {
     ordinal: bool,
     ospolicy: OldStylePolicy,
     whole_seconds: bool,
     verbose: bool,
-    dates: Vec<Argument>,
 }
 
-impl Arguments {
+impl Options {
     fn print_yds(&self, when: Date) {
         if self.ordinal {
             print!("{when:#}");
@@ -127,8 +127,8 @@ impl Arguments {
         }
     }
 
-    fn run(&self) {
-        if self.dates.is_empty() {
+    fn run(&self, dates: Vec<Argument>) {
+        if dates.is_empty() {
             let now = Date::now();
             let jd = now.to_julian_date();
             if self.verbose {
@@ -138,7 +138,7 @@ impl Arguments {
             self.print_julian(jd);
             println!();
         } else {
-            for &d in &self.dates {
+            for d in dates {
                 match d {
                     Argument::CalendarDate(when) => {
                         let jd = when.to_julian_date();
@@ -209,4 +209,171 @@ enum ArgumentParseError {
 fn main() -> Result<(), Error> {
     Command::from_parser(Parser::from_env())?.run();
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+    use OldStylePolicy::*;
+
+    #[rstest]
+    #[case(vec!["julian", "-h"], Command::Help)]
+    #[case(vec!["julian", "--help"], Command::Help)]
+    #[case(vec!["julian", "--help", "2023-04-20"], Command::Help)]
+    #[case(vec!["julian", "2023-04-20", "-s", "-h"], Command::Help)]
+    #[case(vec!["julian", "2023-04-20", "--help", "-V"], Command::Help)]
+    #[case(vec!["julian", "-V"], Command::Version)]
+    #[case(vec!["julian", "--version"], Command::Version)]
+    #[case(vec!["julian", "--version", "2460055.314606"], Command::Version)]
+    #[case(vec!["julian", "2460055.314606", "--ordinal", "--version"], Command::Version)]
+    #[case(vec!["julian", "2460055.314606", "--version", "-h"], Command::Version)]
+    #[case(
+        vec!["julian"],
+        Command::Run(
+            Options {
+                ordinal: false,
+                ospolicy: Never,
+                whole_seconds: false,
+                verbose: false,
+            },
+            Vec::new(),
+        )
+    )]
+    #[case(
+        vec!["julian", "123"],
+        Command::Run(
+            Options {
+                ordinal: false,
+                ospolicy: Never,
+                whole_seconds: false,
+                verbose: false,
+            },
+            vec![Argument::JulianDate(JulianDate {days: 123, seconds: None})],
+        )
+    )]
+    #[case(
+        vec!["julian", "123:456"],
+        Command::Run(
+            Options {
+                ordinal: false,
+                ospolicy: Never,
+                whole_seconds: false,
+                verbose: false,
+            },
+            vec![Argument::JulianDate(JulianDate {days: 123, seconds: Some(456)})],
+        )
+    )]
+    #[case(
+        vec!["julian", "-123"],
+        Command::Run(
+            Options {
+                ordinal: false,
+                ospolicy: Never,
+                whole_seconds: false,
+                verbose: false,
+            },
+            vec![Argument::JulianDate(JulianDate {days: -123, seconds: None})],
+        )
+    )]
+    #[case(
+        vec!["julian", "-v", "-123"],
+        Command::Run(
+            Options {
+                ordinal: false,
+                ospolicy: Never,
+                whole_seconds: false,
+                verbose: true,
+            },
+            vec![Argument::JulianDate(JulianDate {days: -123, seconds: None})],
+        )
+    )]
+    #[case(
+        vec!["julian", "-123", "-v"],
+        Command::Run(
+            Options {
+                ordinal: false,
+                ospolicy: Never,
+                whole_seconds: false,
+                verbose: true,
+            },
+            vec![Argument::JulianDate(JulianDate {days: -123, seconds: None})],
+        )
+    )]
+    #[case(
+        vec!["julian", "-O"],
+        Command::Run(
+            Options {
+                ordinal: false,
+                ospolicy: PostReform,
+                whole_seconds: false,
+                verbose: false,
+            },
+            Vec::new(),
+        )
+    )]
+    #[case(
+        vec!["julian", "-o"],
+        Command::Run(
+            Options {
+                ordinal: false,
+                ospolicy: UkDelay,
+                whole_seconds: false,
+                verbose: false,
+            },
+            Vec::new(),
+        )
+    )]
+    #[case(
+        vec!["julian", "-o", "--old-style"],
+        Command::Run(
+            Options {
+                ordinal: false,
+                ospolicy: PostReform,
+                whole_seconds: false,
+                verbose: false,
+            },
+            Vec::new(),
+        )
+    )]
+    #[case(
+        vec!["julian", "-O", "--old-style-uk"],
+        Command::Run(
+            Options {
+                ordinal: false,
+                ospolicy: UkDelay,
+                whole_seconds: false,
+                verbose: false,
+            },
+            Vec::new(),
+        )
+    )]
+    #[case(
+        vec!["julian", "-s"],
+        Command::Run(
+            Options {
+                ordinal: false,
+                ospolicy: Never,
+                whole_seconds: true,
+                verbose: false,
+            },
+            Vec::new(),
+        )
+    )]
+    #[case(
+        vec!["julian", "--whole-seconds"],
+        Command::Run(
+            Options {
+                ordinal: false,
+                ospolicy: Never,
+                whole_seconds: true,
+                verbose: false,
+            },
+            Vec::new(),
+        )
+    )]
+    fn test_cli_parser(#[case] argv: Vec<&str>, #[case] cmd: Command) {
+        let parser = Parser::from_iter(argv);
+        assert_eq!(Command::from_parser(parser).unwrap(), cmd);
+    }
 }
