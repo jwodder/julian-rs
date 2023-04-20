@@ -154,7 +154,7 @@ impl Options {
         self.fmt_date(s, when);
         if self.ospolicy.show_old_style(jd) {
             write!(s, " [O.S. ").unwrap();
-            self.fmt_date(s, jd.split_seconds().0.to_julian());
+            self.fmt_date(s, jd.detatch_seconds().0.to_julian());
             write!(s, "]").unwrap();
         }
     }

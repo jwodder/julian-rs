@@ -4,10 +4,10 @@
 #[cfg(test)]
 extern crate rstest_reuse;
 
-use chrono::{Datelike, Timelike, Utc};
 use std::fmt;
 use std::num::ParseIntError;
 use std::str::FromStr;
+use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 
 pub type YearT = i32;
@@ -33,6 +33,7 @@ const REFORM_MONTH_LENGTH: u32 = 21;
 const START1583: JulianDayT = GREG_REFORM + 78; // noon on 1583-01-01
 const START1600: JulianDayT = 2305448; // noon on 1600-01-01
 
+// Julian-calendar year in which Julian day 0 occurs
 const JD0_YEAR: YearT = -4712;
 
 const COMMON_YEAR_LENGTH: JulianDayT = 365;
@@ -49,6 +50,8 @@ const GREGORIAN_CYCLE_START_YEAR: YearT = 1600;
 const JULIAN_CYCLE_DAYS: JulianDayT = 1461;
 const JULIAN_CYCLE_YEARS: YearT = 4;
 
+const UNIX_EPOCH_JD: JulianDayT = 2440588; // noon on 1970-01-01
+
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Date {
     pub year: YearT,               // 0 == 1 BC
@@ -60,14 +63,19 @@ pub struct Date {
 
 impl Date {
     pub fn now() -> Date {
-        let nowts = Utc::now();
-        Date {
-            year: nowts.year(),
-            yday: nowts.ordinal0(),
-            month: nowts.month(),
-            mday: nowts.day(),
-            seconds: Some(nowts.num_seconds_from_midnight()),
-        }
+        Date::from(SystemTime::now())
+    }
+
+    pub fn from_unix_timestamp(unix_time: u64) -> Date {
+        let days =
+            JulianDayT::try_from(unix_time / (SECONDS_IN_DAY as u64) + (UNIX_EPOCH_JD as u64))
+                .expect("Arithmetic overflow");
+        let secs = SecondsT::try_from(unix_time % (SECONDS_IN_DAY as u64)).unwrap();
+        let jd = JulianDate {
+            days,
+            seconds: None,
+        };
+        jd.attach_seconds(Some(secs)).to_gregorian()
     }
 
     pub fn is_before_gregorian(&self) -> bool {
@@ -156,20 +164,21 @@ impl Date {
                 + base / GREGORIAN_CYCLE_YEARS;
             START1583 + days_since_1582 + idays
         };
-        match self.seconds {
-            None => JulianDate {
-                days: jdays,
-                seconds: None,
-            },
-            Some(s) if s < SECONDS_IN_HALF_DAY => JulianDate {
-                days: jdays - 1,
-                seconds: Some(s + SECONDS_IN_HALF_DAY),
-            },
-            Some(s) => JulianDate {
-                days: jdays,
-                seconds: Some(s - SECONDS_IN_HALF_DAY),
-            },
-        }
+        let jd = JulianDate {
+            days: jdays,
+            seconds: None,
+        };
+        jd.attach_seconds(self.seconds)
+    }
+}
+
+impl From<SystemTime> for Date {
+    fn from(t: SystemTime) -> Date {
+        Date::from_unix_timestamp(
+            t.duration_since(UNIX_EPOCH)
+                .expect("Current system time is before 1970")
+                .as_secs(),
+        )
     }
 }
 
@@ -378,9 +387,27 @@ pub struct JulianDate {
 impl JulianDate {
     const DEFAULT_PRECISION: usize = 6;
 
+    pub fn attach_seconds(&self, seconds: Option<SecondsT>) -> JulianDate {
+        let JulianDate { days, .. } = *self;
+        match seconds {
+            None => JulianDate {
+                days,
+                seconds: None,
+            },
+            Some(s) if s < SECONDS_IN_HALF_DAY => JulianDate {
+                days: days - 1,
+                seconds: Some(s + SECONDS_IN_HALF_DAY),
+            },
+            Some(s) => JulianDate {
+                days,
+                seconds: Some(s - SECONDS_IN_HALF_DAY),
+            },
+        }
+    }
+
     /// If the Julian date has any seconds, remove them and adjust the date to
     /// point to the "secondless" Julian day that the receiver pointed to
-    pub fn split_seconds(&self) -> (JulianDate, Option<SecondsT>) {
+    pub fn detatch_seconds(&self) -> (JulianDate, Option<SecondsT>) {
         let (days, seconds) = match self.seconds {
             None => (self.days, None),
             Some(s) if s >= SECONDS_IN_HALF_DAY => (self.days + 1, Some(s - SECONDS_IN_HALF_DAY)),
@@ -396,7 +423,7 @@ impl JulianDate {
     }
 
     pub fn to_gregorian(&self) -> Date {
-        let (JulianDate { days, .. }, seconds) = self.split_seconds();
+        let (JulianDate { days, .. }, seconds) = self.detatch_seconds();
         if days < START1600 {
             let days = if GREG_REFORM <= days {
                 days + REFORM_GAP
@@ -442,7 +469,7 @@ impl JulianDate {
 
     /// Convert a Julian date to a year & yday in the Julian calendar
     pub fn to_julian(&self) -> Date {
-        let (JulianDate { days, .. }, seconds) = self.split_seconds();
+        let (JulianDate { days, .. }, seconds) = self.detatch_seconds();
         if days < 0 {
             let alt = JulianDate {
                 days: COMMON_YEAR_LENGTH
@@ -2033,5 +2060,26 @@ mod tests {
             seconds: Some(16 * 3600 + 39 * 60 + 50),
         };
         assert_eq!(format!("{jd:#}"), "2460055:59990");
+    }
+
+    #[rstest]
+    #[case(0, 1970, 1, 1, 0)]
+    #[case(100000000, 1973, 3, 3, 35200)]
+    #[case(1000000000, 2001, 9, 9, 6400)]
+    #[case(1234567890, 2009, 2, 13, 84690)]
+    #[case(1682028168, 2023, 4, 20, 79368)]
+    #[case(2147483647, 2038, 1, 19, 11647)]
+    fn test_from_unix_timestamp(
+        #[case] ts: u64,
+        #[case] year: YearT,
+        #[case] month: u32,
+        #[case] mday: u32,
+        #[case] seconds: SecondsT,
+    ) {
+        let date = Date::from_unix_timestamp(ts);
+        assert_eq!(date.year, year);
+        assert_eq!(date.month, month);
+        assert_eq!(date.mday, mday);
+        assert_eq!(date.seconds, Some(seconds));
     }
 }
