@@ -443,16 +443,15 @@ impl FromStr for JulianDate {
     // - %d.%s
     // - %d:%d
     fn from_str(s: &str) -> Result<JulianDate, JulianDateParseError> {
-        let i = s.find(['.', ':']);
-        let (days_str, secstr) = match i {
-            Some(i) => s.split_at(i),
+        let m = s.match_indices(['.', ':']).next();
+        let (days_str, secstr) = match m {
+            Some((i, _)) => (&s[..i], &s[(i + 1)..]),
             None => (s, ""),
         };
         let days = days_str.parse::<JulianDayT>()?;
-        let seconds = match i {
-            Some(i) if &s[i..(i + 1)] == "." => Some(secstr.parse::<SecondsT>()?),
-            Some(i) => {
-                debug_assert!(&s[i..(i + 1)] == ":");
+        let seconds = match m {
+            Some((_, ":")) => Some(secstr.parse::<SecondsT>()?),
+            Some((_, ".")) => {
                 let mut secs = 0;
                 let mut coef: SecondsT = SECONDS_IN_DAY / 10;
                 let mut accum = 0;
@@ -474,6 +473,7 @@ impl FromStr for JulianDate {
                 }
                 Some(secs)
             }
+            Some(_) => unreachable!(),
             None => None,
         };
         Ok(JulianDate { days, seconds })
@@ -676,5 +676,68 @@ mod tests {
     #[case(86399, (23, 59, 59))]
     fn test_break_seconds(#[case] seconds: SecondsT, #[case] hms: (u32, u32, u32)) {
         assert_eq!(break_seconds(seconds), hms);
+    }
+
+    #[test]
+    fn test_parse_ymd() {
+        let date = "2023-04-20".parse::<Date>().unwrap();
+        assert_eq!(date.year, 2023);
+        assert_eq!(date.month, 4);
+        assert_eq!(date.mday, 20);
+        assert_eq!(date.seconds, None);
+    }
+
+    #[test]
+    fn test_parse_ymd_hms() {
+        let date = "2023-04-20T16:39:50".parse::<Date>().unwrap();
+        assert_eq!(date.year, 2023);
+        assert_eq!(date.month, 4);
+        assert_eq!(date.mday, 20);
+        assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
+    }
+
+    #[test]
+    fn test_parse_ymd_hms_z() {
+        let date = "2023-04-20T16:39:50Z".parse::<Date>().unwrap();
+        assert_eq!(date.year, 2023);
+        assert_eq!(date.month, 4);
+        assert_eq!(date.mday, 20);
+        assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
+    }
+
+    #[test]
+    fn test_parse_julian_date() {
+        let jd = "2460055".parse::<JulianDate>().unwrap();
+        assert_eq!(
+            jd,
+            JulianDate {
+                days: 2460055,
+                seconds: None
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_julian_date_dot_seconds() {
+        let jd = "2460055.1962".parse::<JulianDate>().unwrap();
+        assert_eq!(
+            jd,
+            JulianDate {
+                days: 2460055,
+                seconds: Some(16952)
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_julian_date_colon_seconds() {
+        let jd = "2460055:16952".parse::<JulianDate>().unwrap();
+        assert_eq!(
+            jd,
+            JulianDate {
+                days: 2460055,
+                seconds: Some(16952)
+            }
+        );
     }
 }
