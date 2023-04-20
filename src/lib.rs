@@ -4,36 +4,50 @@
 #[cfg(test)]
 extern crate rstest_reuse;
 
-use chrono::naive::NaiveDate;
 use chrono::{Datelike, Timelike, Utc};
 use std::fmt;
 use std::num::ParseIntError;
 use std::str::FromStr;
 use thiserror::Error;
 
-pub type ProlepticGregorianDate = NaiveDate;
 pub type YearT = i32;
 pub type DaysT = u32;
 pub type SecondsT = u32;
 pub type JulianDayT = i32;
 
-const JD_PRECISION: usize = 6;
-
-pub const SECONDS_IN_MINUTE: u32 = 60;
-pub const SECONDS_IN_HOUR: u32 = 60 * 60;
-
-pub const SECONDS_IN_HALF_DAY: SecondsT = 12 * SECONDS_IN_HOUR;
-pub const SECONDS_IN_DAY: SecondsT = 24 * SECONDS_IN_HOUR;
-
 pub const GREG_REFORM: JulianDayT = 2299161; // noon on 1582-10-15
-
-pub const YDAY_REFORM: DaysT = 277; // zero-index yday for Oct 5
-
-pub const START1583: JulianDayT = GREG_REFORM + 78; // noon on 1583-01-01
-pub const START1600: JulianDayT = 2305448; // noon on 1600-01-01
 pub const UK_REFORM: JulianDayT = 2361222; // noon on 1752-09-14
 
-pub static MONTH_LENGTHS: [u32; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const SECONDS_IN_MINUTE: SecondsT = 60;
+const SECONDS_IN_HOUR: SecondsT = 60 * SECONDS_IN_MINUTE;
+const SECONDS_IN_HALF_DAY: SecondsT = 12 * SECONDS_IN_HOUR;
+const SECONDS_IN_DAY: SecondsT = 24 * SECONDS_IN_HOUR;
+
+const REFORM_YEAR: YearT = 1582;
+const REFORM_YDAY: DaysT = 277; // zero-index yday for Oct 5
+const REFORM_MONTH: u32 = 10;
+const PRE_REFORM_MDAY: u32 = 4;
+const POST_REFORM_MDAY: u32 = 15;
+const REFORM_GAP: JulianDayT = 10;
+const REFORM_MONTH_LENGTH: u32 = 21;
+const START1583: JulianDayT = GREG_REFORM + 78; // noon on 1583-01-01
+const START1600: JulianDayT = 2305448; // noon on 1600-01-01
+
+const JD0_YEAR: YearT = -4712;
+
+const COMMON_YEAR_LENGTH: JulianDayT = 365;
+const LEAP_YEAR_LENGTH: JulianDayT = 366;
+
+static MONTH_LENGTHS: [u32; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+const FEBRUARY: u32 = 2;
+
+const GREGORIAN_CYCLE_DAYS: JulianDayT = 146097;
+const GREGORIAN_CYCLE_YEARS: YearT = 400;
+const GREGORIAN_CYCLE_START_YEAR: YearT = 1600;
+
+const JULIAN_CYCLE_DAYS: JulianDayT = 1461;
+const JULIAN_CYCLE_YEARS: YearT = 4;
 
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Date {
@@ -57,7 +71,7 @@ impl Date {
     }
 
     pub fn is_before_gregorian(&self) -> bool {
-        self.year < 1582 || (self.year == 1582 && self.yday < YDAY_REFORM)
+        self.year < REFORM_YEAR || (self.year == REFORM_YEAR && self.yday < REFORM_YDAY)
     }
 
     /// `month` and `mday` are one-indexed
@@ -66,22 +80,24 @@ impl Date {
         if !(1..=12).contains(&month)
             || mday < 1
             || (mday > MONTH_LENGTHS[month_usize - 1]
-                && !(is_leap_year(year) && month == 2 && mday == 29))
+                && !(is_leap_year(year) && month == FEBRUARY && mday == 29))
         {
             return None;
         }
         let mut yday = 0;
         for (&length, i) in MONTH_LENGTHS[0..month_usize - 1].iter().zip(1..) {
             yday += length;
-            if i == 2 && is_leap_year(year) {
+            if i == FEBRUARY && is_leap_year(year) {
                 yday += 1;
             }
         }
         yday += mday - 1;
-        if year == 1582 && (month > 10 || (month == 10 && mday >= 15)) {
+        if year == REFORM_YEAR
+            && (month > REFORM_MONTH || (month == REFORM_MONTH && mday >= POST_REFORM_MDAY))
+        {
             // If someone enters a date that was skipped by the Gregorian
             // Reformation, just assume it's Old Style.
-            yday -= 10;
+            yday -= REFORM_GAP as DaysT;
         }
         Some(Date {
             year,
@@ -123,17 +139,21 @@ impl Date {
 
     pub fn to_julian_date(&self) -> JulianDate {
         let idays = JulianDayT::try_from(self.yday).unwrap();
-        let jdays: JulianDayT = if self.year < -4712 {
-            let rev_year = -4712 - self.year;
-            idays - (rev_year * 365 + rev_year / 4)
+        let jdays: JulianDayT = if self.year < JD0_YEAR {
+            let rev_year = JD0_YEAR - self.year;
+            idays - (rev_year * COMMON_YEAR_LENGTH + rev_year / JULIAN_CYCLE_YEARS)
         } else if self.is_before_gregorian() {
-            (self.year + 4712) * 365 + (self.year + 4712 + 3) / 4 + idays
-        } else if self.year == 1582 {
-            GREG_REFORM + idays.checked_sub_unsigned(YDAY_REFORM).unwrap()
+            (self.year - JD0_YEAR) * COMMON_YEAR_LENGTH
+                + (self.year - JD0_YEAR + JULIAN_CYCLE_YEARS - 1) / JULIAN_CYCLE_YEARS
+                + idays
+        } else if self.year == REFORM_YEAR {
+            GREG_REFORM + idays.checked_sub_unsigned(REFORM_YDAY).unwrap()
         } else {
             let base = self.year - 1201;
-            let days_since_1582 =
-                (base - 382) * 365 + (base - 380) / 4 - (base - 300) / 100 + base / 400;
+            let days_since_1582 = (base - 382) * COMMON_YEAR_LENGTH
+                + (base - 380) / JULIAN_CYCLE_YEARS
+                - (base - 300) / 100
+                + base / GREGORIAN_CYCLE_YEARS;
             START1583 + days_since_1582 + idays
         };
         match self.seconds {
@@ -306,7 +326,7 @@ pub enum YearStyle {
 
 impl YearStyle {
     pub fn for_gregorian_year(year: YearT) -> YearStyle {
-        if year == 1582 {
+        if year == REFORM_YEAR {
             YearStyle::Reform
         } else if is_leap_year(year) {
             YearStyle::Leap
@@ -316,7 +336,7 @@ impl YearStyle {
     }
 
     pub fn for_julian_year(year: YearT) -> YearStyle {
-        if year % 4 == 0 {
+        if year % JULIAN_CYCLE_YEARS == 0 {
             YearStyle::Leap
         } else {
             YearStyle::Common
@@ -327,11 +347,14 @@ impl YearStyle {
         let mut days = yday;
         for (&length, month) in MONTH_LENGTHS.iter().zip(1..) {
             let length = match (self, month) {
-                (YearStyle::Leap, 2) => length + 1,
-                (YearStyle::Reform, 10) => {
-                    let length = 21;
+                (YearStyle::Leap, FEBRUARY) => length + 1,
+                (YearStyle::Reform, REFORM_MONTH) => {
+                    let length = REFORM_MONTH_LENGTH;
                     if days < length {
-                        return Some((month, days + (if days < 4 { 1 } else { 11 })));
+                        if PRE_REFORM_MDAY <= days {
+                            days += REFORM_GAP as DaysT;
+                        }
+                        return Some((month, days + 1));
                     }
                     length
                 }
@@ -353,6 +376,8 @@ pub struct JulianDate {
 }
 
 impl JulianDate {
+    const DEFAULT_PRECISION: usize = 6;
+
     /// If the Julian date has any seconds, remove them and adjust the date to
     /// point to the "secondless" Julian day that the receiver pointed to
     pub fn split_seconds(&self) -> (JulianDate, Option<SecondsT>) {
@@ -373,7 +398,11 @@ impl JulianDate {
     pub fn to_gregorian(&self) -> Date {
         let (JulianDate { days, .. }, seconds) = self.split_seconds();
         if days < START1600 {
-            let days = if GREG_REFORM <= days { days + 10 } else { days };
+            let days = if GREG_REFORM <= days {
+                days + REFORM_GAP
+            } else {
+                days
+            };
             let when = (JulianDate {
                 days,
                 seconds: None,
@@ -381,8 +410,8 @@ impl JulianDate {
             .to_julian();
             Date::from_year_yday(
                 when.year,
-                if GREG_REFORM <= days && days - 10 < START1583 {
-                    when.yday - 10
+                if GREG_REFORM <= days && days - REFORM_GAP < START1583 {
+                    when.yday - (REFORM_GAP as DaysT)
                 } else {
                     when.yday
                 },
@@ -391,21 +420,22 @@ impl JulianDate {
             .unwrap()
         } else {
             let mut days: JulianDayT = days - START1600;
-            let mut year: YearT = 1600 + (days / 146097) * 400;
-            days %= 146097;
+            let mut year: YearT =
+                GREGORIAN_CYCLE_START_YEAR + (days / GREGORIAN_CYCLE_DAYS) * GREGORIAN_CYCLE_YEARS;
+            days %= GREGORIAN_CYCLE_DAYS;
             // Add a "virtual leap day" to the end of each non-Gregorian
             // centennial year so that `days` can then be handled as in the
             // Julian calendar:
-            if days > 365 {
-                days += (days - 366) / 36524;
+            if days > COMMON_YEAR_LENGTH {
+                days += (days - LEAP_YEAR_LENGTH) / 36524;
             }
-            year += (days / 1461) * 4;
-            days %= 1461;
-            if days > 365 {
-                days += (days - 366) / 365;
+            year += (days / JULIAN_CYCLE_DAYS) * JULIAN_CYCLE_YEARS;
+            days %= JULIAN_CYCLE_DAYS;
+            if days > COMMON_YEAR_LENGTH {
+                days += (days - LEAP_YEAR_LENGTH) / COMMON_YEAR_LENGTH;
             }
-            year += days / 366;
-            days %= 366;
+            year += days / LEAP_YEAR_LENGTH;
+            days %= LEAP_YEAR_LENGTH;
             Date::from_year_yday(year, DaysT::try_from(days).unwrap(), seconds).unwrap()
         }
     }
@@ -415,25 +445,31 @@ impl JulianDate {
         let (JulianDate { days, .. }, seconds) = self.split_seconds();
         if days < 0 {
             let alt = JulianDate {
-                days: 365i32.checked_sub(days).expect("Arithmetic underflow"),
+                days: COMMON_YEAR_LENGTH
+                    .checked_sub(days)
+                    .expect("Arithmetic underflow"),
                 seconds: None,
             };
             let when = alt.to_julian();
-            let year = -4712 - (when.year + 4712);
-            let year_length = if year % 4 == 0 { 366 } else { 365 };
+            let year = JD0_YEAR - (when.year - JD0_YEAR);
+            let year_length = if year % JULIAN_CYCLE_YEARS == 0 {
+                LEAP_YEAR_LENGTH as DaysT
+            } else {
+                COMMON_YEAR_LENGTH as DaysT
+            };
             let yday = year_length - 1 - when.yday;
             Date::from_julian_year_yday(year, yday, seconds).unwrap()
         } else {
-            let mut year: YearT = days / 1461 * 4;
-            let mut yday: JulianDayT = days % 1461;
+            let mut year: YearT = days / JULIAN_CYCLE_DAYS * JULIAN_CYCLE_YEARS;
+            let mut yday: JulianDayT = days % JULIAN_CYCLE_DAYS;
             // Add a "virtual leap day" to the end of each common year so that
-            // `yday` can be divided & modded by 366 evenly:
-            if yday > 365 {
-                yday += (yday - 366) / 365;
+            // `yday` can be divided & modded by LEAP_YEAR_LENGTH evenly:
+            if yday > COMMON_YEAR_LENGTH {
+                yday += (yday - LEAP_YEAR_LENGTH) / COMMON_YEAR_LENGTH;
             }
-            year += yday / 366;
-            yday %= 366;
-            year -= 4712;
+            year += yday / LEAP_YEAR_LENGTH;
+            yday %= LEAP_YEAR_LENGTH;
+            year += JD0_YEAR;
             Date::from_julian_year_yday(year, DaysT::try_from(yday).unwrap(), seconds).unwrap()
         }
     }
@@ -491,7 +527,7 @@ impl fmt::Display for JulianDate {
             if f.alternate() {
                 write!(f, ":{:05}", s)?;
             } else {
-                let precision = f.precision().unwrap_or(JD_PRECISION);
+                let precision = f.precision().unwrap_or(Self::DEFAULT_PRECISION);
                 if precision > 0 {
                     write!(f, ".")?;
                     for i in 0..precision {
@@ -521,7 +557,8 @@ pub enum JulianDateParseError {
 }
 
 fn is_leap_year(year: YearT) -> bool {
-    year % 4 == 0 && (year <= 1582 || year % 100 != 0 || year % 400 == 0)
+    year % JULIAN_CYCLE_YEARS == 0
+        && (year <= REFORM_YEAR || year % 100 != 0 || year % GREGORIAN_CYCLE_YEARS == 0)
 }
 
 fn break_seconds(mut seconds: SecondsT) -> (u32, u32, u32) {
