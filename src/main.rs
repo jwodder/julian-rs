@@ -3,22 +3,6 @@ use lexopt::{Arg, Error, Parser, ValueExt};
 use std::str::FromStr;
 use thiserror::Error;
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-enum OldStylePolicy {
-    #[default]
-    Never,
-    UkDelay,
-    PostReform,
-}
-
-impl OldStylePolicy {
-    fn show_old_style(self, jd: JulianDate) -> bool {
-        self != OldStylePolicy::Never
-            && GREG_REFORM <= jd.days
-            && (jd.days < UK_REFORM || self == OldStylePolicy::PostReform)
-    }
-}
-
 #[derive(Debug, Eq, PartialEq)]
 enum Command {
     Run(Arguments),
@@ -180,9 +164,20 @@ impl Arguments {
     }
 }
 
-fn main() -> Result<(), Error> {
-    Command::from_parser(Parser::from_env())?.run();
-    Ok(())
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+enum OldStylePolicy {
+    #[default]
+    Never,
+    UkDelay,
+    PostReform,
+}
+
+impl OldStylePolicy {
+    fn show_old_style(self, jd: JulianDate) -> bool {
+        self != OldStylePolicy::Never
+            && GREG_REFORM <= jd.days
+            && (jd.days < UK_REFORM || self == OldStylePolicy::PostReform)
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -209,4 +204,9 @@ enum ArgumentParseError {
     CalendarDate(#[from] DateParseError),
     #[error(transparent)]
     JulianDate(#[from] JulianDateParseError),
+}
+
+fn main() -> Result<(), Error> {
+    Command::from_parser(Parser::from_env())?.run();
+    Ok(())
 }
