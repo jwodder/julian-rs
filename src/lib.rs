@@ -1906,4 +1906,95 @@ mod tests {
     ) {
         assert_eq!(style.break_yday(yday), Some((month, mday)));
     }
+
+    #[test]
+    fn test_display_date() {
+        let date = Date::from_ymd(2023, 4, 20, None).unwrap();
+        assert_eq!(format!("{date}"), "2023-04-20");
+    }
+
+    #[test]
+    fn test_alternate_display_date() {
+        let date = Date::from_ymd(2023, 4, 20, None).unwrap();
+        assert_eq!(format!("{date:#}"), "2023-110");
+    }
+
+    #[test]
+    fn test_alternate_display_date_padded() {
+        let date = Date::from_ymd(2023, 3, 15, None).unwrap();
+        assert_eq!(format!("{date:#}"), "2023-074");
+    }
+
+    #[test]
+    fn test_display_date_with_seconds() {
+        let date = Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 39 * 60 + 50)).unwrap();
+        assert_eq!(format!("{date}"), "2023-04-20T16:39:50Z");
+    }
+
+    #[test]
+    fn test_display_date_with_seconds_padded() {
+        let date = Date::from_ymd(1, 1, 1, Some(0)).unwrap();
+        assert_eq!(format!("{date}"), "0001-01-01T00:00:00Z");
+    }
+
+    #[test]
+    fn test_alternate_display_date_with_seconds() {
+        let date = Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 39 * 60 + 50)).unwrap();
+        assert_eq!(format!("{date:#}"), "2023-110T16:39:50Z");
+    }
+
+    #[test]
+    fn test_display_julian_date() {
+        let jd = JulianDate {
+            days: 2460055,
+            seconds: None,
+        };
+        assert_eq!(format!("{jd}"), "2460055");
+        assert_eq!(format!("{jd:#}"), "2460055");
+    }
+
+    #[test]
+    fn test_display_julian_date_with_seconds() {
+        let jd = JulianDate {
+            days: 2460055,
+            seconds: Some(16 * 3600 + 39 * 60 + 50),
+        };
+        assert_eq!(format!("{jd}"), "2460055.694329");
+    }
+
+    #[test]
+    fn test_display_julian_date_with_lower_precision() {
+        let jd = JulianDate {
+            days: 2460055,
+            seconds: Some(16 * 3600 + 39 * 60 + 50),
+        };
+        assert_eq!(format!("{jd:.1}"), "2460055.7");
+    }
+
+    #[test]
+    fn test_display_julian_date_with_higher_precision() {
+        let jd = JulianDate {
+            days: 2460055,
+            seconds: Some(16 * 3600 + 39 * 60 + 50),
+        };
+        assert_eq!(format!("{jd:.8}"), "2460055.69432870");
+    }
+
+    #[test]
+    fn test_display_julian_date_with_zero_precision() {
+        let jd = JulianDate {
+            days: 2460055,
+            seconds: Some(16 * 3600 + 39 * 60 + 50),
+        };
+        assert_eq!(format!("{jd:.0}"), "2460055");
+    }
+
+    #[test]
+    fn test_alternate_display_julian_date_with_seconds() {
+        let jd = JulianDate {
+            days: 2460055,
+            seconds: Some(16 * 3600 + 39 * 60 + 50),
+        };
+        assert_eq!(format!("{jd:#}"), "2460055:59990");
+    }
 }
