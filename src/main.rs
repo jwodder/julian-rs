@@ -1,5 +1,6 @@
 use julian::{Date, DateParseError, JulianDate, JulianDateParseError, GREG_REFORM, UK_REFORM};
 use lexopt::{Arg, Error, Parser, ValueExt};
+use std::fmt::Write;
 use std::str::FromStr;
 use thiserror::Error;
 
@@ -53,6 +54,11 @@ impl Command {
 
     fn run(self) {
         match self {
+            Command::Run(opts, dates) => {
+                for ln in opts.run(dates) {
+                    println!("{ln}");
+                }
+            }
             Command::Help => {
                 println!("Usage: julian [<options>] [<date> ...]");
                 println!();
@@ -88,7 +94,6 @@ impl Command {
             Command::Version => {
                 println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
             }
-            Command::Run(opts, dates) => opts.run(dates),
         }
     }
 }
@@ -102,64 +107,71 @@ struct Options {
 }
 
 impl Options {
-    fn print_yds(&self, when: Date) {
-        if self.ordinal {
-            print!("{when:#}");
-        } else {
-            print!("{when}");
-        }
-    }
-
-    fn print_styled(&self, when: Date, jd: JulianDate) {
-        self.print_yds(when);
-        if self.ospolicy.show_old_style(jd) {
-            print!(" [O.S. ");
-            self.print_yds(jd.to_julian());
-            print!("]");
-        }
-    }
-
-    fn print_julian(&self, jd: JulianDate) {
-        if self.whole_seconds {
-            print!("{jd:#}");
-        } else {
-            print!("{jd}");
-        }
-    }
-
-    fn run(&self, dates: Vec<Argument>) {
+    fn run(&self, dates: Vec<Argument>) -> Vec<String> {
+        let mut output = Vec::with_capacity(dates.len());
         if dates.is_empty() {
             let now = Date::now();
             let jd = now.to_julian_date();
-            if self.verbose {
-                self.print_styled(now, jd);
-                print!(" = ");
-            }
-            self.print_julian(jd);
-            println!();
+            output.push(self.show_cal_to_julian(now, jd));
         } else {
             for d in dates {
                 match d {
                     Argument::CalendarDate(when) => {
                         let jd = when.to_julian_date();
-                        if self.verbose {
-                            self.print_styled(when, jd);
-                            print!(" = ");
-                        }
-                        self.print_julian(jd);
-                        println!();
+                        output.push(self.show_cal_to_julian(when, jd));
                     }
                     Argument::JulianDate(jd) => {
-                        if self.verbose {
-                            self.print_julian(jd);
-                            print!(" = ");
-                        }
                         let when = jd.to_gregorian();
-                        self.print_styled(when, jd);
-                        println!();
+                        output.push(self.show_julian_to_cal(when, jd));
                     }
                 }
             }
+        }
+        output
+    }
+
+    fn show_cal_to_julian(&self, cal: Date, jd: JulianDate) -> String {
+        let mut s = String::new();
+        if self.verbose {
+            self.fmt_styled(&mut s, cal, jd);
+            write!(&mut s, " = ").unwrap();
+        }
+        self.fmt_julian(&mut s, jd);
+        s
+    }
+
+    fn show_julian_to_cal(&self, cal: Date, jd: JulianDate) -> String {
+        let mut s = String::new();
+        if self.verbose {
+            self.fmt_julian(&mut s, jd);
+            write!(&mut s, " = ").unwrap();
+        }
+        self.fmt_styled(&mut s, cal, jd);
+        s
+    }
+
+    fn fmt_styled(&self, s: &mut String, when: Date, jd: JulianDate) {
+        self.fmt_date(s, when);
+        if self.ospolicy.show_old_style(jd) {
+            write!(s, " [O.S. ").unwrap();
+            self.fmt_date(s, jd.to_julian());
+            write!(s, "]").unwrap();
+        }
+    }
+
+    fn fmt_date(&self, s: &mut String, when: Date) {
+        if self.ordinal {
+            write!(s, "{when:#}").unwrap();
+        } else {
+            write!(s, "{when}").unwrap();
+        }
+    }
+
+    fn fmt_julian(&self, s: &mut String, jd: JulianDate) {
+        if self.whole_seconds {
+            write!(s, "{jd:#}").unwrap();
+        } else {
+            write!(s, "{jd}").unwrap();
         }
     }
 }
