@@ -208,7 +208,7 @@ impl fmt::Display for Date {
         }
         if let Some(s) = self.seconds {
             let (hour, min, sec) = break_seconds(s);
-            write!(f, "T{:02}-{:02}-{:02}Z", hour, min, sec)?;
+            write!(f, "T{:02}:{:02}:{:02}Z", hour, min, sec)?;
         }
         Ok(())
     }
@@ -607,6 +607,7 @@ mod tests {
     #[case(2415021, 1900, 1, 1)]
     #[case(2415385, 1900, 12, 31)]
     #[case(2415386, 1901, 1, 1)]
+    #[case(2440588, 1970, 1, 1)]
     #[case(2451544, 1999, 12, 31)]
     #[case(2451545, 2000, 1, 1)]
     #[case(2451605, 2000, 3, 1)]
