@@ -412,4 +412,446 @@ mod tests {
         let parser = Parser::from_iter(argv);
         assert_eq!(Command::from_parser(parser).unwrap(), cmd);
     }
+
+    #[test]
+    fn test_run_default_options() {
+        let opts = Options::default();
+        let dates = vec![
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
+            Argument::CalendarDate(
+                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
+            ),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: None,
+            }),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: Some(29860),
+            }),
+            Argument::CalendarDate(Date::from_ymd(1066, 10, 14, None).unwrap()),
+            Argument::JulianDate(JulianDate {
+                days: 2110701,
+                seconds: None,
+            }),
+            Argument::CalendarDate(Date::from_ymd(1707, 4, 15, None).unwrap()),
+            Argument::JulianDate(JulianDate {
+                days: 2344633,
+                seconds: None,
+            }),
+        ];
+        assert_eq!(
+            opts.run(dates),
+            vec![
+                "2460055",
+                "2460055.179676",
+                "1969-07-20",
+                "1969-07-20T20:17:40Z",
+                "2110701",
+                "1066-10-14",
+                "2344633",
+                "1707-04-15"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_run_verbose() {
+        let opts = Options {
+            verbose: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
+            Argument::CalendarDate(
+                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
+            ),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: None,
+            }),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: Some(29860),
+            }),
+            Argument::CalendarDate(Date::from_ymd(1066, 10, 14, None).unwrap()),
+            Argument::JulianDate(JulianDate {
+                days: 2110701,
+                seconds: None,
+            }),
+            Argument::CalendarDate(Date::from_ymd(1707, 4, 15, None).unwrap()),
+            Argument::JulianDate(JulianDate {
+                days: 2344633,
+                seconds: None,
+            }),
+        ];
+        assert_eq!(
+            opts.run(dates),
+            vec![
+                "2023-04-20 = 2460055",
+                "2023-04-20T16:18:44Z = 2460055.179676",
+                "2440423 = 1969-07-20",
+                "2440423.345602 = 1969-07-20T20:17:40Z",
+                "1066-10-14 = 2110701",
+                "2110701 = 1066-10-14",
+                "1707-04-15 = 2344633",
+                "2344633 = 1707-04-15"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_run_old_style() {
+        let opts = Options {
+            ospolicy: PostReform,
+            ..Options::default()
+        };
+        let dates = vec![
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
+            Argument::CalendarDate(
+                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
+            ),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: None,
+            }),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: Some(29860),
+            }),
+            Argument::CalendarDate(Date::from_ymd(1066, 10, 14, None).unwrap()),
+            Argument::JulianDate(JulianDate {
+                days: 2110701,
+                seconds: None,
+            }),
+            Argument::CalendarDate(Date::from_ymd(1707, 4, 15, None).unwrap()),
+            Argument::JulianDate(JulianDate {
+                days: 2344633,
+                seconds: None,
+            }),
+        ];
+        assert_eq!(
+            opts.run(dates),
+            vec![
+                "2460055",
+                "2460055.179676",
+                "1969-07-20 [O.S. 1969-07-07]",
+                "1969-07-20T20:17:40Z [O.S. 1969-07-07T20:17:40Z]",
+                "2110701",
+                "1066-10-14",
+                "2344633",
+                "1707-04-15 [O.S. 1707-04-04]"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_run_old_style_uk() {
+        let opts = Options {
+            ospolicy: UkDelay,
+            ..Options::default()
+        };
+        let dates = vec![
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
+            Argument::CalendarDate(
+                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
+            ),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: None,
+            }),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: Some(29860),
+            }),
+            Argument::CalendarDate(Date::from_ymd(1066, 10, 14, None).unwrap()),
+            Argument::JulianDate(JulianDate {
+                days: 2110701,
+                seconds: None,
+            }),
+            Argument::CalendarDate(Date::from_ymd(1707, 4, 15, None).unwrap()),
+            Argument::JulianDate(JulianDate {
+                days: 2344633,
+                seconds: None,
+            }),
+        ];
+        assert_eq!(
+            opts.run(dates),
+            vec![
+                "2460055",
+                "2460055.179676",
+                "1969-07-20",
+                "1969-07-20T20:17:40Z",
+                "2110701",
+                "1066-10-14",
+                "2344633",
+                "1707-04-15 [O.S. 1707-04-04]"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_run_old_style_verbose() {
+        let opts = Options {
+            ospolicy: PostReform,
+            verbose: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
+            Argument::CalendarDate(
+                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
+            ),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: None,
+            }),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: Some(29860),
+            }),
+            Argument::CalendarDate(Date::from_ymd(1066, 10, 14, None).unwrap()),
+            Argument::JulianDate(JulianDate {
+                days: 2110701,
+                seconds: None,
+            }),
+            Argument::CalendarDate(Date::from_ymd(1707, 4, 15, None).unwrap()),
+            Argument::JulianDate(JulianDate {
+                days: 2344633,
+                seconds: None,
+            }),
+        ];
+        assert_eq!(
+            opts.run(dates),
+            vec![
+                "2023-04-20 [O.S. 2023-04-07] = 2460055",
+                "2023-04-20T16:18:44Z [O.S. 2023-04-07T16:18:44Z] = 2460055.179676",
+                "2440423 = 1969-07-20 [O.S. 1969-07-07]",
+                "2440423.345602 = 1969-07-20T20:17:40Z [O.S. 1969-07-07T20:17:40Z]",
+                "1066-10-14 = 2110701",
+                "2110701 = 1066-10-14",
+                "1707-04-15 [O.S. 1707-04-04] = 2344633",
+                "2344633 = 1707-04-15 [O.S. 1707-04-04]"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_run_old_style_uk_verbose() {
+        let opts = Options {
+            ospolicy: UkDelay,
+            verbose: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
+            Argument::CalendarDate(
+                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
+            ),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: None,
+            }),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: Some(29860),
+            }),
+            Argument::CalendarDate(Date::from_ymd(1066, 10, 14, None).unwrap()),
+            Argument::JulianDate(JulianDate {
+                days: 2110701,
+                seconds: None,
+            }),
+            Argument::CalendarDate(Date::from_ymd(1707, 4, 15, None).unwrap()),
+            Argument::JulianDate(JulianDate {
+                days: 2344633,
+                seconds: None,
+            }),
+        ];
+        assert_eq!(
+            opts.run(dates),
+            vec![
+                "2023-04-20 = 2460055",
+                "2023-04-20T16:18:44Z = 2460055.179676",
+                "2440423 = 1969-07-20",
+                "2440423.345602 = 1969-07-20T20:17:40Z",
+                "1066-10-14 = 2110701",
+                "2110701 = 1066-10-14",
+                "1707-04-15 [O.S. 1707-04-04] = 2344633",
+                "2344633 = 1707-04-15 [O.S. 1707-04-04]"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_run_ordinal() {
+        let opts = Options {
+            ordinal: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
+            Argument::CalendarDate(
+                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
+            ),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: None,
+            }),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: Some(29860),
+            }),
+        ];
+        assert_eq!(
+            opts.run(dates),
+            vec![
+                "2460055",
+                "2460055.179676",
+                "1969-201",
+                "1969-201T20:17:40Z",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_run_ordinal_verbose() {
+        let opts = Options {
+            ordinal: true,
+            verbose: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
+            Argument::CalendarDate(
+                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
+            ),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: None,
+            }),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: Some(29860),
+            }),
+        ];
+        assert_eq!(
+            opts.run(dates),
+            vec![
+                "2023-110 = 2460055",
+                "2023-110T16:18:44Z = 2460055.179676",
+                "2440423 = 1969-201",
+                "2440423.345602 = 1969-201T20:17:40Z",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_run_old_style_verbose_ordinal() {
+        let opts = Options {
+            ospolicy: PostReform,
+            verbose: true,
+            ordinal: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
+            Argument::CalendarDate(
+                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
+            ),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: None,
+            }),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: Some(29860),
+            }),
+            Argument::CalendarDate(Date::from_ymd(1066, 10, 14, None).unwrap()),
+            Argument::JulianDate(JulianDate {
+                days: 2110701,
+                seconds: None,
+            }),
+            Argument::CalendarDate(Date::from_ymd(1707, 4, 15, None).unwrap()),
+            Argument::JulianDate(JulianDate {
+                days: 2344633,
+                seconds: None,
+            }),
+        ];
+        assert_eq!(
+            opts.run(dates),
+            vec![
+                "2023-110 [O.S. 2023-097] = 2460055",
+                "2023-110T16:18:44Z [O.S. 2023-097T16:18:44Z] = 2460055.179676",
+                "2440423 = 1969-201 [O.S. 1969-188]",
+                "2440423.345602 = 1969-201T20:17:40Z [O.S. 1969-188T20:17:40Z]",
+                "1066-287 = 2110701",
+                "2110701 = 1066-287",
+                "1707-105 [O.S. 1707-094] = 2344633",
+                "2344633 = 1707-105 [O.S. 1707-094]"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_run_whole_seconds() {
+        let opts = Options {
+            whole_seconds: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
+            Argument::CalendarDate(
+                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
+            ),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: None,
+            }),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: Some(29860),
+            }),
+        ];
+        assert_eq!(
+            opts.run(dates),
+            vec![
+                "2460055",
+                "2460055:15524",
+                "1969-07-20",
+                "1969-07-20T20:17:40Z",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_run_whole_seconds_verbose() {
+        let opts = Options {
+            whole_seconds: true,
+            verbose: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
+            Argument::CalendarDate(
+                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
+            ),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: None,
+            }),
+            Argument::JulianDate(JulianDate {
+                days: 2440423,
+                seconds: Some(29860),
+            }),
+        ];
+        assert_eq!(
+            opts.run(dates),
+            vec![
+                "2023-04-20 = 2460055",
+                "2023-04-20T16:18:44Z = 2460055:15524",
+                "2440423 = 1969-07-20",
+                "2440423:29860 = 1969-07-20T20:17:40Z",
+            ]
+        );
+    }
 }
