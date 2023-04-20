@@ -1,6 +1,9 @@
 //! Unless otherwise specified, all functions use a Gregorian calendar with the
 //! Reformation taking place on 1582-10-05/15.
 
+#[cfg(test)]
+extern crate rstest_reuse;
+
 use chrono::naive::NaiveDate;
 use chrono::{Datelike, Timelike, Utc};
 use std::fmt;
@@ -141,7 +144,7 @@ impl Date {
         None
     }
 
-    pub fn as_julian(&self) -> JulianDate {
+    pub fn to_julian_date(&self) -> JulianDate {
         let idays = JulianDayT::try_from(self.days).unwrap();
         let jdays: JulianDayT = if self.year < -4712 {
             let rev_year = -4712 - self.year;
@@ -532,7 +535,7 @@ fn days_since_1582(year: YearT) -> JulianDayT {
         return 0;
     }
     let base = year - 1201;
-    (base + 382) * 365 + (base + 380) / 4 - (base + 300) / 100 + base / 400
+    (base - 382) * 365 + (base - 380) / 4 - (base - 300) / 100 + base / 400
 }
 
 fn break_seconds(mut seconds: SecondsT) -> (u32, u32, u32) {
@@ -542,4 +545,124 @@ fn break_seconds(mut seconds: SecondsT) -> (u32, u32, u32) {
     let min = seconds / SECONDS_IN_MINUTE;
     let sec = seconds % SECONDS_IN_MINUTE;
     (hour, min, sec)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+    use rstest_reuse::{apply, template};
+
+    #[template]
+    #[rstest]
+    #[case(-1403, -4716, 2, 28)]
+    #[case(-1402, -4716, 2, 29)]
+    #[case(-1401, -4716, 3, 1)]
+    #[case(-1095, -4715, 1, 1)]
+    #[case(-730, -4714, 1, 1)]
+    #[case(-365, -4713, 1, 1)]
+    #[case(-1, -4713, 12, 31)]
+    #[case(0, -4712, 1, 1)]
+    #[case(366, -4711, 1, 1)]
+    #[case(1719656, -4, 2, 29)]
+    #[case(2159358, 1200, 1, 1)]
+    #[case(2195883, 1300, 1, 1)]
+    #[case(2232408, 1400, 1, 1)]
+    #[case(2268932, 1499, 12, 31)]
+    #[case(2268933, 1500, 1, 1)]
+    #[case(2268993, 1500, 3, 1)]
+    #[case(2269115, 1500, 7, 1)]
+    #[case(2269146, 1500, 8, 1)]
+    #[case(2269177, 1500, 9, 1)]
+    #[case(2269204, 1500, 9, 28)]
+    #[case(2269205, 1500, 9, 29)]
+    #[case(2269207, 1500, 10, 1)]
+    #[case(2269298, 1500, 12, 31)]
+    #[case(2269299, 1501, 1, 1)]
+    #[case(2269663, 1501, 12, 31)]
+    #[case(2270123, 1503, 4, 5)]
+    #[case(2270489, 1504, 4, 5)]
+    #[case(2270854, 1505, 4, 5)]
+    #[case(2271219, 1506, 4, 5)]
+    #[case(2271584, 1507, 4, 5)]
+    #[case(2298796, 1581, 10, 5)]
+    #[case(2298883, 1581, 12, 31)]
+    #[case(2298884, 1582, 1, 1)]
+    #[case(2299159, 1582, 10, 3)]
+    #[case(2299160, 1582, 10, 4)]
+    #[case(2299161, 1582, 10, 15)]
+    #[case(2299162, 1582, 10, 16)]
+    #[case(2299238, 1582, 12, 31)]
+    #[case(2299239, 1583, 1, 1)]
+    #[case(2305448, 1600, 1, 1)]
+    #[case(2341972, 1699, 12, 31)]
+    #[case(2341973, 1700, 1, 1)]
+    #[case(2342337, 1700, 12, 31)]
+    #[case(2342338, 1701, 1, 1)]
+    #[case(2378496, 1799, 12, 31)]
+    #[case(2378497, 1800, 1, 1)]
+    #[case(2378861, 1800, 12, 31)]
+    #[case(2378862, 1801, 1, 1)]
+    #[case(2415020, 1899, 12, 31)]
+    #[case(2415021, 1900, 1, 1)]
+    #[case(2415385, 1900, 12, 31)]
+    #[case(2415386, 1901, 1, 1)]
+    #[case(2451544, 1999, 12, 31)]
+    #[case(2451545, 2000, 1, 1)]
+    #[case(2451605, 2000, 3, 1)]
+    #[case(2451910, 2000, 12, 31)]
+    #[case(2451911, 2001, 1, 1)]
+    #[case(2453066, 2004, 3, 1)]
+    #[case(2456746, 2014, 3, 29)]
+    fn julian_days(
+        #[case] days: JulianDayT,
+        #[case] year: YearT,
+        #[case] month: u32,
+        #[case] mday: u32,
+    ) {
+    }
+
+    #[apply(julian_days)]
+    fn test_julian_to_calendar(
+        #[case] days: JulianDayT,
+        #[case] year: YearT,
+        #[case] month: u32,
+        #[case] mday: u32,
+    ) {
+        let jd = JulianDate {
+            days,
+            seconds: None,
+        };
+        let cal = jd.to_gregorian();
+        assert_eq!(cal.year, year);
+        assert_eq!(cal.month, month);
+        assert_eq!(cal.mday, mday);
+    }
+
+    #[apply(julian_days)]
+    fn test_calendar_to_julian(
+        #[case] days: JulianDayT,
+        #[case] year: YearT,
+        #[case] month: u32,
+        #[case] mday: u32,
+    ) {
+        let cal = Date::from_ymd(year, month, mday, None).unwrap();
+        let jd = JulianDate {
+            days,
+            seconds: None,
+        };
+        assert_eq!(cal.to_julian_date(), jd);
+    }
+
+    #[rstest]
+    #[case(0, (0, 0, 0))]
+    #[case(27013, (7, 30, 13))]
+    #[case(43200, (12, 0, 0))]
+    #[case(45296, (12, 34, 56))]
+    #[case(47583, (13, 13, 3))]
+    #[case(61504, (17, 5, 4))]
+    #[case(86399, (23, 59, 59))]
+    fn test_break_seconds(#[case] seconds: SecondsT, #[case] hms: (u32, u32, u32)) {
+        assert_eq!(break_seconds(seconds), hms);
+    }
 }

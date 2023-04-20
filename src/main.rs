@@ -146,7 +146,7 @@ impl Arguments {
     fn run(&self) {
         if self.dates.is_empty() {
             let now = Date::now();
-            let jd = now.as_julian();
+            let jd = now.to_julian_date();
             if self.verbose {
                 self.print_styled(now, jd);
                 print!(" = ");
@@ -157,7 +157,7 @@ impl Arguments {
             for &d in &self.dates {
                 match d {
                     Argument::CalendarDate(when) => {
-                        let jd = when.as_julian();
+                        let jd = when.to_julian_date();
                         if self.verbose {
                             self.print_styled(when, jd);
                             print!(" = ");
