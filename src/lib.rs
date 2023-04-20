@@ -38,7 +38,7 @@ pub static MONTH_LENGTHS: [u32; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 3
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Date {
     pub year: YearT,               // 0 == 1 BC
-    pub days: DaysT,               // days from the start of the year; 0 == Jan 01
+    pub yday: DaysT,               // days from the start of the year; 0 == Jan 01
     pub month: u32,                // one-based
     pub mday: u32,                 // one-based
     pub seconds: Option<SecondsT>, // seconds after midnight
@@ -49,7 +49,7 @@ impl Date {
         let nowts = Utc::now();
         Date {
             year: nowts.year(),
-            days: nowts.ordinal0(),
+            yday: nowts.ordinal0(),
             month: nowts.month(),
             mday: nowts.day(),
             seconds: Some(nowts.num_seconds_from_midnight()),
@@ -57,7 +57,7 @@ impl Date {
     }
 
     pub fn is_before_gregorian(&self) -> bool {
-        self.year < 1582 || (self.year == 1582 && self.days < YDAY_REFORM)
+        self.year < 1582 || (self.year == 1582 && self.yday < YDAY_REFORM)
     }
 
     /// `month` and `mday` are one-indexed
@@ -85,7 +85,7 @@ impl Date {
         }
         Some(Date {
             year,
-            days: yday,
+            yday,
             month,
             mday,
             seconds,
@@ -120,7 +120,7 @@ impl Date {
                     if days < length {
                         return Some(Date {
                             year,
-                            days: yday,
+                            yday,
                             month,
                             mday: days + (if days < 4 { 1 } else { 11 }),
                             seconds,
@@ -133,7 +133,7 @@ impl Date {
             if days < length {
                 return Some(Date {
                     year,
-                    days: yday,
+                    yday,
                     month,
                     mday: days + 1,
                     seconds,
@@ -145,7 +145,7 @@ impl Date {
     }
 
     pub fn to_julian_date(&self) -> JulianDate {
-        let idays = JulianDayT::try_from(self.days).unwrap();
+        let idays = JulianDayT::try_from(self.yday).unwrap();
         let jdays: JulianDayT = if self.year < -4712 {
             let rev_year = -4712 - self.year;
             idays - (rev_year * 365 + rev_year / 4)
@@ -202,7 +202,7 @@ impl fmt::Display for Date {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:04}-", self.year)?;
         if f.alternate() {
-            write!(f, "{:03}", self.days + 1)?;
+            write!(f, "{:03}", self.yday + 1)?;
         } else {
             write!(f, "{:02}-{:02}", self.month, self.mday)?;
         }
@@ -379,9 +379,9 @@ impl JulianDate {
             Date::from_year_yday(
                 when.year,
                 if GREG_REFORM <= days && days - 10 < START1583 {
-                    when.days - 10
+                    when.yday - 10
                 } else {
-                    when.days
+                    when.yday
                 },
                 seconds,
             )
@@ -417,7 +417,7 @@ impl JulianDate {
             };
             let when = alt.to_julian();
             let year = -4712 - (when.year + 4712);
-            let yday = year_length(when.year) - 1 - when.days;
+            let yday = year_length(when.year) - 1 - when.yday;
             Date::from_julian_year_yday(year, yday, seconds).unwrap()
         } else {
             let mut year: YearT = days / 1461 * 4;
