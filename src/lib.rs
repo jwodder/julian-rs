@@ -230,7 +230,7 @@ impl<'a> DateParser<'a> {
         if let Some(i) = self.data.find(['-', 'T']) {
             if &self.data[i..(i + 1)] == "T" {
                 let yday = Self::parse_yday(&self.data[..i])?;
-                self.data = &self.data[(i + 1)..];
+                self.data = &self.data[i..];
                 Ok(yday)
             } else {
                 let month = self.parse_02d()?;
@@ -247,7 +247,7 @@ impl<'a> DateParser<'a> {
 
     fn parse_yday(s: &str) -> Result<DayInYear, DateParseError> {
         if s.len() == 3 && s.chars().all(|c| c.is_ascii_digit()) {
-            Ok(DayInYear::Yday(s.parse::<DaysT>()?))
+            Ok(DayInYear::Yday(s.parse::<DaysT>()? - 1))
         } else {
             Err(DateParseError::Generic)
         }
@@ -291,6 +291,7 @@ impl<'a> DateParser<'a> {
     }
 }
 
+#[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 enum DayInYear {
     Yday(DaysT),
     Date { month: u32, mday: u32 },
@@ -674,6 +675,7 @@ mod tests {
         assert_eq!(cal.year, 2023);
         assert_eq!(cal.month, 4);
         assert_eq!(cal.mday, 20);
+        assert_eq!(cal.yday, 109);
         assert_eq!(cal.seconds, Some(16 * 3600 + 18 * 60 + 44));
     }
 
@@ -687,6 +689,7 @@ mod tests {
         assert_eq!(cal.year, 2023);
         assert_eq!(cal.month, 4);
         assert_eq!(cal.mday, 20);
+        assert_eq!(cal.yday, 109);
         assert_eq!(cal.seconds, Some(7 * 3600 + 30 * 60 + 13));
     }
 
@@ -708,6 +711,7 @@ mod tests {
         assert_eq!(date.year, 2023);
         assert_eq!(date.month, 4);
         assert_eq!(date.mday, 20);
+        assert_eq!(date.yday, 109);
         assert_eq!(date.seconds, None);
     }
 
@@ -717,6 +721,7 @@ mod tests {
         assert_eq!(date.year, 2023);
         assert_eq!(date.month, 4);
         assert_eq!(date.mday, 20);
+        assert_eq!(date.yday, 109);
         assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
     }
 
@@ -726,6 +731,47 @@ mod tests {
         assert_eq!(date.year, 2023);
         assert_eq!(date.month, 4);
         assert_eq!(date.mday, 20);
+        assert_eq!(date.yday, 109);
+        assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
+    }
+
+    #[test]
+    fn test_parse_yj() {
+        let date = "2023-110".parse::<Date>().unwrap();
+        assert_eq!(date.year, 2023);
+        assert_eq!(date.month, 4);
+        assert_eq!(date.mday, 20);
+        assert_eq!(date.yday, 109);
+        assert_eq!(date.seconds, None);
+    }
+
+    #[test]
+    fn test_parse_yj_padded() {
+        let date = "2023-006".parse::<Date>().unwrap();
+        assert_eq!(date.year, 2023);
+        assert_eq!(date.month, 1);
+        assert_eq!(date.mday, 6);
+        assert_eq!(date.yday, 5);
+        assert_eq!(date.seconds, None);
+    }
+
+    #[test]
+    fn test_parse_yj_hms() {
+        let date = "2023-110T16:39:50".parse::<Date>().unwrap();
+        assert_eq!(date.year, 2023);
+        assert_eq!(date.month, 4);
+        assert_eq!(date.mday, 20);
+        assert_eq!(date.yday, 109);
+        assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
+    }
+
+    #[test]
+    fn test_parse_yj_hms_z() {
+        let date = "2023-110T16:39:50Z".parse::<Date>().unwrap();
+        assert_eq!(date.year, 2023);
+        assert_eq!(date.month, 4);
+        assert_eq!(date.mday, 20);
+        assert_eq!(date.yday, 109);
         assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
     }
 
