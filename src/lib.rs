@@ -49,7 +49,7 @@ impl Date {
         let nowts = Utc::now();
         Date {
             year: nowts.year(),
-            days: nowts.ordinal(),
+            days: nowts.ordinal0(),
             month: nowts.month(),
             mday: nowts.day(),
             seconds: Some(nowts.num_seconds_from_midnight()),
@@ -615,6 +615,7 @@ mod tests {
     #[case(2451911, 2001, 1, 1)]
     #[case(2453066, 2004, 3, 1)]
     #[case(2456746, 2014, 3, 29)]
+    #[case(2460055, 2023, 4, 20)]
     fn julian_days(
         #[case] days: JulianDayT,
         #[case] year: YearT,
@@ -651,6 +652,16 @@ mod tests {
         let jd = JulianDate {
             days,
             seconds: None,
+        };
+        assert_eq!(cal.to_julian_date(), jd);
+    }
+
+    #[test]
+    fn test_calendar_with_seconds_to_julian() {
+        let cal = Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap();
+        let jd = JulianDate {
+            days: 2460055,
+            seconds: Some(4 * 3600 + 18 * 60 + 44),
         };
         assert_eq!(cal.to_julian_date(), jd);
     }
