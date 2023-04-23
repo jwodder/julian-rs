@@ -113,7 +113,7 @@ impl Date {
             } else if month == REFORM_MONTH
                 && ((PRE_REFORM_MDAY + 1)..POST_REFORM_MDAY).contains(&mday)
             {
-                return Err(DateError::SkippedDate { year, month, mday });
+                return Err(DateError::SkippedDate);
             }
         }
         Ok(Date {
@@ -244,14 +244,14 @@ pub enum DateError {
     MdayOutOfRange { month: u32, mday: u32 },
     #[error("yday {yday} is outside of valid range for year {year}")]
     YdayOutOfRange { year: YearT, yday: DaysT },
-    #[error("date {year:04}-{month:02}-{mday:02} was skipped by the Reformation")]
-    SkippedDate { year: YearT, month: u32, mday: u32 },
+    #[error("date was skipped by calendar reform")]
+    SkippedDate,
 }
 
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum DateParseError {
     #[error("invalid calendar date: {0}")]
-    BadDate(#[from] DateError),
+    InvalidDate(#[from] DateError),
     #[error("trailing characters after date")]
     HasTrailing,
     #[error("year not terminated by '-'")]
@@ -1019,6 +1019,139 @@ mod tests {
             assert_eq!(
                 r.unwrap_err().to_string(),
                 "expected two digits, got non-digit '-'"
+            );
+        }
+
+        #[test]
+        fn test_parse_zero_month() {
+            let r = "2023-00-13".parse::<Date>();
+            assert_eq!(
+                r,
+                Err(DateParseError::InvalidDate(DateError::MonthOutOfRange {
+                    month: 0
+                }))
+            );
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "invalid calendar date: month 0 is outside of valid range"
+            );
+        }
+
+        #[test]
+        fn test_parse_smarch() {
+            let r = "2023-13-13".parse::<Date>();
+            assert_eq!(
+                r,
+                Err(DateParseError::InvalidDate(DateError::MonthOutOfRange {
+                    month: 13
+                }))
+            );
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "invalid calendar date: month 13 is outside of valid range"
+            );
+        }
+
+        #[test]
+        fn test_parse_mday_0() {
+            let r = "2023-04-00".parse::<Date>();
+            assert_eq!(
+                r,
+                Err(DateParseError::InvalidDate(DateError::MdayOutOfRange {
+                    month: 4,
+                    mday: 0
+                }))
+            );
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "invalid calendar date: mday 0 is outside of valid range for month 4"
+            );
+        }
+
+        #[test]
+        fn test_parse_mday_32() {
+            let r = "2023-04-32".parse::<Date>();
+            assert_eq!(
+                r,
+                Err(DateParseError::InvalidDate(DateError::MdayOutOfRange {
+                    month: 4,
+                    mday: 32
+                }))
+            );
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "invalid calendar date: mday 32 is outside of valid range for month 4"
+            );
+        }
+
+        #[test]
+        fn test_parse_sep_31() {
+            let r = "2023-09-31".parse::<Date>();
+            assert_eq!(
+                r,
+                Err(DateParseError::InvalidDate(DateError::MdayOutOfRange {
+                    month: 9,
+                    mday: 31
+                }))
+            );
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "invalid calendar date: mday 31 is outside of valid range for month 9"
+            );
+        }
+
+        #[test]
+        fn test_parse_invalid_leap_day() {
+            let r = "2023-02-29".parse::<Date>();
+            assert_eq!(
+                r,
+                Err(DateParseError::InvalidDate(DateError::MdayOutOfRange {
+                    month: 2,
+                    mday: 29
+                }))
+            );
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "invalid calendar date: mday 29 is outside of valid range for month 2"
+            );
+        }
+
+        #[test]
+        fn test_parse_valid_leap_day() {
+            let date = "2024-02-29".parse::<Date>().unwrap();
+            assert_eq!(date.year, 2024);
+            assert_eq!(date.month, 2);
+            assert_eq!(date.mday, 29);
+            assert_eq!(date.seconds, None);
+        }
+
+        #[test]
+        fn test_parse_skipped_date() {
+            let r = "1582-10-10".parse::<Date>();
+            assert_eq!(r, Err(DateParseError::InvalidDate(DateError::SkippedDate)));
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "invalid calendar date: date was skipped by calendar reform"
+            );
+        }
+
+        #[test]
+        fn test_parse_first_skipped_date() {
+            let r = "1582-10-05".parse::<Date>();
+            assert_eq!(r, Err(DateParseError::InvalidDate(DateError::SkippedDate)));
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "invalid calendar date: date was skipped by calendar reform"
+            );
+        }
+
+        #[test]
+        fn test_parse_last_skipped_date() {
+            let r = "1582-10-14".parse::<Date>();
+            assert_eq!(r, Err(DateParseError::InvalidDate(DateError::SkippedDate)));
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "invalid calendar date: date was skipped by calendar reform"
             );
         }
     }
@@ -2269,5 +2402,104 @@ mod tests {
         assert_eq!(date.month, month);
         assert_eq!(date.mday, mday);
         assert_eq!(date.seconds, Some(seconds));
+    }
+
+    #[test]
+    fn test_from_ymd_zero_month() {
+        let r = Date::from_ymd(2023, 0, 13, None);
+        assert_eq!(r, Err(DateError::MonthOutOfRange { month: 0 }));
+        assert_eq!(
+            r.unwrap_err().to_string(),
+            "month 0 is outside of valid range"
+        );
+    }
+
+    #[test]
+    fn test_from_ymd_smarch() {
+        let r = Date::from_ymd(2023, 13, 13, None);
+        assert_eq!(r, Err(DateError::MonthOutOfRange { month: 13 }));
+        assert_eq!(
+            r.unwrap_err().to_string(),
+            "month 13 is outside of valid range"
+        );
+    }
+
+    #[test]
+    fn test_from_ymd_mday_0() {
+        let r = Date::from_ymd(2023, 4, 0, None);
+        assert_eq!(r, Err(DateError::MdayOutOfRange { month: 4, mday: 0 }));
+        assert_eq!(
+            r.unwrap_err().to_string(),
+            "mday 0 is outside of valid range for month 4"
+        );
+    }
+
+    #[test]
+    fn test_from_ymd_mday_32() {
+        let r = Date::from_ymd(2023, 4, 32, None);
+        assert_eq!(r, Err(DateError::MdayOutOfRange { month: 4, mday: 32 }));
+        assert_eq!(
+            r.unwrap_err().to_string(),
+            "mday 32 is outside of valid range for month 4"
+        );
+    }
+
+    #[test]
+    fn test_from_ymd_sep_31() {
+        let r = Date::from_ymd(2023, 9, 31, None);
+        assert_eq!(r, Err(DateError::MdayOutOfRange { month: 9, mday: 31 }));
+        assert_eq!(
+            r.unwrap_err().to_string(),
+            "mday 31 is outside of valid range for month 9"
+        );
+    }
+
+    #[test]
+    fn test_from_ymd_invalid_leap_day() {
+        let r = Date::from_ymd(2023, 2, 29, None);
+        assert_eq!(r, Err(DateError::MdayOutOfRange { month: 2, mday: 29 }));
+        assert_eq!(
+            r.unwrap_err().to_string(),
+            "mday 29 is outside of valid range for month 2"
+        );
+    }
+
+    #[test]
+    fn test_from_ymd_valid_leap_day() {
+        let date = Date::from_ymd(2024, 2, 29, None).unwrap();
+        assert_eq!(date.year, 2024);
+        assert_eq!(date.month, 2);
+        assert_eq!(date.mday, 29);
+        assert_eq!(date.seconds, None);
+    }
+
+    #[test]
+    fn test_from_ymd_skipped_date() {
+        let r = Date::from_ymd(1582, 10, 10, None);
+        assert_eq!(r, Err(DateError::SkippedDate));
+        assert_eq!(
+            r.unwrap_err().to_string(),
+            "date was skipped by calendar reform"
+        );
+    }
+
+    #[test]
+    fn test_from_ymd_first_skipped_date() {
+        let r = Date::from_ymd(1582, 10, 5, None);
+        assert_eq!(r, Err(DateError::SkippedDate));
+        assert_eq!(
+            r.unwrap_err().to_string(),
+            "date was skipped by calendar reform"
+        );
+    }
+
+    #[test]
+    fn test_from_ymd_last_skipped_date() {
+        let r = Date::from_ymd(1582, 10, 14, None);
+        assert_eq!(r, Err(DateError::SkippedDate));
+        assert_eq!(
+            r.unwrap_err().to_string(),
+            "date was skipped by calendar reform"
+        );
     }
 }
