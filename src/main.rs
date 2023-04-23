@@ -63,7 +63,7 @@ impl Command {
             Command::Help => {
                 println!("Usage: julian [<options>] [<date> ...]");
                 println!();
-                println!("Convert Julian dates to & from calendar dates");
+                println!("Convert Julian days to & from calendar dates");
                 println!();
                 println!("Options:");
                 println!("  -j, --ordinal     Output calendar dates in the form \"YYYY-DDD\"");
