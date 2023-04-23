@@ -1,4 +1,4 @@
-use julian::{Date, JulianDate, JulianParseDateError, ParseDateError, GREG_REFORM, UK_REFORM};
+use julian::{Date, JulianDate, ParseDateError, ParseJulianDateError, GREG_REFORM, UK_REFORM};
 use lexopt::{Arg, Error, Parser, ValueExt};
 use std::fmt::Write;
 use std::str::FromStr;
@@ -215,7 +215,7 @@ enum ArgumentParseError {
     #[error(transparent)]
     CalendarDate(#[from] ParseDateError),
     #[error(transparent)]
-    JulianDate(#[from] JulianParseDateError),
+    JulianDate(#[from] ParseJulianDateError),
 }
 
 fn main() -> Result<(), Error> {

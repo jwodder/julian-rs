@@ -563,13 +563,13 @@ impl JulianDate {
 }
 
 impl FromStr for JulianDate {
-    type Err = JulianParseDateError;
+    type Err = ParseJulianDateError;
 
     // Formats:
     // - %d
     // - %d.%s
     // - %d:%d
-    fn from_str(s: &str) -> Result<JulianDate, JulianParseDateError> {
+    fn from_str(s: &str) -> Result<JulianDate, ParseJulianDateError> {
         let m = s.match_indices(['.', ':']).next();
         let (days_str, secstr) = match m {
             Some((i, _)) => (&s[..i], &s[(i + 1)..]),
@@ -577,14 +577,17 @@ impl FromStr for JulianDate {
         };
         let days = days_str
             .parse::<JulianDayT>()
-            .map_err(JulianParseDateError::InvalidDay)?;
+            .map_err(ParseJulianDateError::InvalidDay)?;
         let seconds = match m {
             Some((_, ":")) => Some(
                 secstr
                     .parse::<SecondsT>()
-                    .map_err(JulianParseDateError::InvalidSeconds)?,
+                    .map_err(ParseJulianDateError::InvalidSeconds)?,
             ),
             Some((_, ".")) => {
+                if secstr.is_empty() {
+                    return Err(ParseJulianDateError::EmptyFrac);
+                }
                 let mut secs = 0;
                 let mut coef: SecondsT = SECONDS_IN_DAY / 10;
                 let mut accum = 0;
@@ -592,7 +595,7 @@ impl FromStr for JulianDate {
                 for ch in secstr.chars() {
                     let d = ch
                         .to_digit(10)
-                        .ok_or(JulianParseDateError::InvalidDigit { ch })?;
+                        .ok_or(ParseJulianDateError::InvalidDigit(ch))?;
                     accum += coef * d;
                     secs += accum / denom;
                     accum %= denom;
@@ -644,13 +647,15 @@ impl fmt::Display for JulianDate {
 }
 
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
-pub enum JulianParseDateError {
-    #[error("cannot parse Julian day component")]
+pub enum ParseJulianDateError {
+    #[error("cannot parse Julian day component: {0}")]
     InvalidDay(#[source] ParseIntError),
-    #[error("invalid digit {ch:?} in Julian date")]
-    InvalidDigit { ch: char },
-    #[error("cannot parse integer seconds component")]
+    #[error("invalid digit {0:?} after period in Julian date")]
+    InvalidDigit(char),
+    #[error("cannot parse integer seconds component: {0}")]
     InvalidSeconds(#[source] ParseIntError),
+    #[error("empty fractional component")]
+    EmptyFrac,
 }
 
 fn is_leap_year(year: YearT) -> bool {
@@ -1229,6 +1234,13 @@ mod tests {
                 .to_string()
                 .starts_with("invalid calendar date: numeric parse error: "));
         }
+
+        #[test]
+        fn test_parse_empty() {
+            let r = "".parse::<Date>();
+            assert_eq!(r, Err(ParseDateError::UnterminatedYear));
+            assert_eq!(r.unwrap_err().to_string(), "year not terminated by '-'");
+        }
     }
 
     mod parse_julian_date {
@@ -1268,6 +1280,131 @@ mod tests {
                     seconds: Some(16952)
                 }
             );
+        }
+
+        #[test]
+        fn test_parse_comma_sep() {
+            use std::num::IntErrorKind::InvalidDigit;
+            let r = "2460055,1962".parse::<JulianDate>();
+            assert_matches!(r, Err(ParseJulianDateError::InvalidDay(ref e)) if e.kind() == &InvalidDigit);
+            assert!(r
+                .unwrap_err()
+                .to_string()
+                .starts_with("cannot parse Julian day component: "));
+        }
+
+        #[test]
+        fn test_parse_empty() {
+            use std::num::IntErrorKind::Empty;
+            let r = "".parse::<JulianDate>();
+            assert_matches!(r, Err(ParseJulianDateError::InvalidDay(ref e)) if e.kind() == &Empty);
+            assert!(r
+                .unwrap_err()
+                .to_string()
+                .starts_with("cannot parse Julian day component: "));
+        }
+
+        #[test]
+        fn test_parse_nondigit() {
+            use std::num::IntErrorKind::InvalidDigit;
+            let r = "246OO55".parse::<JulianDate>();
+            assert_matches!(r, Err(ParseJulianDateError::InvalidDay(ref e)) if e.kind() == &InvalidDigit);
+            assert!(r
+                .unwrap_err()
+                .to_string()
+                .starts_with("cannot parse Julian day component: "));
+        }
+
+        #[test]
+        fn test_parse_day_too_large() {
+            use std::num::IntErrorKind::PosOverflow;
+            let r = "3000000000".parse::<JulianDate>();
+            assert_matches!(r, Err(ParseJulianDateError::InvalidDay(ref e)) if e.kind() == &PosOverflow);
+            assert!(r
+                .unwrap_err()
+                .to_string()
+                .starts_with("cannot parse Julian day component: "));
+        }
+
+        #[test]
+        fn test_parse_day_too_small() {
+            use std::num::IntErrorKind::NegOverflow;
+            let r = "-3000000000".parse::<JulianDate>();
+            assert_matches!(r, Err(ParseJulianDateError::InvalidDay(ref e)) if e.kind() == &NegOverflow);
+            assert!(r
+                .unwrap_err()
+                .to_string()
+                .starts_with("cannot parse Julian day component: "));
+        }
+
+        #[test]
+        fn test_parse_bad_digit_in_frac() {
+            let r = "2460058.37!447".parse::<JulianDate>();
+            assert_eq!(r, Err(ParseJulianDateError::InvalidDigit('!')));
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "invalid digit '!' after period in Julian date"
+            );
+        }
+
+        #[test]
+        fn test_parse_negative_frac() {
+            let r = "2460058.-371447".parse::<JulianDate>();
+            assert_eq!(r, Err(ParseJulianDateError::InvalidDigit('-')));
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "invalid digit '-' after period in Julian date"
+            );
+        }
+
+        #[test]
+        fn test_parse_empty_int_seconds() {
+            use std::num::IntErrorKind::Empty;
+            let r = "2460058:".parse::<JulianDate>();
+            assert_matches!(r, Err(ParseJulianDateError::InvalidSeconds(ref e)) if e.kind() == &Empty);
+            assert!(r
+                .unwrap_err()
+                .to_string()
+                .starts_with("cannot parse integer seconds component: "));
+        }
+
+        #[test]
+        fn test_parse_int_seconds_nondigit() {
+            use std::num::IntErrorKind::InvalidDigit;
+            let r = "2460055:37!447".parse::<JulianDate>();
+            assert_matches!(r, Err(ParseJulianDateError::InvalidSeconds(ref e)) if e.kind() == &InvalidDigit);
+            assert!(r
+                .unwrap_err()
+                .to_string()
+                .starts_with("cannot parse integer seconds component: "));
+        }
+
+        #[test]
+        fn test_parse_int_seconds_too_large() {
+            use std::num::IntErrorKind::PosOverflow;
+            let r = "2460058:6000000000".parse::<JulianDate>();
+            assert_matches!(r, Err(ParseJulianDateError::InvalidSeconds(ref e)) if e.kind() == &PosOverflow);
+            assert!(r
+                .unwrap_err()
+                .to_string()
+                .starts_with("cannot parse integer seconds component: "));
+        }
+
+        #[test]
+        fn test_parse_negative_int_seconds() {
+            let r = "2460058:-371447".parse::<JulianDate>();
+            assert_matches!(r, Err(ParseJulianDateError::InvalidSeconds(_)));
+            assert!(r
+                .unwrap_err()
+                .to_string()
+                .starts_with("cannot parse integer seconds component: "));
+        }
+
+        #[test]
+        fn test_parse_empty_frac() {
+            let r = "2460058.".parse::<JulianDate>();
+            assert_matches!(r, Err(ParseJulianDateError::EmptyFrac));
+            assert_eq!(r.unwrap_err().to_string(), "empty fractional component");
         }
     }
 
