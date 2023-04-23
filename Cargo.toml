@@ -1,6 +1,6 @@
 [package]
 name = "julian"
-version = "0.0.1"
+version = "0.1.0-dev"
 edition = "2021"
 rust-version = "1.66"
 description = "Convert between Julian days and Julian & Gregorian calendars"
