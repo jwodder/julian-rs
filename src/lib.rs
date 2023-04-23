@@ -258,8 +258,12 @@ pub enum DateParseError {
     UnterminatedYear,
     #[error("yday must be three digits long")]
     InvalidYday,
-    #[error("expected two digits, got {got:?}")]
-    Invalid02d { got: String },
+    #[error("expected two digits, got {got} digits")]
+    Invalid02dLength { got: usize },
+    #[error("expected two digits, got non-digit {got:?}")]
+    Invalid02dStart { got: char },
+    #[error("expected two digits, reached end of input")]
+    Invalid02dSuddenEnd,
     #[error("expected {expected:?}, got {got:?}")]
     UnexpectedChar { expected: char, got: char },
     #[error("expected {expected:?}, reached end of input")]
@@ -322,17 +326,23 @@ impl<'a> DateParser<'a> {
     }
 
     fn parse_02d(&mut self) -> Result<u32, DateParseError> {
-        match self.data.get(..2) {
-            Some(s) if s.chars().all(|c| c.is_ascii_digit()) => {
-                let n = s.parse::<u32>().unwrap();
+        match self
+            .data
+            .char_indices()
+            .take_while(|&(_, ch)| ch.is_ascii_digit())
+            .last()
+            .map(|(i, _)| i + 1)
+        {
+            Some(2) => {
+                let n = self.data[..2].parse::<u32>().unwrap();
                 self.data = &self.data[2..];
                 Ok(n)
             }
-            Some(s) => Err(DateParseError::Invalid02d { got: s.into() }),
-            None => {
-                let got = self.data.chars().take(2).collect::<String>();
-                Err(DateParseError::Invalid02d { got })
-            }
+            Some(got) => Err(DateParseError::Invalid02dLength { got }),
+            None => match self.data.chars().next() {
+                Some(got) => Err(DateParseError::Invalid02dStart { got }),
+                None => Err(DateParseError::Invalid02dSuddenEnd),
+            },
         }
     }
 
@@ -940,28 +950,31 @@ mod tests {
         #[test]
         fn test_parse_ymd_short_month() {
             let r = "2023-4-20".parse::<Date>();
-            assert_eq!(
-                r,
-                Err(DateParseError::Invalid02d {
-                    got: String::from("4-")
-                })
-            );
+            assert_eq!(r, Err(DateParseError::Invalid02dLength { got: 1 }));
             assert_eq!(
                 r.unwrap_err().to_string(),
-                "expected two digits, got \"4-\""
+                "expected two digits, got 1 digits"
+            );
+        }
+
+        #[test]
+        fn test_parse_ymd_long_month() {
+            let r = "2023-012-20".parse::<Date>();
+            assert_eq!(r, Err(DateParseError::Invalid02dLength { got: 3 }));
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "expected two digits, got 3 digits"
             );
         }
 
         #[test]
         fn test_parse_ymd_short_mday() {
             let r = "2023-04-2".parse::<Date>();
+            assert_eq!(r, Err(DateParseError::Invalid02dLength { got: 1 }));
             assert_eq!(
-                r,
-                Err(DateParseError::Invalid02d {
-                    got: String::from("2")
-                })
+                r.unwrap_err().to_string(),
+                "expected two digits, got 1 digits"
             );
-            assert_eq!(r.unwrap_err().to_string(), "expected two digits, got \"2\"");
         }
 
         #[test]
@@ -980,6 +993,33 @@ mod tests {
             let r = "2023-04-20T16:39:50+00:00".parse::<Date>();
             assert_eq!(r, Err(DateParseError::HasTrailing));
             assert_eq!(r.unwrap_err().to_string(), "trailing characters after date");
+        }
+
+        #[test]
+        fn test_parse_year_hyphen() {
+            let r = "2023-".parse::<Date>();
+            assert_eq!(r, Err(DateParseError::InvalidYday));
+            assert_eq!(r.unwrap_err().to_string(), "yday must be three digits long");
+        }
+
+        #[test]
+        fn test_parse_year_month_hyphen() {
+            let r = "2023-04-".parse::<Date>();
+            assert_eq!(r, Err(DateParseError::Invalid02dSuddenEnd));
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "expected two digits, reached end of input"
+            );
+        }
+
+        #[test]
+        fn test_parse_year_hyphen_hyphen_md() {
+            let r = "2023--04-20".parse::<Date>();
+            assert_eq!(r, Err(DateParseError::Invalid02dStart { got: '-' }));
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "expected two digits, got non-digit '-'"
+            );
         }
     }
 
