@@ -88,16 +88,16 @@ impl Date {
         month: u32,
         mday: u32,
         seconds: Option<SecondsT>,
-    ) -> Result<Date, DateConstructError> {
+    ) -> Result<Date, DateError> {
         if !(1..=12).contains(&month) {
-            return Err(DateConstructError::MonthOutOfRange { month });
+            return Err(DateError::MonthOutOfRange { month });
         }
         let month_index = usize::try_from(month).unwrap() - 1;
         if mday < 1
             || (mday > MONTH_LENGTHS[month_index]
                 && !(is_leap_year(year) && month == FEBRUARY && mday == 29))
         {
-            return Err(DateConstructError::MdayOutOfRange { month, mday });
+            return Err(DateError::MdayOutOfRange { month, mday });
         }
         let mut yday = 0;
         for (&length, i) in MONTH_LENGTHS[0..month_index].iter().zip(1..) {
@@ -113,7 +113,7 @@ impl Date {
             } else if month == REFORM_MONTH
                 && ((PRE_REFORM_MDAY + 1)..POST_REFORM_MDAY).contains(&mday)
             {
-                return Err(DateConstructError::SkippedDate { year, month, mday });
+                return Err(DateError::SkippedDate { year, month, mday });
             }
         }
         Ok(Date {
@@ -130,11 +130,11 @@ impl Date {
         year: YearT,
         yday: DaysT,
         seconds: Option<SecondsT>,
-    ) -> Result<Date, DateConstructError> {
+    ) -> Result<Date, DateError> {
         let year_style = YearStyle::for_gregorian_year(year);
         let (month, mday) = year_style
             .break_yday(yday)
-            .ok_or(DateConstructError::YdayOutOfRange { year, yday })?;
+            .ok_or(DateError::YdayOutOfRange { year, yday })?;
         Ok(Date {
             year,
             yday,
@@ -148,11 +148,11 @@ impl Date {
         year: YearT,
         yday: DaysT,
         seconds: Option<SecondsT>,
-    ) -> Result<Date, DateConstructError> {
+    ) -> Result<Date, DateError> {
         let year_style = YearStyle::for_julian_year(year);
         let (month, mday) = year_style
             .break_yday(yday)
-            .ok_or(DateConstructError::YdayOutOfRange { year, yday })?;
+            .ok_or(DateError::YdayOutOfRange { year, yday })?;
         Ok(Date {
             year,
             yday,
@@ -237,7 +237,7 @@ impl fmt::Display for Date {
 }
 
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
-pub enum DateConstructError {
+pub enum DateError {
     #[error("month {month} is outside of valid range")]
     MonthOutOfRange { month: u32 },
     #[error("mday {mday} is outside of valid range for month {month}")]
@@ -251,7 +251,7 @@ pub enum DateConstructError {
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum DateParseError {
     #[error("invalid calendar date: {0}")]
-    Construction(#[from] DateConstructError),
+    BadDate(#[from] DateError),
     #[error("trailing characters after date")]
     HasTrailing,
     #[error("year not terminated by '-'")]
