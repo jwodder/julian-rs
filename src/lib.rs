@@ -200,18 +200,18 @@ impl From<SystemTime> for Date {
 }
 
 impl FromStr for Date {
-    type Err = DateParseError;
+    type Err = ParseDateError;
 
     // Formats:
     // - [+/-]YYYY-MM-DD[Thh:mm:ss[Z]]
     // - [+/-]YYYY-DDD[Thh:mm:ss[Z]]
-    fn from_str(s: &str) -> Result<Date, DateParseError> {
+    fn from_str(s: &str) -> Result<Date, ParseDateError> {
         let mut parser = DateParser::new(s);
         let year = parser.parse_year()?;
         let diny = parser.parse_day_in_year()?;
         let seconds = parser.parse_time()?;
         if !parser.is_empty() {
-            return Err(DateParseError::HasTrailing);
+            return Err(ParseDateError::HasTrailing);
         }
         match diny {
             DayInYear::Yday(yday) => Ok(Date::from_year_yday(year, yday, seconds)?),
@@ -249,7 +249,7 @@ pub enum DateError {
 }
 
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
-pub enum DateParseError {
+pub enum ParseDateError {
     #[error("invalid calendar date: {0}")]
     InvalidDate(#[from] DateError),
     #[error("trailing characters after date")]
@@ -287,18 +287,18 @@ impl<'a> DateParser<'a> {
         self.data.is_empty()
     }
 
-    fn parse_year(&mut self) -> Result<YearT, DateParseError> {
+    fn parse_year(&mut self) -> Result<YearT, ParseDateError> {
         match self.data.match_indices('-').find(|&(i, _)| i > 0) {
             Some((i, _)) => {
                 let year = self.data[..i].parse::<YearT>()?;
                 self.data = &self.data[i + 1..];
                 Ok(year)
             }
-            None => Err(DateParseError::UnterminatedYear),
+            None => Err(ParseDateError::UnterminatedYear),
         }
     }
 
-    fn parse_day_in_year(&mut self) -> Result<DayInYear, DateParseError> {
+    fn parse_day_in_year(&mut self) -> Result<DayInYear, ParseDateError> {
         if let Some(i) = self.data.find(['-', 'T']) {
             if &self.data[i..(i + 1)] == "T" {
                 let yday = Self::parse_yday(&self.data[..i])?;
@@ -317,15 +317,15 @@ impl<'a> DateParser<'a> {
         }
     }
 
-    fn parse_yday(s: &str) -> Result<DayInYear, DateParseError> {
+    fn parse_yday(s: &str) -> Result<DayInYear, ParseDateError> {
         if s.len() == 3 && s.chars().all(|c| c.is_ascii_digit()) {
             Ok(DayInYear::Yday(s.parse::<DaysT>()? - 1))
         } else {
-            Err(DateParseError::InvalidYday)
+            Err(ParseDateError::InvalidYday)
         }
     }
 
-    fn parse_02d(&mut self) -> Result<u32, DateParseError> {
+    fn parse_02d(&mut self) -> Result<u32, ParseDateError> {
         match self
             .data
             .char_indices()
@@ -338,30 +338,30 @@ impl<'a> DateParser<'a> {
                 self.data = &self.data[2..];
                 Ok(n)
             }
-            Some(got) => Err(DateParseError::Invalid02dLength { got }),
+            Some(got) => Err(ParseDateError::Invalid02dLength { got }),
             None => match self.data.chars().next() {
-                Some(got) => Err(DateParseError::Invalid02dStart { got }),
-                None => Err(DateParseError::Invalid02dSuddenEnd),
+                Some(got) => Err(ParseDateError::Invalid02dStart { got }),
+                None => Err(ParseDateError::Invalid02dSuddenEnd),
             },
         }
     }
 
-    fn scan_char(&mut self, ch: char) -> Result<(), DateParseError> {
+    fn scan_char(&mut self, ch: char) -> Result<(), ParseDateError> {
         if let Some(s) = self.data.strip_prefix(ch) {
             self.data = s;
             Ok(())
         } else {
             match self.data.chars().next() {
-                Some(c2) => Err(DateParseError::UnexpectedChar {
+                Some(c2) => Err(ParseDateError::UnexpectedChar {
                     expected: ch,
                     got: c2,
                 }),
-                None => Err(DateParseError::UnexpectedEnd { expected: ch }),
+                None => Err(ParseDateError::UnexpectedEnd { expected: ch }),
             }
         }
     }
 
-    fn parse_time(&mut self) -> Result<Option<SecondsT>, DateParseError> {
+    fn parse_time(&mut self) -> Result<Option<SecondsT>, ParseDateError> {
         if self.data.is_empty() {
             Ok(None)
         } else if let Some(s) = self.data.strip_prefix('T') {
@@ -375,7 +375,7 @@ impl<'a> DateParser<'a> {
             Ok(Some(hour * SECONDS_IN_HOUR + min * SECONDS_IN_MINUTE + sec))
         } else {
             let ch = self.data.chars().next().unwrap();
-            Err(DateParseError::BadTimeStart { got: ch })
+            Err(ParseDateError::BadTimeStart { got: ch })
         }
     }
 }
@@ -563,13 +563,13 @@ impl JulianDate {
 }
 
 impl FromStr for JulianDate {
-    type Err = JulianDateParseError;
+    type Err = JulianParseDateError;
 
     // Formats:
     // - %d
     // - %d.%s
     // - %d:%d
-    fn from_str(s: &str) -> Result<JulianDate, JulianDateParseError> {
+    fn from_str(s: &str) -> Result<JulianDate, JulianParseDateError> {
         let m = s.match_indices(['.', ':']).next();
         let (days_str, secstr) = match m {
             Some((i, _)) => (&s[..i], &s[(i + 1)..]),
@@ -577,12 +577,12 @@ impl FromStr for JulianDate {
         };
         let days = days_str
             .parse::<JulianDayT>()
-            .map_err(JulianDateParseError::InvalidDay)?;
+            .map_err(JulianParseDateError::InvalidDay)?;
         let seconds = match m {
             Some((_, ":")) => Some(
                 secstr
                     .parse::<SecondsT>()
-                    .map_err(JulianDateParseError::InvalidSeconds)?,
+                    .map_err(JulianParseDateError::InvalidSeconds)?,
             ),
             Some((_, ".")) => {
                 let mut secs = 0;
@@ -592,7 +592,7 @@ impl FromStr for JulianDate {
                 for ch in secstr.chars() {
                     let d = ch
                         .to_digit(10)
-                        .ok_or(JulianDateParseError::InvalidDigit { ch })?;
+                        .ok_or(JulianParseDateError::InvalidDigit { ch })?;
                     accum += coef * d;
                     secs += accum / denom;
                     accum %= denom;
@@ -644,7 +644,7 @@ impl fmt::Display for JulianDate {
 }
 
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
-pub enum JulianDateParseError {
+pub enum JulianParseDateError {
     #[error("cannot parse Julian day component")]
     InvalidDay(#[source] ParseIntError),
     #[error("invalid digit {ch:?} in Julian date")]
@@ -937,21 +937,21 @@ mod tests {
         #[test]
         fn test_parse_date_short_yday() {
             let r = "1234-56".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::InvalidYday));
+            assert_eq!(r, Err(ParseDateError::InvalidYday));
             assert_eq!(r.unwrap_err().to_string(), "yday must be three digits long");
         }
 
         #[test]
         fn test_parse_date_long_yday() {
             let r = "1234-5678".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::InvalidYday));
+            assert_eq!(r, Err(ParseDateError::InvalidYday));
             assert_eq!(r.unwrap_err().to_string(), "yday must be three digits long");
         }
 
         #[test]
         fn test_parse_ymd_short_month() {
             let r = "2023-4-20".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::Invalid02dLength { got: 1 }));
+            assert_eq!(r, Err(ParseDateError::Invalid02dLength { got: 1 }));
             assert_eq!(
                 r.unwrap_err().to_string(),
                 "expected two digits, got 1 digits"
@@ -961,7 +961,7 @@ mod tests {
         #[test]
         fn test_parse_ymd_long_month() {
             let r = "2023-012-20".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::Invalid02dLength { got: 3 }));
+            assert_eq!(r, Err(ParseDateError::Invalid02dLength { got: 3 }));
             assert_eq!(
                 r.unwrap_err().to_string(),
                 "expected two digits, got 3 digits"
@@ -971,7 +971,7 @@ mod tests {
         #[test]
         fn test_parse_ymd_short_mday() {
             let r = "2023-04-2".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::Invalid02dLength { got: 1 }));
+            assert_eq!(r, Err(ParseDateError::Invalid02dLength { got: 1 }));
             assert_eq!(
                 r.unwrap_err().to_string(),
                 "expected two digits, got 1 digits"
@@ -982,7 +982,7 @@ mod tests {
         fn test_parse_ymd_hms_bad_time_sep() {
             // TODO: Support this format:
             let r = "2023-04-20 16:39:50".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::BadTimeStart { got: ' ' }));
+            assert_eq!(r, Err(ParseDateError::BadTimeStart { got: ' ' }));
             assert_eq!(
                 r.unwrap_err().to_string(),
                 "expected time segment or end of input, got ' '"
@@ -992,21 +992,21 @@ mod tests {
         #[test]
         fn test_parse_ymd_hms_bad_timezone_spec() {
             let r = "2023-04-20T16:39:50+00:00".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::HasTrailing));
+            assert_eq!(r, Err(ParseDateError::HasTrailing));
             assert_eq!(r.unwrap_err().to_string(), "trailing characters after date");
         }
 
         #[test]
         fn test_parse_year_hyphen() {
             let r = "2023-".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::InvalidYday));
+            assert_eq!(r, Err(ParseDateError::InvalidYday));
             assert_eq!(r.unwrap_err().to_string(), "yday must be three digits long");
         }
 
         #[test]
         fn test_parse_year_month_hyphen() {
             let r = "2023-04-".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::Invalid02dSuddenEnd));
+            assert_eq!(r, Err(ParseDateError::Invalid02dSuddenEnd));
             assert_eq!(
                 r.unwrap_err().to_string(),
                 "expected two digits, reached end of input"
@@ -1016,7 +1016,7 @@ mod tests {
         #[test]
         fn test_parse_year_hyphen_hyphen_md() {
             let r = "2023--04-20".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::Invalid02dStart { got: '-' }));
+            assert_eq!(r, Err(ParseDateError::Invalid02dStart { got: '-' }));
             assert_eq!(
                 r.unwrap_err().to_string(),
                 "expected two digits, got non-digit '-'"
@@ -1028,7 +1028,7 @@ mod tests {
             let r = "2023-00-13".parse::<Date>();
             assert_eq!(
                 r,
-                Err(DateParseError::InvalidDate(DateError::MonthOutOfRange {
+                Err(ParseDateError::InvalidDate(DateError::MonthOutOfRange {
                     month: 0
                 }))
             );
@@ -1043,7 +1043,7 @@ mod tests {
             let r = "2023-13-13".parse::<Date>();
             assert_eq!(
                 r,
-                Err(DateParseError::InvalidDate(DateError::MonthOutOfRange {
+                Err(ParseDateError::InvalidDate(DateError::MonthOutOfRange {
                     month: 13
                 }))
             );
@@ -1058,7 +1058,7 @@ mod tests {
             let r = "2023-04-00".parse::<Date>();
             assert_eq!(
                 r,
-                Err(DateParseError::InvalidDate(DateError::MdayOutOfRange {
+                Err(ParseDateError::InvalidDate(DateError::MdayOutOfRange {
                     month: 4,
                     mday: 0
                 }))
@@ -1074,7 +1074,7 @@ mod tests {
             let r = "2023-04-32".parse::<Date>();
             assert_eq!(
                 r,
-                Err(DateParseError::InvalidDate(DateError::MdayOutOfRange {
+                Err(ParseDateError::InvalidDate(DateError::MdayOutOfRange {
                     month: 4,
                     mday: 32
                 }))
@@ -1090,7 +1090,7 @@ mod tests {
             let r = "2023-09-31".parse::<Date>();
             assert_eq!(
                 r,
-                Err(DateParseError::InvalidDate(DateError::MdayOutOfRange {
+                Err(ParseDateError::InvalidDate(DateError::MdayOutOfRange {
                     month: 9,
                     mday: 31
                 }))
@@ -1106,7 +1106,7 @@ mod tests {
             let r = "2023-02-29".parse::<Date>();
             assert_eq!(
                 r,
-                Err(DateParseError::InvalidDate(DateError::MdayOutOfRange {
+                Err(ParseDateError::InvalidDate(DateError::MdayOutOfRange {
                     month: 2,
                     mday: 29
                 }))
@@ -1129,7 +1129,7 @@ mod tests {
         #[test]
         fn test_parse_skipped_date() {
             let r = "1582-10-10".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::InvalidDate(DateError::SkippedDate)));
+            assert_eq!(r, Err(ParseDateError::InvalidDate(DateError::SkippedDate)));
             assert_eq!(
                 r.unwrap_err().to_string(),
                 "invalid calendar date: date was skipped by calendar reform"
@@ -1139,7 +1139,7 @@ mod tests {
         #[test]
         fn test_parse_first_skipped_date() {
             let r = "1582-10-05".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::InvalidDate(DateError::SkippedDate)));
+            assert_eq!(r, Err(ParseDateError::InvalidDate(DateError::SkippedDate)));
             assert_eq!(
                 r.unwrap_err().to_string(),
                 "invalid calendar date: date was skipped by calendar reform"
@@ -1149,7 +1149,7 @@ mod tests {
         #[test]
         fn test_parse_last_skipped_date() {
             let r = "1582-10-14".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::InvalidDate(DateError::SkippedDate)));
+            assert_eq!(r, Err(ParseDateError::InvalidDate(DateError::SkippedDate)));
             assert_eq!(
                 r.unwrap_err().to_string(),
                 "invalid calendar date: date was skipped by calendar reform"
@@ -1167,7 +1167,7 @@ mod tests {
             let r = format!("{year:04}-{yday:03}").parse::<Date>();
             assert_eq!(
                 r,
-                Err(DateParseError::InvalidDate(DateError::YdayOutOfRange {
+                Err(ParseDateError::InvalidDate(DateError::YdayOutOfRange {
                     year,
                     yday: yday - 1
                 }))
@@ -1185,7 +1185,7 @@ mod tests {
         fn test_parse_bad_month_mday_sep() {
             // TODO: Try to make this return a more helpful error?
             let r = "2023-04:20".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::InvalidYday));
+            assert_eq!(r, Err(ParseDateError::InvalidYday));
             assert_eq!(r.unwrap_err().to_string(), "yday must be three digits long");
         }
 
@@ -1194,7 +1194,7 @@ mod tests {
             let r = "2023-04-20T12-34:56".parse::<Date>();
             assert_eq!(
                 r,
-                Err(DateParseError::UnexpectedChar {
+                Err(ParseDateError::UnexpectedChar {
                     expected: ':',
                     got: '-'
                 })
@@ -1205,7 +1205,7 @@ mod tests {
         #[test]
         fn test_parse_end_after_hour() {
             let r = "2023-04-20T12".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::UnexpectedEnd { expected: ':' }));
+            assert_eq!(r, Err(ParseDateError::UnexpectedEnd { expected: ':' }));
             assert_eq!(
                 r.unwrap_err().to_string(),
                 "expected ':', reached end of input"
@@ -1215,7 +1215,7 @@ mod tests {
         #[test]
         fn test_parse_just_year() {
             let r = "2023".parse::<Date>();
-            assert_eq!(r, Err(DateParseError::UnterminatedYear));
+            assert_eq!(r, Err(ParseDateError::UnterminatedYear));
             assert_eq!(r.unwrap_err().to_string(), "year not terminated by '-'");
         }
 
@@ -1223,7 +1223,7 @@ mod tests {
         fn test_parse_nonint_year() {
             use std::num::IntErrorKind::InvalidDigit;
             let r = "202e-04-20".parse::<Date>();
-            assert_matches!(r, Err(DateParseError::ParseInt(ref e)) if e.kind() == &InvalidDigit);
+            assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &InvalidDigit);
             assert!(r
                 .unwrap_err()
                 .to_string()
