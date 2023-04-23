@@ -829,110 +829,198 @@ mod tests {
         assert_eq!(break_seconds(seconds), hms);
     }
 
-    #[test]
-    fn test_parse_ymd() {
-        let date = "2023-04-20".parse::<Date>().unwrap();
-        assert_eq!(date.year, 2023);
-        assert_eq!(date.month, 4);
-        assert_eq!(date.mday, 20);
-        assert_eq!(date.yday, 109);
-        assert_eq!(date.seconds, None);
+    mod parse_date {
+        use super::*;
+
+        #[test]
+        fn test_parse_ymd() {
+            let date = "2023-04-20".parse::<Date>().unwrap();
+            assert_eq!(date.year, 2023);
+            assert_eq!(date.month, 4);
+            assert_eq!(date.mday, 20);
+            assert_eq!(date.yday, 109);
+            assert_eq!(date.seconds, None);
+        }
+
+        #[test]
+        fn test_parse_ymd_hms() {
+            let date = "2023-04-20T16:39:50".parse::<Date>().unwrap();
+            assert_eq!(date.year, 2023);
+            assert_eq!(date.month, 4);
+            assert_eq!(date.mday, 20);
+            assert_eq!(date.yday, 109);
+            assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
+        }
+
+        #[test]
+        fn test_parse_ymd_hms_z() {
+            let date = "2023-04-20T16:39:50Z".parse::<Date>().unwrap();
+            assert_eq!(date.year, 2023);
+            assert_eq!(date.month, 4);
+            assert_eq!(date.mday, 20);
+            assert_eq!(date.yday, 109);
+            assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
+        }
+
+        #[test]
+        fn test_parse_yj() {
+            let date = "2023-110".parse::<Date>().unwrap();
+            assert_eq!(date.year, 2023);
+            assert_eq!(date.month, 4);
+            assert_eq!(date.mday, 20);
+            assert_eq!(date.yday, 109);
+            assert_eq!(date.seconds, None);
+        }
+
+        #[test]
+        fn test_parse_yj_padded() {
+            let date = "2023-006".parse::<Date>().unwrap();
+            assert_eq!(date.year, 2023);
+            assert_eq!(date.month, 1);
+            assert_eq!(date.mday, 6);
+            assert_eq!(date.yday, 5);
+            assert_eq!(date.seconds, None);
+        }
+
+        #[test]
+        fn test_parse_yj_hms() {
+            let date = "2023-110T16:39:50".parse::<Date>().unwrap();
+            assert_eq!(date.year, 2023);
+            assert_eq!(date.month, 4);
+            assert_eq!(date.mday, 20);
+            assert_eq!(date.yday, 109);
+            assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
+        }
+
+        #[test]
+        fn test_parse_yj_hms_z() {
+            let date = "2023-110T16:39:50Z".parse::<Date>().unwrap();
+            assert_eq!(date.year, 2023);
+            assert_eq!(date.month, 4);
+            assert_eq!(date.mday, 20);
+            assert_eq!(date.yday, 109);
+            assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
+        }
+
+        #[test]
+        fn test_parse_negative_ymd() {
+            let date = "-2023-04-20".parse::<Date>().unwrap();
+            assert_eq!(date.year, -2023);
+            assert_eq!(date.month, 4);
+            assert_eq!(date.mday, 20);
+            assert_eq!(date.yday, 109);
+            assert_eq!(date.seconds, None);
+        }
+
+        #[test]
+        fn test_parse_ymd_short_year() {
+            // TODO: Should this be an error instead?
+            let date = "20-04-20".parse::<Date>().unwrap();
+            assert_eq!(date.year, 20);
+            assert_eq!(date.month, 4);
+            assert_eq!(date.mday, 20);
+            assert_eq!(date.yday, 110);
+            assert_eq!(date.seconds, None);
+        }
+
+        #[test]
+        fn test_parse_date_short_yday() {
+            let r = "1234-56".parse::<Date>();
+            assert_eq!(r, Err(DateParseError::InvalidYday));
+            assert_eq!(r.unwrap_err().to_string(), "yday must be three digits long");
+        }
+
+        #[test]
+        fn test_parse_date_long_yday() {
+            let r = "1234-5678".parse::<Date>();
+            assert_eq!(r, Err(DateParseError::InvalidYday));
+            assert_eq!(r.unwrap_err().to_string(), "yday must be three digits long");
+        }
+
+        #[test]
+        fn test_parse_ymd_short_month() {
+            let r = "2023-4-20".parse::<Date>();
+            assert_eq!(
+                r,
+                Err(DateParseError::Invalid02d {
+                    got: String::from("4-")
+                })
+            );
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "expected two digits, got \"4-\""
+            );
+        }
+
+        #[test]
+        fn test_parse_ymd_short_mday() {
+            let r = "2023-04-2".parse::<Date>();
+            assert_eq!(
+                r,
+                Err(DateParseError::Invalid02d {
+                    got: String::from("2")
+                })
+            );
+            assert_eq!(r.unwrap_err().to_string(), "expected two digits, got \"2\"");
+        }
+
+        #[test]
+        fn test_parse_ymd_hms_bad_time_sep() {
+            // TODO: Support this format:
+            let r = "2023-04-20 16:39:50".parse::<Date>();
+            assert_eq!(r, Err(DateParseError::BadTimeStart { got: ' ' }));
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "expected time segment or end of input, got ' '"
+            );
+        }
+
+        #[test]
+        fn test_parse_ymd_hms_bad_timezone_spec() {
+            let r = "2023-04-20T16:39:50+00:00".parse::<Date>();
+            assert_eq!(r, Err(DateParseError::HasTrailing));
+            assert_eq!(r.unwrap_err().to_string(), "trailing characters after date");
+        }
     }
 
-    #[test]
-    fn test_parse_ymd_hms() {
-        let date = "2023-04-20T16:39:50".parse::<Date>().unwrap();
-        assert_eq!(date.year, 2023);
-        assert_eq!(date.month, 4);
-        assert_eq!(date.mday, 20);
-        assert_eq!(date.yday, 109);
-        assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
-    }
+    mod parse_julian_date {
+        use super::*;
 
-    #[test]
-    fn test_parse_ymd_hms_z() {
-        let date = "2023-04-20T16:39:50Z".parse::<Date>().unwrap();
-        assert_eq!(date.year, 2023);
-        assert_eq!(date.month, 4);
-        assert_eq!(date.mday, 20);
-        assert_eq!(date.yday, 109);
-        assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
-    }
+        #[test]
+        fn test_parse_julian_date() {
+            let jd = "2460055".parse::<JulianDate>().unwrap();
+            assert_eq!(
+                jd,
+                JulianDate {
+                    days: 2460055,
+                    seconds: None
+                }
+            );
+        }
 
-    #[test]
-    fn test_parse_yj() {
-        let date = "2023-110".parse::<Date>().unwrap();
-        assert_eq!(date.year, 2023);
-        assert_eq!(date.month, 4);
-        assert_eq!(date.mday, 20);
-        assert_eq!(date.yday, 109);
-        assert_eq!(date.seconds, None);
-    }
+        #[test]
+        fn test_parse_julian_date_dot_seconds() {
+            let jd = "2460055.1962".parse::<JulianDate>().unwrap();
+            assert_eq!(
+                jd,
+                JulianDate {
+                    days: 2460055,
+                    seconds: Some(16952)
+                }
+            );
+        }
 
-    #[test]
-    fn test_parse_yj_padded() {
-        let date = "2023-006".parse::<Date>().unwrap();
-        assert_eq!(date.year, 2023);
-        assert_eq!(date.month, 1);
-        assert_eq!(date.mday, 6);
-        assert_eq!(date.yday, 5);
-        assert_eq!(date.seconds, None);
-    }
-
-    #[test]
-    fn test_parse_yj_hms() {
-        let date = "2023-110T16:39:50".parse::<Date>().unwrap();
-        assert_eq!(date.year, 2023);
-        assert_eq!(date.month, 4);
-        assert_eq!(date.mday, 20);
-        assert_eq!(date.yday, 109);
-        assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
-    }
-
-    #[test]
-    fn test_parse_yj_hms_z() {
-        let date = "2023-110T16:39:50Z".parse::<Date>().unwrap();
-        assert_eq!(date.year, 2023);
-        assert_eq!(date.month, 4);
-        assert_eq!(date.mday, 20);
-        assert_eq!(date.yday, 109);
-        assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
-    }
-
-    #[test]
-    fn test_parse_julian_date() {
-        let jd = "2460055".parse::<JulianDate>().unwrap();
-        assert_eq!(
-            jd,
-            JulianDate {
-                days: 2460055,
-                seconds: None
-            }
-        );
-    }
-
-    #[test]
-    fn test_parse_julian_date_dot_seconds() {
-        let jd = "2460055.1962".parse::<JulianDate>().unwrap();
-        assert_eq!(
-            jd,
-            JulianDate {
-                days: 2460055,
-                seconds: Some(16952)
-            }
-        );
-    }
-
-    #[test]
-    fn test_parse_julian_date_colon_seconds() {
-        let jd = "2460055:16952".parse::<JulianDate>().unwrap();
-        assert_eq!(
-            jd,
-            JulianDate {
-                days: 2460055,
-                seconds: Some(16952)
-            }
-        );
+        #[test]
+        fn test_parse_julian_date_colon_seconds() {
+            let jd = "2460055:16952".parse::<JulianDate>().unwrap();
+            assert_eq!(
+                jd,
+                JulianDate {
+                    days: 2460055,
+                    seconds: Some(16952)
+                }
+            );
+        }
     }
 
     #[rstest]
