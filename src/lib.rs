@@ -83,31 +83,40 @@ impl Date {
     }
 
     /// `month` and `mday` are one-indexed
-    pub fn from_ymd(year: YearT, month: u32, mday: u32, seconds: Option<SecondsT>) -> Option<Date> {
-        let month_usize = usize::try_from(month).ok()?;
-        if !(1..=12).contains(&month)
-            || mday < 1
-            || (mday > MONTH_LENGTHS[month_usize - 1]
+    pub fn from_ymd(
+        year: YearT,
+        month: u32,
+        mday: u32,
+        seconds: Option<SecondsT>,
+    ) -> Result<Date, DateConstructError> {
+        if !(1..=12).contains(&month) {
+            return Err(DateConstructError::MonthOutOfRange { month });
+        }
+        let month_index = usize::try_from(month).unwrap() - 1;
+        if mday < 1
+            || (mday > MONTH_LENGTHS[month_index]
                 && !(is_leap_year(year) && month == FEBRUARY && mday == 29))
         {
-            return None;
+            return Err(DateConstructError::MdayOutOfRange { month, mday });
         }
         let mut yday = 0;
-        for (&length, i) in MONTH_LENGTHS[0..month_usize - 1].iter().zip(1..) {
+        for (&length, i) in MONTH_LENGTHS[0..month_index].iter().zip(1..) {
             yday += length;
             if i == FEBRUARY && is_leap_year(year) {
                 yday += 1;
             }
         }
         yday += mday - 1;
-        if year == REFORM_YEAR
-            && (month > REFORM_MONTH || (month == REFORM_MONTH && mday >= POST_REFORM_MDAY))
-        {
-            // If someone enters a date that was skipped by the Gregorian
-            // Reformation, just assume it's Old Style.
-            yday -= REFORM_GAP as DaysT;
+        if year == REFORM_YEAR {
+            if month > REFORM_MONTH || (month == REFORM_MONTH && mday >= POST_REFORM_MDAY) {
+                yday -= REFORM_GAP as DaysT;
+            } else if month == REFORM_MONTH
+                && ((PRE_REFORM_MDAY + 1)..POST_REFORM_MDAY).contains(&mday)
+            {
+                return Err(DateConstructError::SkippedDate { year, month, mday });
+            }
         }
-        Some(Date {
+        Ok(Date {
             year,
             yday,
             month,
@@ -117,10 +126,16 @@ impl Date {
     }
 
     // Uses Gregorian calendar
-    pub fn from_year_yday(year: YearT, yday: DaysT, seconds: Option<SecondsT>) -> Option<Date> {
+    pub fn from_year_yday(
+        year: YearT,
+        yday: DaysT,
+        seconds: Option<SecondsT>,
+    ) -> Result<Date, DateConstructError> {
         let year_style = YearStyle::for_gregorian_year(year);
-        let (month, mday) = year_style.break_yday(yday)?;
-        Some(Date {
+        let (month, mday) = year_style
+            .break_yday(yday)
+            .ok_or(DateConstructError::YdayOutOfRange { year, yday })?;
+        Ok(Date {
             year,
             yday,
             month,
@@ -133,10 +148,12 @@ impl Date {
         year: YearT,
         yday: DaysT,
         seconds: Option<SecondsT>,
-    ) -> Option<Date> {
+    ) -> Result<Date, DateConstructError> {
         let year_style = YearStyle::for_julian_year(year);
-        let (month, mday) = year_style.break_yday(yday)?;
-        Some(Date {
+        let (month, mday) = year_style
+            .break_yday(yday)
+            .ok_or(DateConstructError::YdayOutOfRange { year, yday })?;
+        Ok(Date {
             year,
             yday,
             month,
@@ -194,15 +211,11 @@ impl FromStr for Date {
         let diny = parser.parse_day_in_year()?;
         let seconds = parser.parse_time()?;
         if !parser.is_empty() {
-            return Err(DateParseError::Generic);
+            return Err(DateParseError::HasTrailing);
         }
         match diny {
-            DayInYear::Yday(yday) => {
-                Date::from_year_yday(year, yday, seconds).ok_or(DateParseError::Generic)
-            }
-            DayInYear::Date { month, mday } => {
-                Date::from_ymd(year, month, mday, seconds).ok_or(DateParseError::Generic)
-            }
+            DayInYear::Yday(yday) => Ok(Date::from_year_yday(year, yday, seconds)?),
+            DayInYear::Date { month, mday } => Ok(Date::from_ymd(year, month, mday, seconds)?),
         }
     }
 }
@@ -224,9 +237,35 @@ impl fmt::Display for Date {
 }
 
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
+pub enum DateConstructError {
+    #[error("month {month} is outside of valid range")]
+    MonthOutOfRange { month: u32 },
+    #[error("mday {mday} is outside of valid range for month {month}")]
+    MdayOutOfRange { month: u32, mday: u32 },
+    #[error("yday {yday} is outside of valid range for year {year}")]
+    YdayOutOfRange { year: YearT, yday: DaysT },
+    #[error("date {year:04}-{month:02}-{mday:02} was skipped by the Reformation")]
+    SkippedDate { year: YearT, month: u32, mday: u32 },
+}
+
+#[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum DateParseError {
-    #[error("invalid calendar date")]
-    Generic,
+    #[error("invalid calendar date: {0}")]
+    Construction(#[from] DateConstructError),
+    #[error("trailing characters after date")]
+    HasTrailing,
+    #[error("year not terminated by '-'")]
+    UnterminatedYear,
+    #[error("yday must be three digits long")]
+    InvalidYday,
+    #[error("expected two digits, got {got:?}")]
+    Invalid02d { got: String },
+    #[error("expected {expected:?}, got {got:?}")]
+    UnexpectedChar { expected: char, got: char },
+    #[error("expected {expected:?}, reached end of input")]
+    UnexpectedEnd { expected: char },
+    #[error("expected time segment or end of input, got {got:?}")]
+    BadTimeStart { got: char },
     #[error("invalid calendar date: numeric parse error: {0}")]
     ParseInt(#[from] ParseIntError),
 }
@@ -251,7 +290,7 @@ impl<'a> DateParser<'a> {
                 self.data = &self.data[i + 1..];
                 Ok(year)
             }
-            None => Err(DateParseError::Generic),
+            None => Err(DateParseError::UnterminatedYear),
         }
     }
 
@@ -278,18 +317,22 @@ impl<'a> DateParser<'a> {
         if s.len() == 3 && s.chars().all(|c| c.is_ascii_digit()) {
             Ok(DayInYear::Yday(s.parse::<DaysT>()? - 1))
         } else {
-            Err(DateParseError::Generic)
+            Err(DateParseError::InvalidYday)
         }
     }
 
     fn parse_02d(&mut self) -> Result<u32, DateParseError> {
         match self.data.get(..2) {
-            Some(s) => {
-                let n = s.parse::<u32>()?;
+            Some(s) if s.chars().all(|c| c.is_ascii_digit()) => {
+                let n = s.parse::<u32>().unwrap();
                 self.data = &self.data[2..];
                 Ok(n)
             }
-            None => Err(DateParseError::Generic),
+            Some(s) => Err(DateParseError::Invalid02d { got: s.into() }),
+            None => {
+                let got = self.data.chars().take(2).collect::<String>();
+                Err(DateParseError::Invalid02d { got })
+            }
         }
     }
 
@@ -298,7 +341,13 @@ impl<'a> DateParser<'a> {
             self.data = s;
             Ok(())
         } else {
-            Err(DateParseError::Generic)
+            match self.data.chars().next() {
+                Some(c2) => Err(DateParseError::UnexpectedChar {
+                    expected: ch,
+                    got: c2,
+                }),
+                None => Err(DateParseError::UnexpectedEnd { expected: ch }),
+            }
         }
     }
 
@@ -315,7 +364,8 @@ impl<'a> DateParser<'a> {
             self.data = self.data.strip_prefix('Z').unwrap_or(self.data);
             Ok(Some(hour * SECONDS_IN_HOUR + min * SECONDS_IN_MINUTE + sec))
         } else {
-            Err(DateParseError::Generic)
+            let ch = self.data.chars().next().unwrap();
+            Err(DateParseError::BadTimeStart { got: ch })
         }
     }
 }
@@ -515,16 +565,24 @@ impl FromStr for JulianDate {
             Some((i, _)) => (&s[..i], &s[(i + 1)..]),
             None => (s, ""),
         };
-        let days = days_str.parse::<JulianDayT>()?;
+        let days = days_str
+            .parse::<JulianDayT>()
+            .map_err(JulianDateParseError::InvalidDay)?;
         let seconds = match m {
-            Some((_, ":")) => Some(secstr.parse::<SecondsT>()?),
+            Some((_, ":")) => Some(
+                secstr
+                    .parse::<SecondsT>()
+                    .map_err(JulianDateParseError::InvalidSeconds)?,
+            ),
             Some((_, ".")) => {
                 let mut secs = 0;
                 let mut coef: SecondsT = SECONDS_IN_DAY / 10;
                 let mut accum = 0;
                 let mut denom = 1;
                 for ch in secstr.chars() {
-                    let d = ch.to_digit(10).ok_or(JulianDateParseError::Generic)?;
+                    let d = ch
+                        .to_digit(10)
+                        .ok_or(JulianDateParseError::InvalidDigit { ch })?;
                     accum += coef * d;
                     secs += accum / denom;
                     accum %= denom;
@@ -577,10 +635,12 @@ impl fmt::Display for JulianDate {
 
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum JulianDateParseError {
-    #[error("invalid Julian date")]
-    Generic,
-    #[error("invalid Julian date: numeric parse error: {0}")]
-    ParseInt(#[from] ParseIntError),
+    #[error("cannot parse Julian day component")]
+    InvalidDay(#[source] ParseIntError),
+    #[error("invalid digit {ch:?} in Julian date")]
+    InvalidDigit { ch: char },
+    #[error("cannot parse integer seconds component")]
+    InvalidSeconds(#[source] ParseIntError),
 }
 
 fn is_leap_year(year: YearT) -> bool {
