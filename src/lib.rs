@@ -1154,6 +1154,31 @@ mod tests {
                 "invalid calendar date: date was skipped by calendar reform"
             );
         }
+
+        #[rstest]
+        #[case(2023, 366)]
+        #[case(2023, 999)]
+        #[case(2024, 367)]
+        #[case(2024, 999)]
+        #[case(1582, 356)]
+        #[case(1582, 999)]
+        fn test_parse_invalid_yj(#[case] year: YearT, #[case] yday: DaysT) {
+            let r = format!("{year:04}-{yday:03}").parse::<Date>();
+            assert_eq!(
+                r,
+                Err(DateParseError::InvalidDate(DateError::YdayOutOfRange {
+                    year,
+                    yday: yday - 1
+                }))
+            );
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                format!(
+                    "invalid calendar date: yday {} is outside of valid range for year {year}",
+                    yday - 1
+                )
+            );
+        }
     }
 
     mod parse_julian_date {
@@ -2292,6 +2317,17 @@ mod tests {
         assert_eq!(style.break_yday(yday), Some((month, mday)));
     }
 
+    #[rstest]
+    #[case(Common, 365)]
+    #[case(Common, 999)]
+    #[case(Leap, 366)]
+    #[case(Leap, 999)]
+    #[case(Reform, 355)]
+    #[case(Reform, 999)]
+    fn test_bad_break_yday(#[case] style: YearStyle, #[case] yday: DaysT) {
+        assert_eq!(style.break_yday(yday), None);
+    }
+
     #[test]
     fn test_display_date() {
         let date = Date::from_ymd(2023, 4, 20, None).unwrap();
@@ -2500,6 +2536,22 @@ mod tests {
         assert_eq!(
             r.unwrap_err().to_string(),
             "date was skipped by calendar reform"
+        );
+    }
+
+    #[rstest]
+    #[case(2023, 365)]
+    #[case(2023, 999)]
+    #[case(2024, 366)]
+    #[case(2024, 999)]
+    #[case(1582, 355)]
+    #[case(1582, 999)]
+    fn test_from_year_yday_err(#[case] year: YearT, #[case] yday: DaysT) {
+        let r = Date::from_year_yday(year, yday, None);
+        assert_eq!(r, Err(DateError::YdayOutOfRange { year, yday }));
+        assert_eq!(
+            r.unwrap_err().to_string(),
+            format!("yday {yday} is outside of valid range for year {year}")
         );
     }
 }
