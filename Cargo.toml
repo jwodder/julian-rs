@@ -1,7 +1,15 @@
 [package]
 name = "julian"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
+rust-version = "1.66"
+description = "Convert between Julian days and Julian & Gregorian calendars"
+authors = ["John Thorvald Wodder II <julian-rs@varonathe.org>"]
+repository = "https://github.com/jwodder/julian-rs"
+license = "MIT"
+keywords = ["calendar", "Gregorian calendar", "Julian calendar", "Julian day"]
+categories = ["date-and-time"]
+exclude = ["/.*"]
 
 [dependencies]
 lexopt = "0.3.0"
