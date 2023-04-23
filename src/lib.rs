@@ -670,6 +670,7 @@ fn break_seconds(mut seconds: SecondsT) -> (u32, u32, u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use assert_matches::assert_matches;
     use rstest::rstest;
     use rstest_reuse::{apply, template};
     use YearStyle::*;
@@ -1178,6 +1179,55 @@ mod tests {
                     yday - 1
                 )
             );
+        }
+
+        #[test]
+        fn test_parse_bad_month_mday_sep() {
+            // TODO: Try to make this return a more helpful error?
+            let r = "2023-04:20".parse::<Date>();
+            assert_eq!(r, Err(DateParseError::InvalidYday));
+            assert_eq!(r.unwrap_err().to_string(), "yday must be three digits long");
+        }
+
+        #[test]
+        fn test_parse_bad_hour_min_sep() {
+            let r = "2023-04-20T12-34:56".parse::<Date>();
+            assert_eq!(
+                r,
+                Err(DateParseError::UnexpectedChar {
+                    expected: ':',
+                    got: '-'
+                })
+            );
+            assert_eq!(r.unwrap_err().to_string(), "expected ':', got '-'");
+        }
+
+        #[test]
+        fn test_parse_end_after_hour() {
+            let r = "2023-04-20T12".parse::<Date>();
+            assert_eq!(r, Err(DateParseError::UnexpectedEnd { expected: ':' }));
+            assert_eq!(
+                r.unwrap_err().to_string(),
+                "expected ':', reached end of input"
+            );
+        }
+
+        #[test]
+        fn test_parse_just_year() {
+            let r = "2023".parse::<Date>();
+            assert_eq!(r, Err(DateParseError::UnterminatedYear));
+            assert_eq!(r.unwrap_err().to_string(), "year not terminated by '-'");
+        }
+
+        #[test]
+        fn test_parse_nonint_year() {
+            use std::num::IntErrorKind::InvalidDigit;
+            let r = "202e-04-20".parse::<Date>();
+            assert_matches!(r, Err(DateParseError::ParseInt(ref e)) if e.kind() == &InvalidDigit);
+            assert!(r
+                .unwrap_err()
+                .to_string()
+                .starts_with("invalid calendar date: numeric parse error: "));
         }
     }
 
