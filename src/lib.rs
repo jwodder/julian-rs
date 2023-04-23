@@ -18,10 +18,7 @@ pub type JulianDayT = i32;
 pub const GREG_REFORM: JulianDayT = 2299161; // noon on 1582-10-15
 pub const UK_REFORM: JulianDayT = 2361222; // noon on 1752-09-14
 
-const SECONDS_IN_MINUTE: SecondsT = 60;
-const SECONDS_IN_HOUR: SecondsT = 60 * SECONDS_IN_MINUTE;
-const SECONDS_IN_HALF_DAY: SecondsT = 12 * SECONDS_IN_HOUR;
-const SECONDS_IN_DAY: SecondsT = 24 * SECONDS_IN_HOUR;
+const SECONDS_IN_DAY: SecondsT = 24 * 60 * 60;
 
 const REFORM_YEAR: YearT = 1582;
 const REFORM_YDAY: DaysT = 277; // zero-index yday for Oct 5
@@ -54,28 +51,30 @@ const UNIX_EPOCH_JD: JulianDayT = 2440588; // noon on 1970-01-01
 
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Date {
-    pub year: YearT,               // 0 == 1 BC
-    pub yday: DaysT,               // days from the start of the year; 0 == Jan 01
-    pub month: u32,                // one-based
-    pub mday: u32,                 // one-based
-    pub seconds: Option<SecondsT>, // seconds after midnight
+    pub year: YearT, // 0 == 1 BC
+    pub yday: DaysT, // days from the start of the year; 0 == Jan 01
+    pub month: u32,  // one-based
+    pub mday: u32,   // one-based
 }
 
 impl Date {
-    pub fn now() -> Date {
-        Date::from(SystemTime::now())
+    pub fn now() -> (Date, SecondsT) {
+        Date::from_system_time(SystemTime::now())
     }
 
-    pub fn from_unix_timestamp(unix_time: u64) -> Date {
-        let days =
-            JulianDayT::try_from(unix_time / (SECONDS_IN_DAY as u64) + (UNIX_EPOCH_JD as u64))
-                .expect("Arithmetic overflow");
+    pub fn from_system_time(t: SystemTime) -> (Date, SecondsT) {
+        Date::from_unix_timestamp(
+            t.duration_since(UNIX_EPOCH)
+                .expect("Current system time is before 1970")
+                .as_secs(),
+        )
+    }
+
+    pub fn from_unix_timestamp(unix_time: u64) -> (Date, SecondsT) {
+        let jd = JulianDayT::try_from(unix_time / (SECONDS_IN_DAY as u64) + (UNIX_EPOCH_JD as u64))
+            .expect("Arithmetic overflow");
         let secs = SecondsT::try_from(unix_time % (SECONDS_IN_DAY as u64)).unwrap();
-        let jd = JulianDate {
-            days,
-            seconds: None,
-        };
-        jd.attach_seconds(Some(secs)).to_gregorian()
+        (julian_day_to_gregorian(jd), secs)
     }
 
     pub fn is_before_gregorian(&self) -> bool {
@@ -83,12 +82,7 @@ impl Date {
     }
 
     /// `month` and `mday` are one-indexed
-    pub fn from_ymd(
-        year: YearT,
-        month: u32,
-        mday: u32,
-        seconds: Option<SecondsT>,
-    ) -> Result<Date, DateError> {
+    pub fn from_ymd(year: YearT, month: u32, mday: u32) -> Result<Date, DateError> {
         if !(1..=12).contains(&month) {
             return Err(DateError::MonthOutOfRange { month });
         }
@@ -121,16 +115,11 @@ impl Date {
             yday,
             month,
             mday,
-            seconds,
         })
     }
 
     // Uses Gregorian calendar
-    pub fn from_year_yday(
-        year: YearT,
-        yday: DaysT,
-        seconds: Option<SecondsT>,
-    ) -> Result<Date, DateError> {
+    pub fn from_year_yday(year: YearT, yday: DaysT) -> Result<Date, DateError> {
         let year_style = YearStyle::for_gregorian_year(year);
         let (month, mday) = year_style
             .break_yday(yday)
@@ -140,15 +129,10 @@ impl Date {
             yday,
             month,
             mday,
-            seconds,
         })
     }
 
-    pub fn from_julian_year_yday(
-        year: YearT,
-        yday: DaysT,
-        seconds: Option<SecondsT>,
-    ) -> Result<Date, DateError> {
+    pub fn from_julian_year_yday(year: YearT, yday: DaysT) -> Result<Date, DateError> {
         let year_style = YearStyle::for_julian_year(year);
         let (month, mday) = year_style
             .break_yday(yday)
@@ -158,13 +142,12 @@ impl Date {
             yday,
             month,
             mday,
-            seconds,
         })
     }
 
-    pub fn to_julian_date(&self) -> JulianDate {
+    pub fn to_julian_day(&self) -> JulianDayT {
         let idays = JulianDayT::try_from(self.yday).unwrap();
-        let jdays: JulianDayT = if self.year < JD0_YEAR {
+        if self.year < JD0_YEAR {
             let rev_year = JD0_YEAR - self.year;
             idays - (rev_year * COMMON_YEAR_LENGTH + rev_year / JULIAN_CYCLE_YEARS)
         } else if self.is_before_gregorian() {
@@ -180,22 +163,7 @@ impl Date {
                 - (base - 300) / 100
                 + base / GREGORIAN_CYCLE_YEARS;
             START1583 + days_since_1582 + idays
-        };
-        let jd = JulianDate {
-            days: jdays,
-            seconds: None,
-        };
-        jd.attach_seconds(self.seconds)
-    }
-}
-
-impl From<SystemTime> for Date {
-    fn from(t: SystemTime) -> Date {
-        Date::from_unix_timestamp(
-            t.duration_since(UNIX_EPOCH)
-                .expect("Current system time is before 1970")
-                .as_secs(),
-        )
+        }
     }
 }
 
@@ -203,19 +171,18 @@ impl FromStr for Date {
     type Err = ParseDateError;
 
     // Formats:
-    // - [+/-]YYYY-MM-DD[Thh:mm:ss[Z]]
-    // - [+/-]YYYY-DDD[Thh:mm:ss[Z]]
+    // - [+/-]YYYY-MM-DD
+    // - [+/-]YYYY-DDD
     fn from_str(s: &str) -> Result<Date, ParseDateError> {
         let mut parser = DateParser::new(s);
         let year = parser.parse_year()?;
         let diny = parser.parse_day_in_year()?;
-        let seconds = parser.parse_time()?;
         if !parser.is_empty() {
             return Err(ParseDateError::HasTrailing);
         }
         match diny {
-            DayInYear::Yday(yday) => Ok(Date::from_year_yday(year, yday, seconds)?),
-            DayInYear::Date { month, mday } => Ok(Date::from_ymd(year, month, mday, seconds)?),
+            DayInYear::Yday(yday) => Ok(Date::from_year_yday(year, yday)?),
+            DayInYear::Date { month, mday } => Ok(Date::from_ymd(year, month, mday)?),
         }
     }
 }
@@ -227,10 +194,6 @@ impl fmt::Display for Date {
             write!(f, "{:03}", self.yday + 1)?;
         } else {
             write!(f, "{:02}-{:02}", self.month, self.mday)?;
-        }
-        if let Some(s) = self.seconds {
-            let (hour, min, sec) = break_seconds(s);
-            write!(f, "T{:02}:{:02}:{:02}Z", hour, min, sec)?;
         }
         Ok(())
     }
@@ -268,8 +231,6 @@ pub enum ParseDateError {
     UnexpectedChar { expected: char, got: char },
     #[error("expected {expected:?}, reached end of input")]
     UnexpectedEnd { expected: char },
-    #[error("expected time segment or end of input, got {got:?}")]
-    BadTimeStart { got: char },
     #[error("invalid calendar date: numeric parse error: {0}")]
     ParseInt(#[from] ParseIntError),
 }
@@ -360,24 +321,6 @@ impl<'a> DateParser<'a> {
             }
         }
     }
-
-    fn parse_time(&mut self) -> Result<Option<SecondsT>, ParseDateError> {
-        if self.data.is_empty() {
-            Ok(None)
-        } else if let Some(s) = self.data.strip_prefix('T') {
-            self.data = s;
-            let hour = self.parse_02d()?;
-            self.scan_char(':')?;
-            let min = self.parse_02d()?;
-            self.scan_char(':')?;
-            let sec = self.parse_02d()?;
-            self.data = self.data.strip_prefix('Z').unwrap_or(self.data);
-            Ok(Some(hour * SECONDS_IN_HOUR + min * SECONDS_IN_MINUTE + sec))
-        } else {
-            let ch = self.data.chars().next().unwrap();
-            Err(ParseDateError::BadTimeStart { got: ch })
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
@@ -438,238 +381,78 @@ impl YearStyle {
     }
 }
 
-#[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
-pub struct JulianDate {
-    pub days: JulianDayT,
-    pub seconds: Option<SecondsT>,
-}
-
-impl JulianDate {
-    const DEFAULT_PRECISION: usize = 6;
-
-    pub fn attach_seconds(&self, seconds: Option<SecondsT>) -> JulianDate {
-        let JulianDate { days, .. } = *self;
-        match seconds {
-            None => JulianDate {
-                days,
-                seconds: None,
-            },
-            Some(s) if s < SECONDS_IN_HALF_DAY => JulianDate {
-                days: days - 1,
-                seconds: Some(s + SECONDS_IN_HALF_DAY),
-            },
-            Some(s) => JulianDate {
-                days,
-                seconds: Some(s - SECONDS_IN_HALF_DAY),
-            },
-        }
-    }
-
-    /// If the Julian date has any seconds, remove them and adjust the date to
-    /// point to the "secondless" Julian day that the receiver pointed to
-    pub fn detatch_seconds(&self) -> (JulianDate, Option<SecondsT>) {
-        let (days, seconds) = match self.seconds {
-            None => (self.days, None),
-            Some(s) if s >= SECONDS_IN_HALF_DAY => (self.days + 1, Some(s - SECONDS_IN_HALF_DAY)),
-            Some(s) => (self.days, Some(s + SECONDS_IN_HALF_DAY)),
+pub fn julian_day_to_gregorian(days: JulianDayT) -> Date {
+    if days < START1600 {
+        let days = if GREG_REFORM <= days {
+            days + REFORM_GAP
+        } else {
+            days
         };
-        (
-            JulianDate {
-                days,
-                seconds: None,
+        let when = julian_day_to_julian(days);
+        Date::from_year_yday(
+            when.year,
+            if GREG_REFORM <= days && days - REFORM_GAP < START1583 {
+                when.yday - (REFORM_GAP as DaysT)
+            } else {
+                when.yday
             },
-            seconds,
         )
+        .unwrap()
+    } else {
+        let mut days: JulianDayT = days - START1600;
+        let mut year: YearT =
+            GREGORIAN_CYCLE_START_YEAR + (days / GREGORIAN_CYCLE_DAYS) * GREGORIAN_CYCLE_YEARS;
+        days %= GREGORIAN_CYCLE_DAYS;
+        // Add a "virtual leap day" to the end of each non-Gregorian
+        // centennial year so that `days` can then be handled as in the
+        // Julian calendar:
+        if days > COMMON_YEAR_LENGTH {
+            days += (days - LEAP_YEAR_LENGTH) / 36524;
+        }
+        year += (days / JULIAN_CYCLE_DAYS) * JULIAN_CYCLE_YEARS;
+        days %= JULIAN_CYCLE_DAYS;
+        if days > COMMON_YEAR_LENGTH {
+            days += (days - LEAP_YEAR_LENGTH) / COMMON_YEAR_LENGTH;
+        }
+        year += days / LEAP_YEAR_LENGTH;
+        days %= LEAP_YEAR_LENGTH;
+        Date::from_year_yday(year, DaysT::try_from(days).unwrap()).unwrap()
     }
+}
 
-    pub fn to_gregorian(&self) -> Date {
-        let (JulianDate { days, .. }, seconds) = self.detatch_seconds();
-        if days < START1600 {
-            let days = if GREG_REFORM <= days {
-                days + REFORM_GAP
-            } else {
-                days
-            };
-            let when = (JulianDate {
-                days,
-                seconds: None,
-            })
-            .to_julian();
-            Date::from_year_yday(
-                when.year,
-                if GREG_REFORM <= days && days - REFORM_GAP < START1583 {
-                    when.yday - (REFORM_GAP as DaysT)
-                } else {
-                    when.yday
-                },
-                seconds,
-            )
-            .unwrap()
+/// Convert a Julian day to a date in the Julian calendar
+pub fn julian_day_to_julian(days: JulianDayT) -> Date {
+    if days < 0 {
+        let alt = COMMON_YEAR_LENGTH
+            .checked_sub(days)
+            .expect("Arithmetic underflow");
+        let when = julian_day_to_julian(alt);
+        let year = JD0_YEAR - (when.year - JD0_YEAR);
+        let year_length = if year % JULIAN_CYCLE_YEARS == 0 {
+            LEAP_YEAR_LENGTH as DaysT
         } else {
-            let mut days: JulianDayT = days - START1600;
-            let mut year: YearT =
-                GREGORIAN_CYCLE_START_YEAR + (days / GREGORIAN_CYCLE_DAYS) * GREGORIAN_CYCLE_YEARS;
-            days %= GREGORIAN_CYCLE_DAYS;
-            // Add a "virtual leap day" to the end of each non-Gregorian
-            // centennial year so that `days` can then be handled as in the
-            // Julian calendar:
-            if days > COMMON_YEAR_LENGTH {
-                days += (days - LEAP_YEAR_LENGTH) / 36524;
-            }
-            year += (days / JULIAN_CYCLE_DAYS) * JULIAN_CYCLE_YEARS;
-            days %= JULIAN_CYCLE_DAYS;
-            if days > COMMON_YEAR_LENGTH {
-                days += (days - LEAP_YEAR_LENGTH) / COMMON_YEAR_LENGTH;
-            }
-            year += days / LEAP_YEAR_LENGTH;
-            days %= LEAP_YEAR_LENGTH;
-            Date::from_year_yday(year, DaysT::try_from(days).unwrap(), seconds).unwrap()
-        }
-    }
-
-    /// Convert a Julian date to a year & yday in the Julian calendar
-    pub fn to_julian(&self) -> Date {
-        let (JulianDate { days, .. }, seconds) = self.detatch_seconds();
-        if days < 0 {
-            let alt = JulianDate {
-                days: COMMON_YEAR_LENGTH
-                    .checked_sub(days)
-                    .expect("Arithmetic underflow"),
-                seconds: None,
-            };
-            let when = alt.to_julian();
-            let year = JD0_YEAR - (when.year - JD0_YEAR);
-            let year_length = if year % JULIAN_CYCLE_YEARS == 0 {
-                LEAP_YEAR_LENGTH as DaysT
-            } else {
-                COMMON_YEAR_LENGTH as DaysT
-            };
-            let yday = year_length - 1 - when.yday;
-            Date::from_julian_year_yday(year, yday, seconds).unwrap()
-        } else {
-            let mut year: YearT = days / JULIAN_CYCLE_DAYS * JULIAN_CYCLE_YEARS;
-            let mut yday: JulianDayT = days % JULIAN_CYCLE_DAYS;
-            // Add a "virtual leap day" to the end of each common year so that
-            // `yday` can be divided & modded by LEAP_YEAR_LENGTH evenly:
-            if yday > COMMON_YEAR_LENGTH {
-                yday += (yday - LEAP_YEAR_LENGTH) / COMMON_YEAR_LENGTH;
-            }
-            year += yday / LEAP_YEAR_LENGTH;
-            yday %= LEAP_YEAR_LENGTH;
-            year += JD0_YEAR;
-            Date::from_julian_year_yday(year, DaysT::try_from(yday).unwrap(), seconds).unwrap()
-        }
-    }
-}
-
-impl FromStr for JulianDate {
-    type Err = ParseJulianDateError;
-
-    // Formats:
-    // - %d
-    // - %d.%s
-    // - %d:%d
-    fn from_str(s: &str) -> Result<JulianDate, ParseJulianDateError> {
-        let m = s.match_indices(['.', ':']).next();
-        let (days_str, secstr) = match m {
-            Some((i, _)) => (&s[..i], &s[(i + 1)..]),
-            None => (s, ""),
+            COMMON_YEAR_LENGTH as DaysT
         };
-        let days = days_str
-            .parse::<JulianDayT>()
-            .map_err(ParseJulianDateError::InvalidDay)?;
-        let seconds = match m {
-            Some((_, ":")) => Some(
-                secstr
-                    .parse::<SecondsT>()
-                    .map_err(ParseJulianDateError::InvalidSeconds)?,
-            ),
-            Some((_, ".")) => {
-                if secstr.is_empty() {
-                    return Err(ParseJulianDateError::EmptyFrac);
-                }
-                let mut secs = 0;
-                let mut coef: SecondsT = SECONDS_IN_DAY / 10;
-                let mut accum = 0;
-                let mut denom = 1;
-                for ch in secstr.chars() {
-                    let d = ch
-                        .to_digit(10)
-                        .ok_or(ParseJulianDateError::InvalidDigit(ch))?;
-                    accum += coef * d;
-                    secs += accum / denom;
-                    accum %= denom;
-                    if coef % 10 != 0 {
-                        accum *= 10;
-                        denom *= 10;
-                    } else {
-                        coef /= 10;
-                    }
-                }
-                if accum * 2 >= denom {
-                    secs += 1;
-                }
-                Some(secs)
-            }
-            Some(_) => unreachable!(),
-            None => None,
-        };
-        Ok(JulianDate { days, seconds })
-    }
-}
-
-impl fmt::Display for JulianDate {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.days)?;
-        if let Some(mut s) = self.seconds {
-            if f.alternate() {
-                write!(f, ":{:05}", s)?;
-            } else {
-                let precision = f.precision().unwrap_or(Self::DEFAULT_PRECISION);
-                if precision > 0 {
-                    write!(f, ".")?;
-                    for i in 0..precision {
-                        s *= 10;
-                        let mut dig = s / SECONDS_IN_DAY;
-                        s %= SECONDS_IN_DAY;
-                        // TODO: What should happen when the last digit is a 9
-                        // that should be rounded up?
-                        if i == precision - 1 && s * 2 >= SECONDS_IN_DAY && dig < 9 {
-                            dig += 1;
-                        }
-                        write!(f, "{dig}")?;
-                    }
-                }
-            }
+        let yday = year_length - 1 - when.yday;
+        Date::from_julian_year_yday(year, yday).unwrap()
+    } else {
+        let mut year: YearT = days / JULIAN_CYCLE_DAYS * JULIAN_CYCLE_YEARS;
+        let mut yday: JulianDayT = days % JULIAN_CYCLE_DAYS;
+        // Add a "virtual leap day" to the end of each common year so that
+        // `yday` can be divided & modded by LEAP_YEAR_LENGTH evenly:
+        if yday > COMMON_YEAR_LENGTH {
+            yday += (yday - LEAP_YEAR_LENGTH) / COMMON_YEAR_LENGTH;
         }
-        Ok(())
+        year += yday / LEAP_YEAR_LENGTH;
+        yday %= LEAP_YEAR_LENGTH;
+        year += JD0_YEAR;
+        Date::from_julian_year_yday(year, DaysT::try_from(yday).unwrap()).unwrap()
     }
-}
-
-#[derive(Clone, Debug, Eq, Error, PartialEq)]
-pub enum ParseJulianDateError {
-    #[error("cannot parse Julian day component: {0}")]
-    InvalidDay(#[source] ParseIntError),
-    #[error("invalid digit {0:?} after period in Julian date")]
-    InvalidDigit(char),
-    #[error("cannot parse integer seconds component: {0}")]
-    InvalidSeconds(#[source] ParseIntError),
-    #[error("empty fractional component")]
-    EmptyFrac,
 }
 
 fn is_leap_year(year: YearT) -> bool {
     year % JULIAN_CYCLE_YEARS == 0
         && (year <= REFORM_YEAR || year % 100 != 0 || year % GREGORIAN_CYCLE_YEARS == 0)
-}
-
-fn break_seconds(mut seconds: SecondsT) -> (u32, u32, u32) {
-    // TODO: Check for too-large values
-    let hour = seconds / SECONDS_IN_HOUR;
-    seconds %= SECONDS_IN_HOUR;
-    let min = seconds / SECONDS_IN_MINUTE;
-    let sec = seconds % SECONDS_IN_MINUTE;
-    (hour, min, sec)
 }
 
 #[cfg(test)]
@@ -753,21 +536,16 @@ mod tests {
     }
 
     #[apply(julian_days)]
-    fn test_julian_to_calendar(
+    fn test_julian_day_to_gregorian(
         #[case] days: JulianDayT,
         #[case] year: YearT,
         #[case] month: u32,
         #[case] mday: u32,
     ) {
-        let jd = JulianDate {
-            days,
-            seconds: None,
-        };
-        let cal = jd.to_gregorian();
+        let cal = julian_day_to_gregorian(days);
         assert_eq!(cal.year, year);
         assert_eq!(cal.month, month);
         assert_eq!(cal.mday, mday);
-        assert_eq!(cal.seconds, None);
     }
 
     #[apply(julian_days)]
@@ -777,72 +555,8 @@ mod tests {
         #[case] month: u32,
         #[case] mday: u32,
     ) {
-        let cal = Date::from_ymd(year, month, mday, None).unwrap();
-        let jd = JulianDate {
-            days,
-            seconds: None,
-        };
-        assert_eq!(cal.to_julian_date(), jd);
-    }
-
-    #[test]
-    fn test_calendar_with_seconds_before_noon_to_julian() {
-        let cal = Date::from_ymd(2023, 4, 20, Some(7 * 3600 + 30 * 60 + 13)).unwrap();
-        let jd = JulianDate {
-            days: 2460054,
-            seconds: Some(19 * 3600 + 30 * 60 + 13),
-        };
-        assert_eq!(cal.to_julian_date(), jd);
-    }
-
-    #[test]
-    fn test_calendar_with_seconds_after_noon_to_julian() {
-        let cal = Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap();
-        let jd = JulianDate {
-            days: 2460055,
-            seconds: Some(4 * 3600 + 18 * 60 + 44),
-        };
-        assert_eq!(cal.to_julian_date(), jd);
-    }
-
-    #[test]
-    fn test_julian_with_seconds_before_midnight_to_calendar() {
-        let jd = JulianDate {
-            days: 2460055,
-            seconds: Some(4 * 3600 + 18 * 60 + 44),
-        };
-        let cal = jd.to_gregorian();
-        assert_eq!(cal.year, 2023);
-        assert_eq!(cal.month, 4);
-        assert_eq!(cal.mday, 20);
-        assert_eq!(cal.yday, 109);
-        assert_eq!(cal.seconds, Some(16 * 3600 + 18 * 60 + 44));
-    }
-
-    #[test]
-    fn test_julian_with_seconds_after_midnight_to_calendar() {
-        let jd = JulianDate {
-            days: 2460054,
-            seconds: Some(19 * 3600 + 30 * 60 + 13),
-        };
-        let cal = jd.to_gregorian();
-        assert_eq!(cal.year, 2023);
-        assert_eq!(cal.month, 4);
-        assert_eq!(cal.mday, 20);
-        assert_eq!(cal.yday, 109);
-        assert_eq!(cal.seconds, Some(7 * 3600 + 30 * 60 + 13));
-    }
-
-    #[rstest]
-    #[case(0, (0, 0, 0))]
-    #[case(27013, (7, 30, 13))]
-    #[case(43200, (12, 0, 0))]
-    #[case(45296, (12, 34, 56))]
-    #[case(47583, (13, 13, 3))]
-    #[case(61504, (17, 5, 4))]
-    #[case(86399, (23, 59, 59))]
-    fn test_break_seconds(#[case] seconds: SecondsT, #[case] hms: (u32, u32, u32)) {
-        assert_eq!(break_seconds(seconds), hms);
+        let cal = Date::from_ymd(year, month, mday).unwrap();
+        assert_eq!(cal.to_julian_day(), days);
     }
 
     mod parse_date {
@@ -855,27 +569,6 @@ mod tests {
             assert_eq!(date.month, 4);
             assert_eq!(date.mday, 20);
             assert_eq!(date.yday, 109);
-            assert_eq!(date.seconds, None);
-        }
-
-        #[test]
-        fn test_parse_ymd_hms() {
-            let date = "2023-04-20T16:39:50".parse::<Date>().unwrap();
-            assert_eq!(date.year, 2023);
-            assert_eq!(date.month, 4);
-            assert_eq!(date.mday, 20);
-            assert_eq!(date.yday, 109);
-            assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
-        }
-
-        #[test]
-        fn test_parse_ymd_hms_z() {
-            let date = "2023-04-20T16:39:50Z".parse::<Date>().unwrap();
-            assert_eq!(date.year, 2023);
-            assert_eq!(date.month, 4);
-            assert_eq!(date.mday, 20);
-            assert_eq!(date.yday, 109);
-            assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
         }
 
         #[test]
@@ -885,7 +578,6 @@ mod tests {
             assert_eq!(date.month, 4);
             assert_eq!(date.mday, 20);
             assert_eq!(date.yday, 109);
-            assert_eq!(date.seconds, None);
         }
 
         #[test]
@@ -895,27 +587,6 @@ mod tests {
             assert_eq!(date.month, 1);
             assert_eq!(date.mday, 6);
             assert_eq!(date.yday, 5);
-            assert_eq!(date.seconds, None);
-        }
-
-        #[test]
-        fn test_parse_yj_hms() {
-            let date = "2023-110T16:39:50".parse::<Date>().unwrap();
-            assert_eq!(date.year, 2023);
-            assert_eq!(date.month, 4);
-            assert_eq!(date.mday, 20);
-            assert_eq!(date.yday, 109);
-            assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
-        }
-
-        #[test]
-        fn test_parse_yj_hms_z() {
-            let date = "2023-110T16:39:50Z".parse::<Date>().unwrap();
-            assert_eq!(date.year, 2023);
-            assert_eq!(date.month, 4);
-            assert_eq!(date.mday, 20);
-            assert_eq!(date.yday, 109);
-            assert_eq!(date.seconds, Some(16 * 3600 + 39 * 60 + 50));
         }
 
         #[test]
@@ -925,7 +596,6 @@ mod tests {
             assert_eq!(date.month, 4);
             assert_eq!(date.mday, 20);
             assert_eq!(date.yday, 109);
-            assert_eq!(date.seconds, None);
         }
 
         #[test]
@@ -936,7 +606,6 @@ mod tests {
             assert_eq!(date.month, 4);
             assert_eq!(date.mday, 20);
             assert_eq!(date.yday, 110);
-            assert_eq!(date.seconds, None);
         }
 
         #[test]
@@ -981,24 +650,6 @@ mod tests {
                 r.unwrap_err().to_string(),
                 "expected two digits, got 1 digits"
             );
-        }
-
-        #[test]
-        fn test_parse_ymd_hms_bad_time_sep() {
-            // TODO: Support this format:
-            let r = "2023-04-20 16:39:50".parse::<Date>();
-            assert_eq!(r, Err(ParseDateError::BadTimeStart { got: ' ' }));
-            assert_eq!(
-                r.unwrap_err().to_string(),
-                "expected time segment or end of input, got ' '"
-            );
-        }
-
-        #[test]
-        fn test_parse_ymd_hms_bad_timezone_spec() {
-            let r = "2023-04-20T16:39:50+00:00".parse::<Date>();
-            assert_eq!(r, Err(ParseDateError::HasTrailing));
-            assert_eq!(r.unwrap_err().to_string(), "trailing characters after date");
         }
 
         #[test]
@@ -1128,7 +779,6 @@ mod tests {
             assert_eq!(date.year, 2024);
             assert_eq!(date.month, 2);
             assert_eq!(date.mday, 29);
-            assert_eq!(date.seconds, None);
         }
 
         #[test]
@@ -1195,29 +845,6 @@ mod tests {
         }
 
         #[test]
-        fn test_parse_bad_hour_min_sep() {
-            let r = "2023-04-20T12-34:56".parse::<Date>();
-            assert_eq!(
-                r,
-                Err(ParseDateError::UnexpectedChar {
-                    expected: ':',
-                    got: '-'
-                })
-            );
-            assert_eq!(r.unwrap_err().to_string(), "expected ':', got '-'");
-        }
-
-        #[test]
-        fn test_parse_end_after_hour() {
-            let r = "2023-04-20T12".parse::<Date>();
-            assert_eq!(r, Err(ParseDateError::UnexpectedEnd { expected: ':' }));
-            assert_eq!(
-                r.unwrap_err().to_string(),
-                "expected ':', reached end of input"
-            );
-        }
-
-        #[test]
         fn test_parse_just_year() {
             let r = "2023".parse::<Date>();
             assert_eq!(r, Err(ParseDateError::UnterminatedYear));
@@ -1240,171 +867,6 @@ mod tests {
             let r = "".parse::<Date>();
             assert_eq!(r, Err(ParseDateError::UnterminatedYear));
             assert_eq!(r.unwrap_err().to_string(), "year not terminated by '-'");
-        }
-    }
-
-    mod parse_julian_date {
-        use super::*;
-
-        #[test]
-        fn test_parse_julian_date() {
-            let jd = "2460055".parse::<JulianDate>().unwrap();
-            assert_eq!(
-                jd,
-                JulianDate {
-                    days: 2460055,
-                    seconds: None
-                }
-            );
-        }
-
-        #[test]
-        fn test_parse_julian_date_dot_seconds() {
-            let jd = "2460055.1962".parse::<JulianDate>().unwrap();
-            assert_eq!(
-                jd,
-                JulianDate {
-                    days: 2460055,
-                    seconds: Some(16952)
-                }
-            );
-        }
-
-        #[test]
-        fn test_parse_julian_date_colon_seconds() {
-            let jd = "2460055:16952".parse::<JulianDate>().unwrap();
-            assert_eq!(
-                jd,
-                JulianDate {
-                    days: 2460055,
-                    seconds: Some(16952)
-                }
-            );
-        }
-
-        #[test]
-        fn test_parse_comma_sep() {
-            use std::num::IntErrorKind::InvalidDigit;
-            let r = "2460055,1962".parse::<JulianDate>();
-            assert_matches!(r, Err(ParseJulianDateError::InvalidDay(ref e)) if e.kind() == &InvalidDigit);
-            assert!(r
-                .unwrap_err()
-                .to_string()
-                .starts_with("cannot parse Julian day component: "));
-        }
-
-        #[test]
-        fn test_parse_empty() {
-            use std::num::IntErrorKind::Empty;
-            let r = "".parse::<JulianDate>();
-            assert_matches!(r, Err(ParseJulianDateError::InvalidDay(ref e)) if e.kind() == &Empty);
-            assert!(r
-                .unwrap_err()
-                .to_string()
-                .starts_with("cannot parse Julian day component: "));
-        }
-
-        #[test]
-        fn test_parse_nondigit() {
-            use std::num::IntErrorKind::InvalidDigit;
-            let r = "246OO55".parse::<JulianDate>();
-            assert_matches!(r, Err(ParseJulianDateError::InvalidDay(ref e)) if e.kind() == &InvalidDigit);
-            assert!(r
-                .unwrap_err()
-                .to_string()
-                .starts_with("cannot parse Julian day component: "));
-        }
-
-        #[test]
-        fn test_parse_day_too_large() {
-            use std::num::IntErrorKind::PosOverflow;
-            let r = "3000000000".parse::<JulianDate>();
-            assert_matches!(r, Err(ParseJulianDateError::InvalidDay(ref e)) if e.kind() == &PosOverflow);
-            assert!(r
-                .unwrap_err()
-                .to_string()
-                .starts_with("cannot parse Julian day component: "));
-        }
-
-        #[test]
-        fn test_parse_day_too_small() {
-            use std::num::IntErrorKind::NegOverflow;
-            let r = "-3000000000".parse::<JulianDate>();
-            assert_matches!(r, Err(ParseJulianDateError::InvalidDay(ref e)) if e.kind() == &NegOverflow);
-            assert!(r
-                .unwrap_err()
-                .to_string()
-                .starts_with("cannot parse Julian day component: "));
-        }
-
-        #[test]
-        fn test_parse_bad_digit_in_frac() {
-            let r = "2460058.37!447".parse::<JulianDate>();
-            assert_eq!(r, Err(ParseJulianDateError::InvalidDigit('!')));
-            assert_eq!(
-                r.unwrap_err().to_string(),
-                "invalid digit '!' after period in Julian date"
-            );
-        }
-
-        #[test]
-        fn test_parse_negative_frac() {
-            let r = "2460058.-371447".parse::<JulianDate>();
-            assert_eq!(r, Err(ParseJulianDateError::InvalidDigit('-')));
-            assert_eq!(
-                r.unwrap_err().to_string(),
-                "invalid digit '-' after period in Julian date"
-            );
-        }
-
-        #[test]
-        fn test_parse_empty_int_seconds() {
-            use std::num::IntErrorKind::Empty;
-            let r = "2460058:".parse::<JulianDate>();
-            assert_matches!(r, Err(ParseJulianDateError::InvalidSeconds(ref e)) if e.kind() == &Empty);
-            assert!(r
-                .unwrap_err()
-                .to_string()
-                .starts_with("cannot parse integer seconds component: "));
-        }
-
-        #[test]
-        fn test_parse_int_seconds_nondigit() {
-            use std::num::IntErrorKind::InvalidDigit;
-            let r = "2460055:37!447".parse::<JulianDate>();
-            assert_matches!(r, Err(ParseJulianDateError::InvalidSeconds(ref e)) if e.kind() == &InvalidDigit);
-            assert!(r
-                .unwrap_err()
-                .to_string()
-                .starts_with("cannot parse integer seconds component: "));
-        }
-
-        #[test]
-        fn test_parse_int_seconds_too_large() {
-            use std::num::IntErrorKind::PosOverflow;
-            let r = "2460058:6000000000".parse::<JulianDate>();
-            assert_matches!(r, Err(ParseJulianDateError::InvalidSeconds(ref e)) if e.kind() == &PosOverflow);
-            assert!(r
-                .unwrap_err()
-                .to_string()
-                .starts_with("cannot parse integer seconds component: "));
-        }
-
-        #[test]
-        fn test_parse_negative_int_seconds() {
-            let r = "2460058:-371447".parse::<JulianDate>();
-            assert_matches!(r, Err(ParseJulianDateError::InvalidSeconds(_)));
-            assert!(r
-                .unwrap_err()
-                .to_string()
-                .starts_with("cannot parse integer seconds component: "));
-        }
-
-        #[test]
-        fn test_parse_empty_frac() {
-            let r = "2460058.".parse::<JulianDate>();
-            assert_matches!(r, Err(ParseJulianDateError::EmptyFrac));
-            assert_eq!(r.unwrap_err().to_string(), "empty fractional component");
         }
     }
 
@@ -2517,93 +1979,20 @@ mod tests {
 
     #[test]
     fn test_display_date() {
-        let date = Date::from_ymd(2023, 4, 20, None).unwrap();
+        let date = Date::from_ymd(2023, 4, 20).unwrap();
         assert_eq!(format!("{date}"), "2023-04-20");
     }
 
     #[test]
     fn test_alternate_display_date() {
-        let date = Date::from_ymd(2023, 4, 20, None).unwrap();
+        let date = Date::from_ymd(2023, 4, 20).unwrap();
         assert_eq!(format!("{date:#}"), "2023-110");
     }
 
     #[test]
     fn test_alternate_display_date_padded() {
-        let date = Date::from_ymd(2023, 3, 15, None).unwrap();
+        let date = Date::from_ymd(2023, 3, 15).unwrap();
         assert_eq!(format!("{date:#}"), "2023-074");
-    }
-
-    #[test]
-    fn test_display_date_with_seconds() {
-        let date = Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 39 * 60 + 50)).unwrap();
-        assert_eq!(format!("{date}"), "2023-04-20T16:39:50Z");
-    }
-
-    #[test]
-    fn test_display_date_with_seconds_padded() {
-        let date = Date::from_ymd(1, 1, 1, Some(0)).unwrap();
-        assert_eq!(format!("{date}"), "0001-01-01T00:00:00Z");
-    }
-
-    #[test]
-    fn test_alternate_display_date_with_seconds() {
-        let date = Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 39 * 60 + 50)).unwrap();
-        assert_eq!(format!("{date:#}"), "2023-110T16:39:50Z");
-    }
-
-    #[test]
-    fn test_display_julian_date() {
-        let jd = JulianDate {
-            days: 2460055,
-            seconds: None,
-        };
-        assert_eq!(format!("{jd}"), "2460055");
-        assert_eq!(format!("{jd:#}"), "2460055");
-    }
-
-    #[test]
-    fn test_display_julian_date_with_seconds() {
-        let jd = JulianDate {
-            days: 2460055,
-            seconds: Some(16 * 3600 + 39 * 60 + 50),
-        };
-        assert_eq!(format!("{jd}"), "2460055.694329");
-    }
-
-    #[test]
-    fn test_display_julian_date_with_lower_precision() {
-        let jd = JulianDate {
-            days: 2460055,
-            seconds: Some(16 * 3600 + 39 * 60 + 50),
-        };
-        assert_eq!(format!("{jd:.1}"), "2460055.7");
-    }
-
-    #[test]
-    fn test_display_julian_date_with_higher_precision() {
-        let jd = JulianDate {
-            days: 2460055,
-            seconds: Some(16 * 3600 + 39 * 60 + 50),
-        };
-        assert_eq!(format!("{jd:.8}"), "2460055.69432870");
-    }
-
-    #[test]
-    fn test_display_julian_date_with_zero_precision() {
-        let jd = JulianDate {
-            days: 2460055,
-            seconds: Some(16 * 3600 + 39 * 60 + 50),
-        };
-        assert_eq!(format!("{jd:.0}"), "2460055");
-    }
-
-    #[test]
-    fn test_alternate_display_julian_date_with_seconds() {
-        let jd = JulianDate {
-            days: 2460055,
-            seconds: Some(16 * 3600 + 39 * 60 + 50),
-        };
-        assert_eq!(format!("{jd:#}"), "2460055:59990");
     }
 
     #[rstest]
@@ -2620,16 +2009,16 @@ mod tests {
         #[case] mday: u32,
         #[case] seconds: SecondsT,
     ) {
-        let date = Date::from_unix_timestamp(ts);
+        let (date, s) = Date::from_unix_timestamp(ts);
         assert_eq!(date.year, year);
         assert_eq!(date.month, month);
         assert_eq!(date.mday, mday);
-        assert_eq!(date.seconds, Some(seconds));
+        assert_eq!(s, seconds);
     }
 
     #[test]
     fn test_from_ymd_zero_month() {
-        let r = Date::from_ymd(2023, 0, 13, None);
+        let r = Date::from_ymd(2023, 0, 13);
         assert_eq!(r, Err(DateError::MonthOutOfRange { month: 0 }));
         assert_eq!(
             r.unwrap_err().to_string(),
@@ -2639,7 +2028,7 @@ mod tests {
 
     #[test]
     fn test_from_ymd_smarch() {
-        let r = Date::from_ymd(2023, 13, 13, None);
+        let r = Date::from_ymd(2023, 13, 13);
         assert_eq!(r, Err(DateError::MonthOutOfRange { month: 13 }));
         assert_eq!(
             r.unwrap_err().to_string(),
@@ -2649,7 +2038,7 @@ mod tests {
 
     #[test]
     fn test_from_ymd_mday_0() {
-        let r = Date::from_ymd(2023, 4, 0, None);
+        let r = Date::from_ymd(2023, 4, 0);
         assert_eq!(r, Err(DateError::MdayOutOfRange { month: 4, mday: 0 }));
         assert_eq!(
             r.unwrap_err().to_string(),
@@ -2659,7 +2048,7 @@ mod tests {
 
     #[test]
     fn test_from_ymd_mday_32() {
-        let r = Date::from_ymd(2023, 4, 32, None);
+        let r = Date::from_ymd(2023, 4, 32);
         assert_eq!(r, Err(DateError::MdayOutOfRange { month: 4, mday: 32 }));
         assert_eq!(
             r.unwrap_err().to_string(),
@@ -2669,7 +2058,7 @@ mod tests {
 
     #[test]
     fn test_from_ymd_sep_31() {
-        let r = Date::from_ymd(2023, 9, 31, None);
+        let r = Date::from_ymd(2023, 9, 31);
         assert_eq!(r, Err(DateError::MdayOutOfRange { month: 9, mday: 31 }));
         assert_eq!(
             r.unwrap_err().to_string(),
@@ -2679,7 +2068,7 @@ mod tests {
 
     #[test]
     fn test_from_ymd_invalid_leap_day() {
-        let r = Date::from_ymd(2023, 2, 29, None);
+        let r = Date::from_ymd(2023, 2, 29);
         assert_eq!(r, Err(DateError::MdayOutOfRange { month: 2, mday: 29 }));
         assert_eq!(
             r.unwrap_err().to_string(),
@@ -2689,16 +2078,15 @@ mod tests {
 
     #[test]
     fn test_from_ymd_valid_leap_day() {
-        let date = Date::from_ymd(2024, 2, 29, None).unwrap();
+        let date = Date::from_ymd(2024, 2, 29).unwrap();
         assert_eq!(date.year, 2024);
         assert_eq!(date.month, 2);
         assert_eq!(date.mday, 29);
-        assert_eq!(date.seconds, None);
     }
 
     #[test]
     fn test_from_ymd_skipped_date() {
-        let r = Date::from_ymd(1582, 10, 10, None);
+        let r = Date::from_ymd(1582, 10, 10);
         assert_eq!(r, Err(DateError::SkippedDate));
         assert_eq!(
             r.unwrap_err().to_string(),
@@ -2708,7 +2096,7 @@ mod tests {
 
     #[test]
     fn test_from_ymd_first_skipped_date() {
-        let r = Date::from_ymd(1582, 10, 5, None);
+        let r = Date::from_ymd(1582, 10, 5);
         assert_eq!(r, Err(DateError::SkippedDate));
         assert_eq!(
             r.unwrap_err().to_string(),
@@ -2718,7 +2106,7 @@ mod tests {
 
     #[test]
     fn test_from_ymd_last_skipped_date() {
-        let r = Date::from_ymd(1582, 10, 14, None);
+        let r = Date::from_ymd(1582, 10, 14);
         assert_eq!(r, Err(DateError::SkippedDate));
         assert_eq!(
             r.unwrap_err().to_string(),
@@ -2734,7 +2122,7 @@ mod tests {
     #[case(1582, 355)]
     #[case(1582, 999)]
     fn test_from_year_yday_err(#[case] year: YearT, #[case] yday: DaysT) {
-        let r = Date::from_year_yday(year, yday, None);
+        let r = Date::from_year_yday(year, yday);
         assert_eq!(r, Err(DateError::YdayOutOfRange { year, yday }));
         assert_eq!(
             r.unwrap_err().to_string(),

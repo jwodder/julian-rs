@@ -1,6 +1,10 @@
-use julian::{Date, JulianDate, ParseDateError, ParseJulianDateError, GREG_REFORM, UK_REFORM};
+use julian::{
+    julian_day_to_gregorian, julian_day_to_julian, Date, JulianDayT, ParseDateError, GREG_REFORM,
+    UK_REFORM,
+};
 use lexopt::{Arg, Error, Parser, ValueExt};
 use std::fmt::Write;
+use std::num::ParseIntError;
 use std::str::FromStr;
 use thiserror::Error;
 
@@ -25,9 +29,6 @@ impl Command {
                 }
                 Arg::Short('o') | Arg::Long("old-style-uk") => {
                     opts.ospolicy = OldStylePolicy::UkDelay;
-                }
-                Arg::Short('s') | Arg::Long("whole-seconds") => {
-                    opts.whole_seconds = true;
                 }
                 Arg::Short('v') | Arg::Long("verbose") => opts.verbose = true,
                 Arg::Short(c) if c.is_ascii_digit() => {
@@ -80,12 +81,6 @@ impl Command {
                 );
                 println!("                    Reformation and the UK's adoption thereof");
                 println!();
-                println!("  -s, --whole-seconds");
-                println!("                    Show Julian dates with seconds as \"DDDDDD:sssss\"");
-                println!();
-                println!("                    The part after the colon is the number of seconds past noon");
-                println!("                    as an integer.");
-                println!();
                 println!("  -v, --verbose     Print out the input date before each output date");
                 println!();
                 println!("  -h, --help        Display this help message and exit");
@@ -102,7 +97,6 @@ impl Command {
 struct Options {
     ordinal: bool,
     ospolicy: OldStylePolicy,
-    whole_seconds: bool,
     verbose: bool,
 }
 
@@ -110,18 +104,18 @@ impl Options {
     fn run(&self, dates: Vec<Argument>) -> Vec<String> {
         let mut output = Vec::with_capacity(dates.len());
         if dates.is_empty() {
-            let now = Date::now();
-            let jd = now.to_julian_date();
+            let (now, _) = Date::now();
+            let jd = now.to_julian_day();
             output.push(self.show_cal_to_julian(now, jd));
         } else {
             for d in dates {
                 match d {
                     Argument::CalendarDate(when) => {
-                        let jd = when.to_julian_date();
+                        let jd = when.to_julian_day();
                         output.push(self.show_cal_to_julian(when, jd));
                     }
-                    Argument::JulianDate(jd) => {
-                        let when = jd.to_gregorian();
+                    Argument::JulianDay(jd) => {
+                        let when = julian_day_to_gregorian(jd);
                         output.push(self.show_julian_to_cal(when, jd));
                     }
                 }
@@ -130,7 +124,7 @@ impl Options {
         output
     }
 
-    fn show_cal_to_julian(&self, cal: Date, jd: JulianDate) -> String {
+    fn show_cal_to_julian(&self, cal: Date, jd: JulianDayT) -> String {
         let mut s = String::new();
         if self.verbose {
             self.fmt_styled(&mut s, cal, jd);
@@ -140,7 +134,7 @@ impl Options {
         s
     }
 
-    fn show_julian_to_cal(&self, cal: Date, jd: JulianDate) -> String {
+    fn show_julian_to_cal(&self, cal: Date, jd: JulianDayT) -> String {
         let mut s = String::new();
         if self.verbose {
             self.fmt_julian(&mut s, jd);
@@ -150,11 +144,11 @@ impl Options {
         s
     }
 
-    fn fmt_styled(&self, s: &mut String, when: Date, jd: JulianDate) {
+    fn fmt_styled(&self, s: &mut String, when: Date, jd: JulianDayT) {
         self.fmt_date(s, when);
         if self.ospolicy.show_old_style(jd) {
             write!(s, " [O.S. ").unwrap();
-            self.fmt_date(s, jd.detatch_seconds().0.to_julian());
+            self.fmt_date(s, julian_day_to_julian(jd));
             write!(s, "]").unwrap();
         }
     }
@@ -167,12 +161,8 @@ impl Options {
         }
     }
 
-    fn fmt_julian(&self, s: &mut String, jd: JulianDate) {
-        if self.whole_seconds {
-            write!(s, "{jd:#}").unwrap();
-        } else {
-            write!(s, "{jd}").unwrap();
-        }
+    fn fmt_julian(&self, s: &mut String, jd: JulianDayT) {
+        write!(s, "{jd}").unwrap();
     }
 }
 
@@ -185,17 +175,17 @@ enum OldStylePolicy {
 }
 
 impl OldStylePolicy {
-    fn show_old_style(self, jd: JulianDate) -> bool {
+    fn show_old_style(self, jd: JulianDayT) -> bool {
         self != OldStylePolicy::Never
-            && GREG_REFORM <= jd.days
-            && (jd.days < UK_REFORM || self == OldStylePolicy::PostReform)
+            && GREG_REFORM <= jd
+            && (jd < UK_REFORM || self == OldStylePolicy::PostReform)
     }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum Argument {
     CalendarDate(Date),
-    JulianDate(JulianDate),
+    JulianDay(JulianDayT),
 }
 
 impl FromStr for Argument {
@@ -205,7 +195,7 @@ impl FromStr for Argument {
         if s.match_indices('-').any(|(i, _)| i > 0) {
             Ok(Argument::CalendarDate(s.parse::<Date>()?))
         } else {
-            Ok(Argument::JulianDate(s.parse::<JulianDate>()?))
+            Ok(Argument::JulianDay(s.parse::<JulianDayT>()?))
         }
     }
 }
@@ -215,7 +205,7 @@ enum ArgumentParseError {
     #[error(transparent)]
     CalendarDate(#[from] ParseDateError),
     #[error(transparent)]
-    JulianDate(#[from] ParseJulianDateError),
+    JulianDay(#[from] ParseIntError),
 }
 
 fn main() -> Result<(), Error> {
@@ -233,20 +223,19 @@ mod tests {
     #[case(vec!["julian", "-h"], Command::Help)]
     #[case(vec!["julian", "--help"], Command::Help)]
     #[case(vec!["julian", "--help", "2023-04-20"], Command::Help)]
-    #[case(vec!["julian", "2023-04-20", "-s", "-h"], Command::Help)]
+    #[case(vec!["julian", "2023-04-20", "-O", "-h"], Command::Help)]
     #[case(vec!["julian", "2023-04-20", "--help", "-V"], Command::Help)]
     #[case(vec!["julian", "-V"], Command::Version)]
     #[case(vec!["julian", "--version"], Command::Version)]
-    #[case(vec!["julian", "--version", "2460055.314606"], Command::Version)]
-    #[case(vec!["julian", "2460055.314606", "--ordinal", "--version"], Command::Version)]
-    #[case(vec!["julian", "2460055.314606", "--version", "-h"], Command::Version)]
+    #[case(vec!["julian", "--version", "2460055"], Command::Version)]
+    #[case(vec!["julian", "2460055", "--ordinal", "--version"], Command::Version)]
+    #[case(vec!["julian", "2460055", "--version", "-h"], Command::Version)]
     #[case(
         vec!["julian"],
         Command::Run(
             Options {
                 ordinal: false,
                 ospolicy: Never,
-                whole_seconds: false,
                 verbose: false,
             },
             Vec::new(),
@@ -258,22 +247,9 @@ mod tests {
             Options {
                 ordinal: false,
                 ospolicy: Never,
-                whole_seconds: false,
                 verbose: false,
             },
-            vec![Argument::JulianDate(JulianDate {days: 123, seconds: None})],
-        )
-    )]
-    #[case(
-        vec!["julian", "123:456"],
-        Command::Run(
-            Options {
-                ordinal: false,
-                ospolicy: Never,
-                whole_seconds: false,
-                verbose: false,
-            },
-            vec![Argument::JulianDate(JulianDate {days: 123, seconds: Some(456)})],
+            vec![Argument::JulianDay(123)],
         )
     )]
     #[case(
@@ -282,10 +258,9 @@ mod tests {
             Options {
                 ordinal: false,
                 ospolicy: Never,
-                whole_seconds: false,
                 verbose: false,
             },
-            vec![Argument::JulianDate(JulianDate {days: -123, seconds: None})],
+            vec![Argument::JulianDay(-123)],
         )
     )]
     #[case(
@@ -294,10 +269,9 @@ mod tests {
             Options {
                 ordinal: false,
                 ospolicy: Never,
-                whole_seconds: false,
                 verbose: true,
             },
-            vec![Argument::JulianDate(JulianDate {days: -123, seconds: None})],
+            vec![Argument::JulianDay(-123)],
         )
     )]
     #[case(
@@ -306,10 +280,9 @@ mod tests {
             Options {
                 ordinal: false,
                 ospolicy: Never,
-                whole_seconds: false,
                 verbose: true,
             },
-            vec![Argument::JulianDate(JulianDate {days: -123, seconds: None})],
+            vec![Argument::JulianDay(-123)],
         )
     )]
     #[case(
@@ -318,7 +291,6 @@ mod tests {
             Options {
                 ordinal: false,
                 ospolicy: PostReform,
-                whole_seconds: false,
                 verbose: false,
             },
             Vec::new(),
@@ -330,7 +302,6 @@ mod tests {
             Options {
                 ordinal: false,
                 ospolicy: UkDelay,
-                whole_seconds: false,
                 verbose: false,
             },
             Vec::new(),
@@ -342,7 +313,6 @@ mod tests {
             Options {
                 ordinal: false,
                 ospolicy: PostReform,
-                whole_seconds: false,
                 verbose: false,
             },
             Vec::new(),
@@ -354,31 +324,6 @@ mod tests {
             Options {
                 ordinal: false,
                 ospolicy: UkDelay,
-                whole_seconds: false,
-                verbose: false,
-            },
-            Vec::new(),
-        )
-    )]
-    #[case(
-        vec!["julian", "-s"],
-        Command::Run(
-            Options {
-                ordinal: false,
-                ospolicy: Never,
-                whole_seconds: true,
-                verbose: false,
-            },
-            Vec::new(),
-        )
-    )]
-    #[case(
-        vec!["julian", "--whole-seconds"],
-        Command::Run(
-            Options {
-                ordinal: false,
-                ospolicy: Never,
-                whole_seconds: true,
                 verbose: false,
             },
             Vec::new(),
@@ -390,7 +335,6 @@ mod tests {
             Options {
                 ordinal: true,
                 ospolicy: Never,
-                whole_seconds: false,
                 verbose: false,
             },
             Vec::new(),
@@ -402,7 +346,6 @@ mod tests {
             Options {
                 ordinal: true,
                 ospolicy: Never,
-                whole_seconds: false,
                 verbose: false,
             },
             Vec::new(),
@@ -417,36 +360,18 @@ mod tests {
     fn test_run_default_options() {
         let opts = Options::default();
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
-            Argument::CalendarDate(
-                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
-            ),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: None,
-            }),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: Some(29860),
-            }),
-            Argument::CalendarDate(Date::from_ymd(1066, 10, 14, None).unwrap()),
-            Argument::JulianDate(JulianDate {
-                days: 2110701,
-                seconds: None,
-            }),
-            Argument::CalendarDate(Date::from_ymd(1707, 4, 15, None).unwrap()),
-            Argument::JulianDate(JulianDate {
-                days: 2344633,
-                seconds: None,
-            }),
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::JulianDay(2440423),
+            Argument::CalendarDate(Date::from_ymd(1066, 10, 14).unwrap()),
+            Argument::JulianDay(2110701),
+            Argument::CalendarDate(Date::from_ymd(1707, 4, 15).unwrap()),
+            Argument::JulianDay(2344633),
         ];
         assert_eq!(
             opts.run(dates),
             vec![
                 "2460055",
-                "2460055.179676",
                 "1969-07-20",
-                "1969-07-20T20:17:40Z",
                 "2110701",
                 "1066-10-14",
                 "2344633",
@@ -462,36 +387,18 @@ mod tests {
             ..Options::default()
         };
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
-            Argument::CalendarDate(
-                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
-            ),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: None,
-            }),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: Some(29860),
-            }),
-            Argument::CalendarDate(Date::from_ymd(1066, 10, 14, None).unwrap()),
-            Argument::JulianDate(JulianDate {
-                days: 2110701,
-                seconds: None,
-            }),
-            Argument::CalendarDate(Date::from_ymd(1707, 4, 15, None).unwrap()),
-            Argument::JulianDate(JulianDate {
-                days: 2344633,
-                seconds: None,
-            }),
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::JulianDay(2440423),
+            Argument::CalendarDate(Date::from_ymd(1066, 10, 14).unwrap()),
+            Argument::JulianDay(2110701),
+            Argument::CalendarDate(Date::from_ymd(1707, 4, 15).unwrap()),
+            Argument::JulianDay(2344633),
         ];
         assert_eq!(
             opts.run(dates),
             vec![
                 "2023-04-20 = 2460055",
-                "2023-04-20T16:18:44Z = 2460055.179676",
                 "2440423 = 1969-07-20",
-                "2440423.345602 = 1969-07-20T20:17:40Z",
                 "1066-10-14 = 2110701",
                 "2110701 = 1066-10-14",
                 "1707-04-15 = 2344633",
@@ -507,36 +414,18 @@ mod tests {
             ..Options::default()
         };
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
-            Argument::CalendarDate(
-                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
-            ),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: None,
-            }),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: Some(29860),
-            }),
-            Argument::CalendarDate(Date::from_ymd(1066, 10, 14, None).unwrap()),
-            Argument::JulianDate(JulianDate {
-                days: 2110701,
-                seconds: None,
-            }),
-            Argument::CalendarDate(Date::from_ymd(1707, 4, 15, None).unwrap()),
-            Argument::JulianDate(JulianDate {
-                days: 2344633,
-                seconds: None,
-            }),
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::JulianDay(2440423),
+            Argument::CalendarDate(Date::from_ymd(1066, 10, 14).unwrap()),
+            Argument::JulianDay(2110701),
+            Argument::CalendarDate(Date::from_ymd(1707, 4, 15).unwrap()),
+            Argument::JulianDay(2344633),
         ];
         assert_eq!(
             opts.run(dates),
             vec![
                 "2460055",
-                "2460055.179676",
                 "1969-07-20 [O.S. 1969-07-07]",
-                "1969-07-20T20:17:40Z [O.S. 1969-07-07]",
                 "2110701",
                 "1066-10-14",
                 "2344633",
@@ -552,36 +441,18 @@ mod tests {
             ..Options::default()
         };
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
-            Argument::CalendarDate(
-                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
-            ),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: None,
-            }),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: Some(29860),
-            }),
-            Argument::CalendarDate(Date::from_ymd(1066, 10, 14, None).unwrap()),
-            Argument::JulianDate(JulianDate {
-                days: 2110701,
-                seconds: None,
-            }),
-            Argument::CalendarDate(Date::from_ymd(1707, 4, 15, None).unwrap()),
-            Argument::JulianDate(JulianDate {
-                days: 2344633,
-                seconds: None,
-            }),
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::JulianDay(2440423),
+            Argument::CalendarDate(Date::from_ymd(1066, 10, 14).unwrap()),
+            Argument::JulianDay(2110701),
+            Argument::CalendarDate(Date::from_ymd(1707, 4, 15).unwrap()),
+            Argument::JulianDay(2344633),
         ];
         assert_eq!(
             opts.run(dates),
             vec![
                 "2460055",
-                "2460055.179676",
                 "1969-07-20",
-                "1969-07-20T20:17:40Z",
                 "2110701",
                 "1066-10-14",
                 "2344633",
@@ -598,36 +469,18 @@ mod tests {
             ..Options::default()
         };
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
-            Argument::CalendarDate(
-                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
-            ),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: None,
-            }),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: Some(29860),
-            }),
-            Argument::CalendarDate(Date::from_ymd(1066, 10, 14, None).unwrap()),
-            Argument::JulianDate(JulianDate {
-                days: 2110701,
-                seconds: None,
-            }),
-            Argument::CalendarDate(Date::from_ymd(1707, 4, 15, None).unwrap()),
-            Argument::JulianDate(JulianDate {
-                days: 2344633,
-                seconds: None,
-            }),
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::JulianDay(2440423),
+            Argument::CalendarDate(Date::from_ymd(1066, 10, 14).unwrap()),
+            Argument::JulianDay(2110701),
+            Argument::CalendarDate(Date::from_ymd(1707, 4, 15).unwrap()),
+            Argument::JulianDay(2344633),
         ];
         assert_eq!(
             opts.run(dates),
             vec![
                 "2023-04-20 [O.S. 2023-04-07] = 2460055",
-                "2023-04-20T16:18:44Z [O.S. 2023-04-07] = 2460055.179676",
                 "2440423 = 1969-07-20 [O.S. 1969-07-07]",
-                "2440423.345602 = 1969-07-20T20:17:40Z [O.S. 1969-07-07]",
                 "1066-10-14 = 2110701",
                 "2110701 = 1066-10-14",
                 "1707-04-15 [O.S. 1707-04-04] = 2344633",
@@ -644,36 +497,18 @@ mod tests {
             ..Options::default()
         };
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
-            Argument::CalendarDate(
-                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
-            ),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: None,
-            }),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: Some(29860),
-            }),
-            Argument::CalendarDate(Date::from_ymd(1066, 10, 14, None).unwrap()),
-            Argument::JulianDate(JulianDate {
-                days: 2110701,
-                seconds: None,
-            }),
-            Argument::CalendarDate(Date::from_ymd(1707, 4, 15, None).unwrap()),
-            Argument::JulianDate(JulianDate {
-                days: 2344633,
-                seconds: None,
-            }),
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::JulianDay(2440423),
+            Argument::CalendarDate(Date::from_ymd(1066, 10, 14).unwrap()),
+            Argument::JulianDay(2110701),
+            Argument::CalendarDate(Date::from_ymd(1707, 4, 15).unwrap()),
+            Argument::JulianDay(2344633),
         ];
         assert_eq!(
             opts.run(dates),
             vec![
                 "2023-04-20 = 2460055",
-                "2023-04-20T16:18:44Z = 2460055.179676",
                 "2440423 = 1969-07-20",
-                "2440423.345602 = 1969-07-20T20:17:40Z",
                 "1066-10-14 = 2110701",
                 "2110701 = 1066-10-14",
                 "1707-04-15 [O.S. 1707-04-04] = 2344633",
@@ -689,28 +524,10 @@ mod tests {
             ..Options::default()
         };
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
-            Argument::CalendarDate(
-                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
-            ),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: None,
-            }),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: Some(29860),
-            }),
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::JulianDay(2440423),
         ];
-        assert_eq!(
-            opts.run(dates),
-            vec![
-                "2460055",
-                "2460055.179676",
-                "1969-201",
-                "1969-201T20:17:40Z",
-            ]
-        );
+        assert_eq!(opts.run(dates), vec!["2460055", "1969-201"]);
     }
 
     #[test]
@@ -721,27 +538,12 @@ mod tests {
             ..Options::default()
         };
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
-            Argument::CalendarDate(
-                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
-            ),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: None,
-            }),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: Some(29860),
-            }),
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::JulianDay(2440423),
         ];
         assert_eq!(
             opts.run(dates),
-            vec![
-                "2023-110 = 2460055",
-                "2023-110T16:18:44Z = 2460055.179676",
-                "2440423 = 1969-201",
-                "2440423.345602 = 1969-201T20:17:40Z",
-            ]
+            vec!["2023-110 = 2460055", "2440423 = 1969-201"]
         );
     }
 
@@ -751,106 +553,24 @@ mod tests {
             ospolicy: PostReform,
             verbose: true,
             ordinal: true,
-            ..Options::default()
         };
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
-            Argument::CalendarDate(
-                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
-            ),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: None,
-            }),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: Some(29860),
-            }),
-            Argument::CalendarDate(Date::from_ymd(1066, 10, 14, None).unwrap()),
-            Argument::JulianDate(JulianDate {
-                days: 2110701,
-                seconds: None,
-            }),
-            Argument::CalendarDate(Date::from_ymd(1707, 4, 15, None).unwrap()),
-            Argument::JulianDate(JulianDate {
-                days: 2344633,
-                seconds: None,
-            }),
+            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::JulianDay(2440423),
+            Argument::CalendarDate(Date::from_ymd(1066, 10, 14).unwrap()),
+            Argument::JulianDay(2110701),
+            Argument::CalendarDate(Date::from_ymd(1707, 4, 15).unwrap()),
+            Argument::JulianDay(2344633),
         ];
         assert_eq!(
             opts.run(dates),
             vec![
                 "2023-110 [O.S. 2023-097] = 2460055",
-                "2023-110T16:18:44Z [O.S. 2023-097] = 2460055.179676",
                 "2440423 = 1969-201 [O.S. 1969-188]",
-                "2440423.345602 = 1969-201T20:17:40Z [O.S. 1969-188]",
                 "1066-287 = 2110701",
                 "2110701 = 1066-287",
                 "1707-105 [O.S. 1707-094] = 2344633",
                 "2344633 = 1707-105 [O.S. 1707-094]"
-            ]
-        );
-    }
-
-    #[test]
-    fn test_run_whole_seconds() {
-        let opts = Options {
-            whole_seconds: true,
-            ..Options::default()
-        };
-        let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
-            Argument::CalendarDate(
-                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
-            ),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: None,
-            }),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: Some(29860),
-            }),
-        ];
-        assert_eq!(
-            opts.run(dates),
-            vec![
-                "2460055",
-                "2460055:15524",
-                "1969-07-20",
-                "1969-07-20T20:17:40Z",
-            ]
-        );
-    }
-
-    #[test]
-    fn test_run_whole_seconds_verbose() {
-        let opts = Options {
-            whole_seconds: true,
-            verbose: true,
-            ..Options::default()
-        };
-        let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20, None).unwrap()),
-            Argument::CalendarDate(
-                Date::from_ymd(2023, 4, 20, Some(16 * 3600 + 18 * 60 + 44)).unwrap(),
-            ),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: None,
-            }),
-            Argument::JulianDate(JulianDate {
-                days: 2440423,
-                seconds: Some(29860),
-            }),
-        ];
-        assert_eq!(
-            opts.run(dates),
-            vec![
-                "2023-04-20 = 2460055",
-                "2023-04-20T16:18:44Z = 2460055:15524",
-                "2440423 = 1969-07-20",
-                "2440423:29860 = 1969-07-20T20:17:40Z",
             ]
         );
     }
