@@ -94,7 +94,7 @@ impl Calendar {
         )?;
         let post_reform = Calendar::gregorian().at_julian_day(reformation)?;
         let post_reform_as_julian = Calendar::julian()
-            .at_ymd(post_reform.year(), post_reform.month(), post_reform.mday())?
+            .at_ymd(post_reform.year(), post_reform.month(), post_reform.day())?
             .julian_day();
         if post_reform_as_julian <= reformation {
             return Err(Error::BadReformation);
@@ -143,11 +143,10 @@ impl Calendar {
 
     pub fn at_system_time(&self, t: SystemTime) -> Result<(Date, u32), Error> {
         let ts = match t.duration_since(UNIX_EPOCH) {
-            Ok(d) => i64::try_from(d.as_secs()).map_err(|_| Error::ArithmeticOutOfBounds)?,
-            Err(e) => {
-                -i64::try_from(e.duration().as_secs()).map_err(|_| Error::ArithmeticOutOfBounds)?
-            }
-        };
+            Ok(d) => i64::try_from(d.as_secs()),
+            Err(e) => i64::try_from(e.duration().as_secs()).map(|i| -i),
+        }
+        .map_err(|_| Error::ArithmeticOutOfBounds)?;
         self.at_unix_timestamp(ts)
     }
 
@@ -179,6 +178,8 @@ impl Calendar {
     }
 
     // TODO: Rethink name
+    // at_yo()?
+    // year_with_ordinal()?
     pub fn at_year_ordinal(&self, year: YearT, ordinal: DaysT) -> Result<Date, Error> {
         let (month, mday) = self.ordinal2ymd(year, ordinal)?;
         let julian_day = self.get_julian_day(year, ordinal, month, mday);
@@ -593,15 +594,18 @@ impl Date {
     }
 
     // The "display" mday (one-indexed, counting skipped days)
-    // TODO: Name this "day()" to match chrono?
-    pub fn mday(&self) -> u32 {
+    pub fn day(&self) -> u32 {
         self.mday
     }
 
     // Returns the index of the day within the month, starting from one, not
     // counting days skipped due to reformation
-    pub fn mday_ordinal(&self) -> u32 {
+    pub fn day_ordinal(&self) -> u32 {
         self.mday_ordinal
+    }
+
+    pub fn day_ordinal0(&self) -> u32 {
+        self.mday_ordinal - 1
     }
 
     pub fn ordinal(&self) -> DaysT {
@@ -657,7 +661,7 @@ impl fmt::Display for Date {
         if f.alternate() {
             write!(f, "{:03}", self.ordinal())?;
         } else {
-            write!(f, "{:02}-{:02}", self.month().number(), self.mday())?;
+            write!(f, "{:02}-{:02}", self.month().number(), self.day())?;
         }
         Ok(())
     }
@@ -994,7 +998,7 @@ mod tests {
         let date = Calendar::gregorian_reform().at_julian_day(days).unwrap();
         assert_eq!(date.year(), year);
         assert_eq!(date.month(), month);
-        assert_eq!(date.mday(), mday);
+        assert_eq!(date.day(), mday);
     }
 
     #[apply(julian_days)]
@@ -1021,7 +1025,7 @@ mod tests {
                 .unwrap();
             assert_eq!(date.year(), 2023);
             assert_eq!(date.month(), Month::April);
-            assert_eq!(date.mday(), 20);
+            assert_eq!(date.day(), 20);
             assert_eq!(date.ordinal(), 110);
         }
 
@@ -1030,7 +1034,7 @@ mod tests {
             let date = Calendar::gregorian_reform().parse_date("2023-110").unwrap();
             assert_eq!(date.year(), 2023);
             assert_eq!(date.month(), Month::April);
-            assert_eq!(date.mday(), 20);
+            assert_eq!(date.day(), 20);
             assert_eq!(date.ordinal(), 110);
         }
 
@@ -1039,7 +1043,7 @@ mod tests {
             let date = Calendar::gregorian_reform().parse_date("2023-006").unwrap();
             assert_eq!(date.year(), 2023);
             assert_eq!(date.month(), Month::January);
-            assert_eq!(date.mday(), 6);
+            assert_eq!(date.day(), 6);
             assert_eq!(date.ordinal(), 6);
         }
 
@@ -1050,7 +1054,7 @@ mod tests {
                 .unwrap();
             assert_eq!(date.year(), -2023);
             assert_eq!(date.month(), Month::April);
-            assert_eq!(date.mday(), 20);
+            assert_eq!(date.day(), 20);
             assert_eq!(date.ordinal(), 110);
         }
 
@@ -1060,7 +1064,7 @@ mod tests {
             let date = Calendar::gregorian_reform().parse_date("20-04-20").unwrap();
             assert_eq!(date.year(), 20);
             assert_eq!(date.month(), Month::April);
-            assert_eq!(date.mday(), 20);
+            assert_eq!(date.day(), 20);
             assert_eq!(date.ordinal(), 111);
         }
 
@@ -1233,7 +1237,7 @@ mod tests {
                 .unwrap();
             assert_eq!(date.year(), 2024);
             assert_eq!(date.month(), Month::February);
-            assert_eq!(date.mday(), 29);
+            assert_eq!(date.day(), 29);
         }
 
         #[test]
@@ -2445,7 +2449,7 @@ mod tests {
         assert_eq!(date.year(), year);
         assert_eq!(date.ordinal(), ordinal);
         assert_eq!(date.month(), month);
-        assert_eq!(date.mday(), mday);
+        assert_eq!(date.day(), mday);
     }
 
     #[test]
@@ -2495,7 +2499,7 @@ mod tests {
         let (date, s) = Calendar::gregorian_reform().at_unix_timestamp(ts).unwrap();
         assert_eq!(date.year(), year);
         assert_eq!(date.month(), month);
-        assert_eq!(date.mday(), mday);
+        assert_eq!(date.day(), mday);
         assert_eq!(s, seconds);
     }
 
@@ -2594,7 +2598,7 @@ mod tests {
             .unwrap();
         assert_eq!(date.year(), 2024);
         assert_eq!(date.month(), Month::February);
-        assert_eq!(date.mday(), 29);
+        assert_eq!(date.day(), 29);
     }
 
     #[test]

@@ -353,6 +353,7 @@ pub(crate) fn julian_yj_to_jd(year: YearT, ordinal: DaysT) -> JulianDayT {
 
 // TODO: Error on overflow/underflow
 // TODO: This doesn't work for dates with negative JDs; address
+// TODO: Rewrite to return ordinal instead of month & mday?
 pub(crate) fn jd_to_gregorian_ymd(jd: JulianDayT) -> (YearT, Month, u32) {
     let ell = jd + 68569;
     let n = (4 * ell) / GREGORIAN_CYCLE_DAYS;
