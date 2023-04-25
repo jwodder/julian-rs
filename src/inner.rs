@@ -88,7 +88,7 @@ pub(crate) struct ReformGap {
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub(crate) struct Date {
     pub(crate) year: YearT,
-    pub(crate) yday: DaysT,
+    pub(crate) ordinal: DaysT,
     pub(crate) month: Month,
     pub(crate) mday: u32,
 }
@@ -149,9 +149,9 @@ impl<'a> DateParser<'a> {
     pub(crate) fn parse_day_in_year(&mut self) -> Result<DayInYear, ParseDateError> {
         if let Some(i) = self.data.find(['-', 'T']) {
             if &self.data[i..(i + 1)] == "T" {
-                let yday = Self::parse_yday(&self.data[..i])?;
+                let ordinal = Self::parse_ordinal(&self.data[..i])?;
                 self.data = &self.data[i..];
-                Ok(yday)
+                Ok(ordinal)
             } else {
                 let month_index = self.parse_02d()?;
                 let month = Month::try_from(month_index)
@@ -161,17 +161,17 @@ impl<'a> DateParser<'a> {
                 Ok(DayInYear::Date { month, mday })
             }
         } else {
-            let yday = Self::parse_yday(self.data)?;
+            let ordinal = Self::parse_ordinal(self.data)?;
             self.data = "";
-            Ok(yday)
+            Ok(ordinal)
         }
     }
 
-    pub(crate) fn parse_yday(s: &str) -> Result<DayInYear, ParseDateError> {
+    pub(crate) fn parse_ordinal(s: &str) -> Result<DayInYear, ParseDateError> {
         if s.len() == 3 && s.chars().all(|c| c.is_ascii_digit()) {
-            Ok(DayInYear::Yday(s.parse::<DaysT>()? - 1))
+            Ok(DayInYear::Ordinal(s.parse::<DaysT>()?))
         } else {
-            Err(ParseDateError::InvalidYday)
+            Err(ParseDateError::InvalidOrdinal)
         }
     }
 
@@ -214,7 +214,7 @@ impl<'a> DateParser<'a> {
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub(crate) enum DayInYear {
-    Yday(DaysT),
+    Ordinal(DaysT),
     Date { month: Month, mday: u32 },
 }
 
@@ -309,7 +309,7 @@ pub(crate) fn is_gregorian_leap_year(year: YearT) -> bool {
 // Convert a date in the proleptic Gregorian calendar to a Julian day
 // TODO: Error on overflow/underflow
 // TODO: This doesn't work for dates with negative JDs; address
-// TODO: Try to rewrite to take yday instead of month & mday?
+// TODO: Try to rewrite to take ordinal instead of month & mday?
 pub(crate) fn gregorian_ymd_to_jd(year: YearT, month: Month, mday: u32) -> JulianDayT {
     const MONTHS: JulianDayT = 12;
     let a = (month.number() as JulianDayT) - 14;
@@ -322,8 +322,8 @@ pub(crate) fn gregorian_ymd_to_jd(year: YearT, month: Month, mday: u32) -> Julia
 
 // Convert a date in the proleptic Julian calendar to a Julian day
 // TODO: Error on overflow/underflow
-pub(crate) fn julian_yj_to_jd(year: YearT, yday: DaysT) -> JulianDayT {
-    let idays = JulianDayT::try_from(yday).unwrap();
+pub(crate) fn julian_yj_to_jd(year: YearT, ordinal: DaysT) -> JulianDayT {
+    let idays = JulianDayT::try_from(ordinal - 1).unwrap();
     if year < JD0_YEAR {
         let rev_year = JD0_YEAR - year;
         idays - (rev_year * COMMON_YEAR_LENGTH + rev_year / JULIAN_CYCLE_YEARS)
@@ -359,25 +359,39 @@ pub(crate) fn jd_to_julian_yj(jd: JulianDayT) -> (YearT, DaysT) {
         let alt = COMMON_YEAR_LENGTH
             .checked_sub(jd)
             .expect("Arithmetic underflow");
-        let (alt_year, alt_yday) = jd_to_julian_yj(alt);
+        let (alt_year, alt_ordinal) = jd_to_julian_yj(alt);
         let year = JD0_YEAR - (alt_year - JD0_YEAR);
         let year_length = if is_julian_leap_year(year) {
             LEAP_YEAR_LENGTH as DaysT
         } else {
             COMMON_YEAR_LENGTH as DaysT
         };
-        let yday = year_length - 1 - alt_yday;
-        (year, yday)
+        let ordinal = year_length - alt_ordinal + 1;
+        (year, ordinal)
     } else {
         let mut year: YearT = jd / JULIAN_CYCLE_DAYS * JULIAN_CYCLE_YEARS;
-        let mut yday: JulianDayT = jd % JULIAN_CYCLE_DAYS;
+        let mut ordinal: JulianDayT = jd % JULIAN_CYCLE_DAYS;
         // Add a "virtual leap day" to the end of each common year so that
-        // `yday` can be divided & modded by LEAP_YEAR_LENGTH evenly:
-        if yday > COMMON_YEAR_LENGTH {
-            yday += (yday - LEAP_YEAR_LENGTH) / COMMON_YEAR_LENGTH;
+        // `ordinal` can be divided & modded by LEAP_YEAR_LENGTH evenly:
+        if ordinal > COMMON_YEAR_LENGTH {
+            ordinal += (ordinal - LEAP_YEAR_LENGTH) / COMMON_YEAR_LENGTH;
         }
-        year += yday / LEAP_YEAR_LENGTH + JD0_YEAR;
-        yday %= LEAP_YEAR_LENGTH;
-        (year, DaysT::try_from(yday).unwrap())
+        year += ordinal / LEAP_YEAR_LENGTH + JD0_YEAR;
+        ordinal %= LEAP_YEAR_LENGTH;
+        (year, DaysT::try_from(ordinal + 1).unwrap())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case(-1, -4713, 365)]
+    #[case(0, -4712, 1)]
+    #[case(366, -4711, 1)]
+    fn test_jd_to_julian_yj(#[case] jd: JulianDayT, #[case] year: YearT, #[case] ordinal: DaysT) {
+        assert_eq!(jd_to_julian_yj(jd), (year, ordinal));
     }
 }
