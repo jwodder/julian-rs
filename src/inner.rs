@@ -229,7 +229,7 @@ impl MonthShape {
     pub(crate) fn len(&self) -> u32 {
         match self {
             MonthShape::Solid { range } => range.end() - range.start() + 1,
-            MonthShape::HasGap { gap, max_mday } => max_mday - (gap.end - gap.start - 1),
+            MonthShape::HasGap { gap, max_mday } => max_mday - (gap.end - gap.start),
             MonthShape::Skipped => 0,
         }
     }
@@ -238,12 +238,13 @@ impl MonthShape {
         match self {
             MonthShape::Solid { range } => range.contains(&mday),
             MonthShape::HasGap { gap, max_mday } => {
-                (0..=*max_mday).contains(&mday) && !gap.contains(&mday)
+                (1..=*max_mday).contains(&mday) && !gap.contains(&mday)
             }
             MonthShape::Skipped => false,
         }
     }
 
+    // Returns a one-based ordinal
     pub(crate) fn get_ordinal_mday(
         &self,
         year: YearT,
@@ -261,7 +262,9 @@ impl MonthShape {
                 }
             }
             MonthShape::HasGap { gap, max_mday } => {
-                if mday < gap.start {
+                if mday == 0 {
+                    Err(Error::MdayOutOfRange { year, month, mday })
+                } else if mday < gap.start {
                     Ok(mday)
                 } else if mday < gap.end {
                     Err(Error::SkippedDate)
@@ -275,18 +278,18 @@ impl MonthShape {
         }
     }
 
-    // mday_ordinal is zero-based
+    // mday_ordinal is one-based
     pub(crate) fn get_mday_label(&self, mday_ordinal: u32) -> Option<u32> {
         match self {
             MonthShape::Solid { range } => {
-                let mday = mday_ordinal + range.start();
+                let mday = mday_ordinal - 1 + range.start();
                 (mday <= *range.end()).then_some(mday)
             }
             MonthShape::HasGap { gap, max_mday } => {
                 if mday_ordinal < gap.start {
-                    Some(mday_ordinal + 1)
+                    Some(mday_ordinal)
                 } else {
-                    let mday = mday_ordinal - gap.start + gap.end;
+                    let mday = mday_ordinal + (gap.end - gap.start);
                     (mday <= *max_mday).then_some(mday)
                 }
             }

@@ -101,9 +101,7 @@ impl Calendar {
             mday: pre_reform.mday,
         };
         let post_yday = match kind {
-            inner::GapKind::IntraMonth | inner::GapKind::CrossMonth => {
-                post_reform.yday - gap_length
-            }
+            inner::GapKind::IntraMonth | inner::GapKind::CrossMonth => pre_reform.yday + 1,
             _ => 0,
         };
         let post_reform = inner::Date {
@@ -151,11 +149,7 @@ impl Calendar {
     // `mday` is one-indexed
     pub fn at_ymd(&self, year: YearT, month: Month, mday: u32) -> Result<Date, Error> {
         let yday = self.ymd2yday(year, month, mday)?;
-        let julian_day = if self.is_julian() {
-            inner::julian_yj_to_jd(year, yday)
-        } else {
-            inner::gregorian_ymd_to_jd(year, month, mday)
-        };
+        let julian_day = self.get_julian_day(year, yday, month, mday);
         Ok(Date {
             calendar: *self,
             year,
@@ -169,11 +163,7 @@ impl Calendar {
     // TODO: Rethink name
     pub fn at_year_yday(&self, year: YearT, yday: DaysT) -> Result<Date, Error> {
         let (month, mday) = self.yday2ymd(year, yday)?;
-        let julian_day = if self.is_julian() {
-            inner::julian_yj_to_jd(year, yday)
-        } else {
-            inner::gregorian_ymd_to_jd(year, month, mday)
-        };
+        let julian_day = self.get_julian_day(year, yday, month, mday);
         Ok(Date {
             calendar: *self,
             year,
@@ -429,7 +419,7 @@ impl Calendar {
         let mut days = ordinal;
         for month in MonthIter::new() {
             let shape = self.month_shape(year, month);
-            if let Some(mday) = shape.get_mday_label(days) {
+            if let Some(mday) = shape.get_mday_label(days + 1) {
                 return Ok((month, mday));
             }
             days -= shape.len();
@@ -483,7 +473,7 @@ impl Calendar {
             if (year, month) == (gap.pre_reform.year, gap.pre_reform.month) {
                 if gap.kind == inner::GapKind::IntraMonth {
                     return inner::MonthShape::HasGap {
-                        gap: (gap.pre_reform.mday)..(gap.post_reform.mday),
+                        gap: (gap.pre_reform.mday + 1)..(gap.post_reform.mday),
                         max_mday: length,
                     };
                 } else {
@@ -502,6 +492,20 @@ impl Calendar {
             }
         }
         inner::MonthShape::Solid { range: 1..=length }
+    }
+
+    fn get_julian_day(&self, year: YearT, yday: DaysT, month: Month, mday: u32) -> JulianDayT {
+        match self.0 {
+            inner::Calendar::Julian => inner::julian_yj_to_jd(year, yday),
+            inner::Calendar::Gregorian => inner::gregorian_ymd_to_jd(year, month, mday),
+            inner::Calendar::Reforming { gap, .. } => {
+                if (year, yday) < (gap.post_reform.year, gap.post_reform.yday) {
+                    inner::julian_yj_to_jd(year, yday)
+                } else {
+                    inner::gregorian_ymd_to_jd(year, month, mday)
+                }
+            }
+        }
     }
 }
 
@@ -930,6 +934,7 @@ mod tests {
         #[case] month: Month,
         #[case] mday: u32,
     ) {
+        eprintln!("year = {year}, month = {month}, mday = {mday}, days = {days}");
         let date = Calendar::gregorian_reform()
             .at_ymd(year, month, mday)
             .unwrap();
@@ -2536,6 +2541,8 @@ mod tests {
     #[test]
     fn test_init_gregorian_reform() {
         let cal = Calendar::gregorian_reform();
+        // Use assert_matches! instead of assert_eq! because Calendar's Eq
+        // implementation ignores `gap`
         assert_matches!(
             cal.0,
             inner::Calendar::Reforming {
@@ -2604,5 +2611,62 @@ mod tests {
     ) {
         let cal = Calendar::gregorian_reform();
         assert_eq!(cal.month_length(year, month), length);
+    }
+
+    #[test]
+    fn test_gregorian_reform_reformation_month_shape() {
+        use Month::October;
+        let cal = Calendar::gregorian_reform();
+        let shape = cal.month_shape(1582, October);
+        assert_eq!(
+            shape,
+            inner::MonthShape::HasGap {
+                gap: 5..15,
+                max_mday: 31
+            }
+        );
+        assert_eq!(shape.len(), 21);
+        assert!(!shape.has_mday(0));
+        assert!(shape.has_mday(1));
+        assert!(shape.has_mday(4));
+        assert!(!shape.has_mday(5));
+        assert!(!shape.has_mday(14));
+        assert!(shape.has_mday(15));
+        assert!(shape.has_mday(31));
+        assert!(!shape.has_mday(32));
+        assert_eq!(
+            shape.get_ordinal_mday(1582, October, 0),
+            Err(Error::MdayOutOfRange {
+                year: 1582,
+                month: October,
+                mday: 0
+            })
+        );
+        assert_eq!(shape.get_ordinal_mday(1582, October, 1), Ok(1));
+        assert_eq!(shape.get_ordinal_mday(1582, October, 4), Ok(4));
+        assert_eq!(
+            shape.get_ordinal_mday(1582, October, 5),
+            Err(Error::SkippedDate)
+        );
+        assert_eq!(
+            shape.get_ordinal_mday(1582, October, 14),
+            Err(Error::SkippedDate)
+        );
+        assert_eq!(shape.get_ordinal_mday(1582, October, 15), Ok(5));
+        assert_eq!(shape.get_ordinal_mday(1582, October, 31), Ok(21));
+        assert_eq!(
+            shape.get_ordinal_mday(1582, October, 32),
+            Err(Error::MdayOutOfRange {
+                year: 1582,
+                month: October,
+                mday: 32
+            })
+        );
+        assert_eq!(shape.get_mday_label(1), Some(1));
+        assert_eq!(shape.get_mday_label(2), Some(2));
+        assert_eq!(shape.get_mday_label(4), Some(4));
+        assert_eq!(shape.get_mday_label(5), Some(15));
+        assert_eq!(shape.get_mday_label(21), Some(31));
+        assert_eq!(shape.get_mday_label(22), None);
     }
 }
