@@ -1,7 +1,4 @@
-use julian::{
-    julian_day_to_gregorian, julian_day_to_julian, Date, JulianDayT, ParseDateError, GREG_REFORM,
-    UK_REFORM,
-};
+use julian::{reformations, Calendar, Date, JulianDayT, ParseDateError};
 use lexopt::{Arg, Error, Parser, ValueExt};
 use std::fmt::Write;
 use std::num::ParseIntError;
@@ -103,19 +100,20 @@ struct Options {
 impl Options {
     fn run(&self, dates: Vec<Argument>) -> Vec<String> {
         let mut output = Vec::with_capacity(dates.len());
+        let cal = Calendar::gregorian_reform();
         if dates.is_empty() {
-            let (now, _) = Date::now();
-            let jd = now.to_julian_day();
+            let (now, _) = cal.now().unwrap();
+            let jd = now.julian_day();
             output.push(self.show_cal_to_julian(now, jd));
         } else {
             for d in dates {
                 match d {
                     Argument::CalendarDate(when) => {
-                        let jd = when.to_julian_day();
+                        let jd = when.julian_day();
                         output.push(self.show_cal_to_julian(when, jd));
                     }
                     Argument::JulianDay(jd) => {
-                        let when = julian_day_to_gregorian(jd);
+                        let when = cal.at_julian_day(jd).unwrap();
                         output.push(self.show_julian_to_cal(when, jd));
                     }
                 }
@@ -148,7 +146,7 @@ impl Options {
         self.fmt_date(s, when);
         if self.ospolicy.show_old_style(jd) {
             write!(s, " [O.S. ").unwrap();
-            self.fmt_date(s, julian_day_to_julian(jd));
+            self.fmt_date(s, Calendar::julian().at_julian_day(jd).unwrap());
             write!(s, "]").unwrap();
         }
     }
@@ -177,8 +175,8 @@ enum OldStylePolicy {
 impl OldStylePolicy {
     fn show_old_style(self, jd: JulianDayT) -> bool {
         self != OldStylePolicy::Never
-            && GREG_REFORM <= jd
-            && (jd < UK_REFORM || self == OldStylePolicy::PostReform)
+            && reformations::GREGORIAN <= jd
+            && (jd < reformations::UNITED_KINGDOM || self == OldStylePolicy::PostReform)
     }
 }
 
@@ -193,7 +191,9 @@ impl FromStr for Argument {
 
     fn from_str(s: &str) -> Result<Argument, ArgumentParseError> {
         if s.match_indices('-').any(|(i, _)| i > 0) {
-            Ok(Argument::CalendarDate(s.parse::<Date>()?))
+            Ok(Argument::CalendarDate(
+                Calendar::gregorian_reform().parse_date(s)?,
+            ))
         } else {
             Ok(Argument::JulianDay(s.parse::<JulianDayT>()?))
         }
@@ -216,6 +216,7 @@ fn main() -> Result<(), Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use julian::Month;
     use rstest::rstest;
     use OldStylePolicy::*;
 
@@ -359,12 +360,13 @@ mod tests {
     #[test]
     fn test_run_default_options() {
         let opts = Options::default();
+        let cal = Calendar::gregorian_reform();
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
             Argument::JulianDay(2440423),
-            Argument::CalendarDate(Date::from_ymd(1066, 10, 14).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(1066, Month::October, 14).unwrap()),
             Argument::JulianDay(2110701),
-            Argument::CalendarDate(Date::from_ymd(1707, 4, 15).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(1707, Month::April, 15).unwrap()),
             Argument::JulianDay(2344633),
         ];
         assert_eq!(
@@ -386,12 +388,13 @@ mod tests {
             verbose: true,
             ..Options::default()
         };
+        let cal = Calendar::gregorian_reform();
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
             Argument::JulianDay(2440423),
-            Argument::CalendarDate(Date::from_ymd(1066, 10, 14).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(1066, Month::October, 14).unwrap()),
             Argument::JulianDay(2110701),
-            Argument::CalendarDate(Date::from_ymd(1707, 4, 15).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(1707, Month::April, 15).unwrap()),
             Argument::JulianDay(2344633),
         ];
         assert_eq!(
@@ -413,12 +416,13 @@ mod tests {
             ospolicy: PostReform,
             ..Options::default()
         };
+        let cal = Calendar::gregorian_reform();
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
             Argument::JulianDay(2440423),
-            Argument::CalendarDate(Date::from_ymd(1066, 10, 14).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(1066, Month::October, 14).unwrap()),
             Argument::JulianDay(2110701),
-            Argument::CalendarDate(Date::from_ymd(1707, 4, 15).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(1707, Month::April, 15).unwrap()),
             Argument::JulianDay(2344633),
         ];
         assert_eq!(
@@ -440,12 +444,13 @@ mod tests {
             ospolicy: UkDelay,
             ..Options::default()
         };
+        let cal = Calendar::gregorian_reform();
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
             Argument::JulianDay(2440423),
-            Argument::CalendarDate(Date::from_ymd(1066, 10, 14).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(1066, Month::October, 14).unwrap()),
             Argument::JulianDay(2110701),
-            Argument::CalendarDate(Date::from_ymd(1707, 4, 15).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(1707, Month::April, 15).unwrap()),
             Argument::JulianDay(2344633),
         ];
         assert_eq!(
@@ -468,12 +473,13 @@ mod tests {
             verbose: true,
             ..Options::default()
         };
+        let cal = Calendar::gregorian_reform();
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
             Argument::JulianDay(2440423),
-            Argument::CalendarDate(Date::from_ymd(1066, 10, 14).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(1066, Month::October, 14).unwrap()),
             Argument::JulianDay(2110701),
-            Argument::CalendarDate(Date::from_ymd(1707, 4, 15).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(1707, Month::April, 15).unwrap()),
             Argument::JulianDay(2344633),
         ];
         assert_eq!(
@@ -496,12 +502,13 @@ mod tests {
             verbose: true,
             ..Options::default()
         };
+        let cal = Calendar::gregorian_reform();
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
             Argument::JulianDay(2440423),
-            Argument::CalendarDate(Date::from_ymd(1066, 10, 14).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(1066, Month::October, 14).unwrap()),
             Argument::JulianDay(2110701),
-            Argument::CalendarDate(Date::from_ymd(1707, 4, 15).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(1707, Month::April, 15).unwrap()),
             Argument::JulianDay(2344633),
         ];
         assert_eq!(
@@ -524,7 +531,11 @@ mod tests {
             ..Options::default()
         };
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::CalendarDate(
+                Calendar::gregorian_reform()
+                    .at_ymd(2023, Month::April, 20)
+                    .unwrap(),
+            ),
             Argument::JulianDay(2440423),
         ];
         assert_eq!(opts.run(dates), vec!["2460055", "1969-201"]);
@@ -538,7 +549,11 @@ mod tests {
             ..Options::default()
         };
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::CalendarDate(
+                Calendar::gregorian_reform()
+                    .at_ymd(2023, Month::April, 20)
+                    .unwrap(),
+            ),
             Argument::JulianDay(2440423),
         ];
         assert_eq!(
@@ -554,12 +569,13 @@ mod tests {
             verbose: true,
             ordinal: true,
         };
+        let cal = Calendar::gregorian_reform();
         let dates = vec![
-            Argument::CalendarDate(Date::from_ymd(2023, 4, 20).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
             Argument::JulianDay(2440423),
-            Argument::CalendarDate(Date::from_ymd(1066, 10, 14).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(1066, Month::October, 14).unwrap()),
             Argument::JulianDay(2110701),
-            Argument::CalendarDate(Date::from_ymd(1707, 4, 15).unwrap()),
+            Argument::CalendarDate(cal.at_ymd(1707, Month::April, 15).unwrap()),
             Argument::JulianDay(2344633),
         ];
         assert_eq!(
