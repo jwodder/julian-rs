@@ -767,7 +767,11 @@ impl Month {
 
 impl fmt::Display for Month {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.name())
+        if f.alternate() {
+            write!(f, "{}", self.short_name())
+        } else {
+            write!(f, "{}", self.name())
+        }
     }
 }
 
