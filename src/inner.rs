@@ -354,68 +354,86 @@ pub(crate) fn is_gregorian_leap_year(year: YearT) -> bool {
 }
 
 // Convert a date in the proleptic Gregorian calendar to a Julian day
-// TODO: Error on overflow/underflow
+// Returns None on arithmetic underflow/overflow
 // TODO: This doesn't work for dates with negative JDs; address
 // TODO: Try to rewrite to take ordinal instead of month & mday?
-pub(crate) fn gregorian_ymd_to_jd(year: YearT, month: Month, mday: u32) -> JulianDayT {
+pub(crate) fn gregorian_ymd_to_jd(year: YearT, month: Month, mday: u32) -> Option<JulianDayT> {
     const MONTHS: JulianDayT = 12;
     let a = (month.number() as JulianDayT) - 14;
-    (JULIAN_LEAP_CYCLE_DAYS * (year + 4800 + a / MONTHS)) / JULIAN_LEAP_CYCLE_YEARS
-        + (367 * (month.number() as JulianDayT - 2 - MONTHS * (a / MONTHS))) / MONTHS
-        - (3 * ((year + 4900 + a / MONTHS) / 100)) / JULIAN_LEAP_CYCLE_YEARS
-        + (mday as JulianDayT)
-        - 32075
-}
-
-// Convert a date in the proleptic Julian calendar to a Julian day
-// TODO: Error on overflow/underflow
-pub(crate) fn julian_yj_to_jd(year: YearT, ordinal: DaysT) -> JulianDayT {
-    let idays = JulianDayT::try_from(ordinal - 1).unwrap();
-    if year < JD0_YEAR {
-        let rev_year = JD0_YEAR - year;
-        idays - (rev_year * COMMON_YEAR_LENGTH + rev_year / JULIAN_LEAP_CYCLE_YEARS)
-    } else {
-        (year - JD0_YEAR) * COMMON_YEAR_LENGTH
-            + (year - JD0_YEAR + JULIAN_LEAP_CYCLE_YEARS - 1) / JULIAN_LEAP_CYCLE_YEARS
-            + idays
-    }
-}
-
-// TODO: Error on overflow/underflow
-// TODO: This doesn't work for dates with negative JDs; address
-// TODO: Rewrite to return ordinal instead of month & mday?
-pub(crate) fn jd_to_gregorian_ymd(jd: JulianDayT) -> (YearT, Month, u32) {
-    let ell = jd + 68569;
-    let n = (4 * ell) / GREGORIAN_CYCLE_DAYS;
-    let ell = ell - (GREGORIAN_CYCLE_DAYS * n + 3) / 4;
-    let i = (4000 * (ell + 1)) / 1461001;
-    let ell = ell - (JULIAN_LEAP_CYCLE_DAYS * i) / 4 + 31;
-    let j = (80 * ell) / 2447;
-    let d = ell - (2447 * j) / 80;
-    let ell = j / 11;
-    let m = j + 2 - 12 * ell;
-    let y = 100 * (n - 49) + i + ell;
-    (
-        y,
-        Month::try_from(u32::try_from(m).unwrap()).unwrap(),
-        u32::try_from(d).unwrap(),
+    add(
+        sub(
+            add(
+                mul(JULIAN_LEAP_CYCLE_DAYS, add(add(year, 4800)?, a / MONTHS)?)?
+                    / JULIAN_LEAP_CYCLE_YEARS,
+                mul(
+                    367,
+                    month.number() as JulianDayT - 2 - mul(MONTHS, a / MONTHS)?,
+                )? / MONTHS,
+            )?,
+            mul(3, (add(year, 4900)? + a / MONTHS) / 100)? / JULIAN_LEAP_CYCLE_YEARS,
+        )?,
+        sub(mday as JulianDayT, 32075)?,
     )
 }
 
-pub(crate) fn jd_to_julian_yj(jd: JulianDayT) -> (YearT, DaysT) {
+// Convert a date in the proleptic Julian calendar to a Julian day
+// Returns None on arithmetic underflow/overflow
+pub(crate) fn julian_yj_to_jd(year: YearT, ordinal: DaysT) -> Option<JulianDayT> {
+    let idays = JulianDayT::try_from(ordinal - 1).unwrap();
+    if year < JD0_YEAR {
+        let rev_year = sub(JD0_YEAR, year)?;
+        sub(
+            idays,
+            add(
+                mul(rev_year, COMMON_YEAR_LENGTH)?,
+                rev_year / JULIAN_LEAP_CYCLE_YEARS,
+            )?,
+        )
+    } else {
+        add(
+            add(
+                mul(sub(year, JD0_YEAR)?, COMMON_YEAR_LENGTH)?,
+                add(year, -JD0_YEAR + JULIAN_LEAP_CYCLE_YEARS - 1)? / JULIAN_LEAP_CYCLE_YEARS,
+            )?,
+            idays,
+        )
+    }
+}
+
+// Returns None on arithmetic underflow/overflow
+// TODO: This doesn't work for dates with negative JDs; address
+// TODO: Rewrite to return ordinal instead of month & mday?
+pub(crate) fn jd_to_gregorian_ymd(jd: JulianDayT) -> Option<(YearT, Month, u32)> {
+    let ell = add(jd, 68569)?;
+    let n = mul(4, ell)? / GREGORIAN_CYCLE_DAYS;
+    let ell = sub(ell, add(mul(GREGORIAN_CYCLE_DAYS, n)?, 3)? / 4)?;
+    let i = mul(4000, add(ell, 1)?)? / 1461001;
+    let ell = add(sub(ell, mul(JULIAN_LEAP_CYCLE_DAYS, i)? / 4)?, 31)?;
+    let j = mul(80, ell)? / 2447;
+    let d = sub(ell, mul(2447, j)? / 80)?;
+    let ell = j / 11;
+    let m = sub(add(j, 2)?, mul(12, ell)?)?;
+    let y = add(add(mul(100, sub(n, 49)?)?, i)?, ell)?;
+    Some((
+        y,
+        Month::try_from(u32::try_from(m).unwrap()).unwrap(),
+        u32::try_from(d).unwrap(),
+    ))
+}
+
+// Returns None on arithmetic underflow/overflow
+pub(crate) fn jd_to_julian_yj(jd: JulianDayT) -> Option<(YearT, DaysT)> {
     if jd < 0 {
-        let alt = COMMON_YEAR_LENGTH
-            .checked_sub(jd)
-            .expect("Arithmetic underflow");
-        let (alt_year, alt_ordinal) = jd_to_julian_yj(alt);
-        let year = JD0_YEAR - (alt_year - JD0_YEAR);
+        let alt = sub(COMMON_YEAR_LENGTH, jd)?;
+        let (alt_year, alt_ordinal) = jd_to_julian_yj(alt)?;
+        let year = sub(JD0_YEAR, sub(alt_year, JD0_YEAR)?)?;
         let year_length = if is_julian_leap_year(year) {
             LEAP_YEAR_LENGTH as DaysT
         } else {
             COMMON_YEAR_LENGTH as DaysT
         };
         let ordinal = year_length - alt_ordinal + 1;
-        (year, ordinal)
+        Some((year, ordinal))
     } else {
         let mut year: YearT = jd / JULIAN_LEAP_CYCLE_DAYS * JULIAN_LEAP_CYCLE_YEARS;
         let mut ordinal: JulianDayT = jd % JULIAN_LEAP_CYCLE_DAYS;
@@ -424,11 +442,29 @@ pub(crate) fn jd_to_julian_yj(jd: JulianDayT) -> (YearT, DaysT) {
         if ordinal > COMMON_YEAR_LENGTH {
             ordinal += (ordinal - LEAP_YEAR_LENGTH) / COMMON_YEAR_LENGTH;
         }
-        year += ordinal / LEAP_YEAR_LENGTH + JD0_YEAR;
+        year += add(ordinal / LEAP_YEAR_LENGTH, JD0_YEAR)?;
         ordinal %= LEAP_YEAR_LENGTH;
-        (year, DaysT::try_from(ordinal + 1).unwrap())
+        Some((year, DaysT::try_from(ordinal + 1).unwrap()))
     }
 }
+
+#[inline]
+fn add(x: JulianDayT, y: JulianDayT) -> Option<JulianDayT> {
+    x.checked_add(y)
+}
+
+#[inline]
+fn sub(x: JulianDayT, y: JulianDayT) -> Option<JulianDayT> {
+    x.checked_sub(y)
+}
+
+#[inline]
+fn mul(x: JulianDayT, y: JulianDayT) -> Option<JulianDayT> {
+    x.checked_mul(y)
+}
+
+// There is no need to check division, as it only fails with a divisor of zero
+// or negative one, which we're not using.
 
 pub(crate) fn cmp_range<T: Ord>(value: T, lower: T, upper: T) -> RangeOrdering {
     assert!(lower <= upper);
@@ -463,6 +499,6 @@ mod tests {
     #[case(0, -4712, 1)]
     #[case(366, -4711, 1)]
     fn test_jd_to_julian_yj(#[case] jd: JulianDayT, #[case] year: YearT, #[case] ordinal: DaysT) {
-        assert_eq!(jd_to_julian_yj(jd), (year, ordinal));
+        assert_eq!(jd_to_julian_yj(jd), Some((year, ordinal)));
     }
 }

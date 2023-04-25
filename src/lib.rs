@@ -161,7 +161,7 @@ impl Calendar {
     // `mday` is one-indexed
     pub fn at_ymd(&self, year: YearT, month: Month, mday: u32) -> Result<Date, Error> {
         let ordinal = self.ymd2ordinal(year, month, mday)?;
-        let julian_day = self.get_julian_day(year, ordinal, month, mday);
+        let julian_day = self.get_julian_day(year, ordinal, month, mday)?;
         let mday_ordinal = self
             .month_shape(year, month)
             .get_mday_ordinal(mday)
@@ -182,7 +182,7 @@ impl Calendar {
     // year_with_ordinal()?
     pub fn at_year_ordinal(&self, year: YearT, ordinal: DaysT) -> Result<Date, Error> {
         let (month, mday) = self.ordinal2ymd(year, ordinal)?;
-        let julian_day = self.get_julian_day(year, ordinal, month, mday);
+        let julian_day = self.get_julian_day(year, ordinal, month, mday)?;
         let mday_ordinal = self
             .month_shape(year, month)
             .get_mday_ordinal(mday)
@@ -204,10 +204,12 @@ impl Calendar {
         if self.0 == Julian
             || matches!(self.0, Reforming { reformation, .. } if julian_day < reformation)
         {
-            (year, ordinal) = inner::jd_to_julian_yj(julian_day);
+            (year, ordinal) =
+                inner::jd_to_julian_yj(julian_day).ok_or(Error::ArithmeticOutOfBounds)?;
             (month, mday) = self.ordinal2ymd(year, ordinal)?;
         } else {
-            (year, month, mday) = inner::jd_to_gregorian_ymd(julian_day);
+            (year, month, mday) =
+                inner::jd_to_gregorian_ymd(julian_day).ok_or(Error::ArithmeticOutOfBounds)?;
             ordinal = self.ymd2ordinal(year, month, mday)?;
         }
         let mday_ordinal = self
@@ -525,7 +527,13 @@ impl Calendar {
         }
     }
 
-    fn get_julian_day(&self, year: YearT, ordinal: DaysT, month: Month, mday: u32) -> JulianDayT {
+    fn get_julian_day(
+        &self,
+        year: YearT,
+        ordinal: DaysT,
+        month: Month,
+        mday: u32,
+    ) -> Result<JulianDayT, Error> {
         use inner::Calendar::*;
         if self.0 == Julian
             || matches!(self.0, Reforming {gap, ..} if (year, ordinal) < (gap.post_reform.year, gap.post_reform.ordinal))
@@ -533,7 +541,7 @@ impl Calendar {
             inner::julian_yj_to_jd(year, ordinal)
         } else {
             inner::gregorian_ymd_to_jd(year, month, mday)
-        }
+        }.ok_or(Error::ArithmeticOutOfBounds)
     }
 }
 
