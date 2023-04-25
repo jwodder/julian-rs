@@ -274,6 +274,25 @@ impl MonthShape {
             MonthShape::Skipped => Err(Error::SkippedDate),
         }
     }
+
+    // mday_ordinal is zero-based
+    pub(crate) fn get_mday_label(&self, mday_ordinal: u32) -> Option<u32> {
+        match self {
+            MonthShape::Solid { range } => {
+                let mday = mday_ordinal + range.start();
+                (mday <= *range.end()).then_some(mday)
+            }
+            MonthShape::HasGap { gap, max_mday } => {
+                if mday_ordinal < gap.start {
+                    Some(mday_ordinal + 1)
+                } else {
+                    let mday = mday_ordinal - gap.start + gap.end;
+                    (mday <= *max_mday).then_some(mday)
+                }
+            }
+            MonthShape::Skipped => None,
+        }
+    }
 }
 
 pub(crate) fn is_julian_leap_year(year: YearT) -> bool {

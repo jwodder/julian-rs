@@ -428,11 +428,11 @@ impl Calendar {
     fn yday2ymd(&self, year: YearT, ordinal: u32) -> Result<(Month, u32), Error> {
         let mut days = ordinal;
         for month in MonthIter::new() {
-            let length = self.month_length(year, month);
-            if days < length {
-                return Ok((month, days + 1));
+            let shape = self.month_shape(year, month);
+            if let Some(mday) = shape.get_mday_label(days) {
+                return Ok((month, mday));
             }
-            days -= length;
+            days -= shape.len();
         }
         Err(Error::YdayOutOfRange {
             year,
