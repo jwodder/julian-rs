@@ -526,16 +526,13 @@ impl Calendar {
     }
 
     fn get_julian_day(&self, year: YearT, ordinal: DaysT, month: Month, mday: u32) -> JulianDayT {
-        match self.0 {
-            inner::Calendar::Julian => inner::julian_yj_to_jd(year, ordinal),
-            inner::Calendar::Gregorian => inner::gregorian_ymd_to_jd(year, month, mday),
-            inner::Calendar::Reforming { gap, .. } => {
-                if (year, ordinal) < (gap.post_reform.year, gap.post_reform.ordinal) {
-                    inner::julian_yj_to_jd(year, ordinal)
-                } else {
-                    inner::gregorian_ymd_to_jd(year, month, mday)
-                }
-            }
+        use inner::Calendar::*;
+        if self.0 == Julian
+            || matches!(self.0, Reforming {gap, ..} if (year, ordinal) < (gap.post_reform.year, gap.post_reform.ordinal))
+        {
+            inner::julian_yj_to_jd(year, ordinal)
+        } else {
+            inner::gregorian_ymd_to_jd(year, month, mday)
         }
     }
 }
