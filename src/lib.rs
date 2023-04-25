@@ -15,10 +15,9 @@ use thiserror::Error;
 
 pub type YearT = i32;
 pub type DaysT = u32;
-pub type SecondsT = u32;
 pub type JulianDayT = i32;
 
-const SECONDS_IN_DAY: SecondsT = 24 * 60 * 60;
+const SECONDS_IN_DAY: i64 = 24 * 60 * 60;
 
 const COMMON_YEAR_LENGTH: JulianDayT = 365;
 const LEAP_YEAR_LENGTH: JulianDayT = 366;
@@ -27,15 +26,28 @@ const UNIX_EPOCH_JD: JulianDayT = 2440588; // noon on 1970-01-01
 
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub enum YearKind {
+    /// A full-length year not containing February 29
     Common,
+
+    /// A full-length year containing February 29
     Leap,
-    // "Reform" years are those that are shortened or have gaps in them due to
-    // a Reformation
-    // TODO: Rename; "Short"? "Truncated"?
+
+    /// A year that was shortened (either at the beginning or the end) or has a
+    /// gap in it due to a calendar reformation and which (after taking the
+    /// reformation into account) does not contain February 29.
+    ///
+    /// Note that, if a leap day (either Julian or Gregorian) was skipped due
+    /// to a reformation, the year will be counted as `ReformCommon` rather
+    /// than `ReformLeap`.
     ReformCommon,
+
+    /// A year that was shortened (either at the beginning or the end) or has a
+    /// gap in it due to a calendar reformation and which (after taking the
+    /// reformation into account) contains February 29.
     ReformLeap,
-    // Year that is skipped entirely by a (far in the future) Reformation; has
-    // a year length of zero
+
+    /// A year that was skipped entirely by a calendar reformation
+    // TODO: Give the smallest such reformation date
     Skipped,
 }
 
@@ -125,11 +137,11 @@ impl Calendar {
         Self::reforming(reformations::GREGORIAN).unwrap()
     }
 
-    pub fn now(&self) -> Result<(Date, SecondsT), Error> {
+    pub fn now(&self) -> Result<(Date, u32), Error> {
         self.at_system_time(SystemTime::now())
     }
 
-    pub fn at_system_time(&self, t: SystemTime) -> Result<(Date, SecondsT), Error> {
+    pub fn at_system_time(&self, t: SystemTime) -> Result<(Date, u32), Error> {
         let ts = match t.duration_since(UNIX_EPOCH) {
             Ok(d) => i64::try_from(d.as_secs()).map_err(|_| Error::ArithmeticOutOfBounds)?,
             Err(e) => {
@@ -139,10 +151,10 @@ impl Calendar {
         self.at_unix_timestamp(ts)
     }
 
-    pub fn at_unix_timestamp(&self, unix_time: i64) -> Result<(Date, SecondsT), Error> {
-        let jd = JulianDayT::try_from(unix_time / (SECONDS_IN_DAY as i64) + (UNIX_EPOCH_JD as i64))
+    pub fn at_unix_timestamp(&self, unix_time: i64) -> Result<(Date, u32), Error> {
+        let jd = JulianDayT::try_from(unix_time / SECONDS_IN_DAY + (UNIX_EPOCH_JD as i64))
             .map_err(|_| Error::ArithmeticOutOfBounds)?;
-        let secs = SecondsT::try_from(unix_time % (SECONDS_IN_DAY as i64)).unwrap();
+        let secs = u32::try_from(unix_time % SECONDS_IN_DAY).unwrap();
         Ok((self.at_julian_day(jd)?, secs))
     }
 
@@ -524,7 +536,7 @@ impl Calendar {
             } else if (gap.pre_reform.year, gap.pre_reform.month) < (year, month)
                 && (year, month) < (gap.post_reform.year, gap.post_reform.month)
             {
-                return inner::MonthShape::Skipped;
+                return inner::MonthShape::Skipped { year, month };
             } else if (year, month) == (gap.post_reform.year, gap.post_reform.month) {
                 return inner::MonthShape::Solid {
                     year,
@@ -567,7 +579,6 @@ pub struct Date {
 }
 
 impl Date {
-    // TODO: Should this return a reference instead?
     pub fn calendar(&self) -> Calendar {
         self.calendar
     }
@@ -580,8 +591,8 @@ impl Date {
         self.month
     }
 
-    // TODO: Name this "day()" to match chrono?
     // The "display" mday (one-indexed, counting skipped days)
+    // TODO: Name this "day()" to match chrono?
     pub fn mday(&self) -> u32 {
         self.mday
     }
@@ -859,9 +870,12 @@ pub enum Error {
     },
     #[error("day-of-year ordinal {ordinal} is outside of valid range for year {year}")]
     OrdinalOutOfRange { year: YearT, ordinal: DaysT },
-    #[error("date was skipped by calendar reform")]
-    // TODO: Include the date in the variant?
-    SkippedDate,
+    #[error("date {year:04}-{:02}-{mday:02} was skipped by calendar reform", month.number())]
+    SkippedDate {
+        year: YearT,
+        month: Month,
+        mday: u32,
+    },
 }
 
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
@@ -1224,30 +1238,51 @@ mod tests {
         #[test]
         fn test_parse_skipped_date() {
             let r = Calendar::gregorian_reform().parse_date("1582-10-10");
-            assert_eq!(r, Err(ParseDateError::InvalidDate(Error::SkippedDate)));
+            assert_eq!(
+                r,
+                Err(ParseDateError::InvalidDate(Error::SkippedDate {
+                    year: 1582,
+                    month: Month::October,
+                    mday: 10
+                }))
+            );
             assert_eq!(
                 r.unwrap_err().to_string(),
-                "invalid calendar date: date was skipped by calendar reform"
+                "invalid calendar date: date 1582-10-10 was skipped by calendar reform"
             );
         }
 
         #[test]
         fn test_parse_first_skipped_date() {
             let r = Calendar::gregorian_reform().parse_date("1582-10-05");
-            assert_eq!(r, Err(ParseDateError::InvalidDate(Error::SkippedDate)));
+            assert_eq!(
+                r,
+                Err(ParseDateError::InvalidDate(Error::SkippedDate {
+                    year: 1582,
+                    month: Month::October,
+                    mday: 5
+                }))
+            );
             assert_eq!(
                 r.unwrap_err().to_string(),
-                "invalid calendar date: date was skipped by calendar reform"
+                "invalid calendar date: date 1582-10-05 was skipped by calendar reform"
             );
         }
 
         #[test]
         fn test_parse_last_skipped_date() {
             let r = Calendar::gregorian_reform().parse_date("1582-10-14");
-            assert_eq!(r, Err(ParseDateError::InvalidDate(Error::SkippedDate)));
+            assert_eq!(
+                r,
+                Err(ParseDateError::InvalidDate(Error::SkippedDate {
+                    year: 1582,
+                    month: Month::October,
+                    mday: 14
+                }))
+            );
             assert_eq!(
                 r.unwrap_err().to_string(),
-                "invalid calendar date: date was skipped by calendar reform"
+                "invalid calendar date: date 1582-10-14 was skipped by calendar reform"
             );
         }
 
@@ -2449,7 +2484,7 @@ mod tests {
         #[case] year: YearT,
         #[case] month: Month,
         #[case] mday: u32,
-        #[case] seconds: SecondsT,
+        #[case] seconds: u32,
     ) {
         let (date, s) = Calendar::gregorian_reform().at_unix_timestamp(ts).unwrap();
         assert_eq!(date.year(), year);
@@ -2559,30 +2594,51 @@ mod tests {
     #[test]
     fn test_from_ymd_skipped_date() {
         let r = Calendar::gregorian_reform().at_ymd(1582, Month::October, 10);
-        assert_eq!(r, Err(Error::SkippedDate));
+        assert_eq!(
+            r,
+            Err(Error::SkippedDate {
+                year: 1582,
+                month: Month::October,
+                mday: 10
+            })
+        );
         assert_eq!(
             r.unwrap_err().to_string(),
-            "date was skipped by calendar reform"
+            "date 1582-10-10 was skipped by calendar reform"
         );
     }
 
     #[test]
     fn test_from_ymd_first_skipped_date() {
         let r = Calendar::gregorian_reform().at_ymd(1582, Month::October, 5);
-        assert_eq!(r, Err(Error::SkippedDate));
+        assert_eq!(
+            r,
+            Err(Error::SkippedDate {
+                year: 1582,
+                month: Month::October,
+                mday: 5
+            })
+        );
         assert_eq!(
             r.unwrap_err().to_string(),
-            "date was skipped by calendar reform"
+            "date 1582-10-05 was skipped by calendar reform"
         );
     }
 
     #[test]
     fn test_from_ymd_last_skipped_date() {
         let r = Calendar::gregorian_reform().at_ymd(1582, Month::October, 14);
-        assert_eq!(r, Err(Error::SkippedDate));
+        assert_eq!(
+            r,
+            Err(Error::SkippedDate {
+                year: 1582,
+                month: Month::October,
+                mday: 14
+            })
+        );
         assert_eq!(
             r.unwrap_err().to_string(),
-            "date was skipped by calendar reform"
+            "date 1582-10-14 was skipped by calendar reform"
         );
     }
 
@@ -2710,8 +2766,22 @@ mod tests {
         );
         assert_eq!(shape.get_mday_ordinal(1), Ok(1));
         assert_eq!(shape.get_mday_ordinal(4), Ok(4));
-        assert_eq!(shape.get_mday_ordinal(5), Err(Error::SkippedDate));
-        assert_eq!(shape.get_mday_ordinal(14), Err(Error::SkippedDate));
+        assert_eq!(
+            shape.get_mday_ordinal(5),
+            Err(Error::SkippedDate {
+                year: 1582,
+                month: October,
+                mday: 5
+            })
+        );
+        assert_eq!(
+            shape.get_mday_ordinal(14),
+            Err(Error::SkippedDate {
+                year: 1582,
+                month: October,
+                mday: 14
+            })
+        );
         assert_eq!(shape.get_mday_ordinal(15), Ok(5));
         assert_eq!(shape.get_mday_ordinal(31), Ok(21));
         assert_eq!(

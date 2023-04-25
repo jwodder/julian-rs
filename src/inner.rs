@@ -231,7 +231,10 @@ pub(crate) enum MonthShape {
         gap: Range<u32>,
         max_mday: u32,
     },
-    Skipped,
+    Skipped {
+        year: YearT,
+        month: Month,
+    },
 }
 
 impl MonthShape {
@@ -239,7 +242,7 @@ impl MonthShape {
         match self {
             MonthShape::Solid { range, .. } => range.end() - range.start() + 1,
             MonthShape::HasGap { gap, max_mday, .. } => max_mday - (gap.end - gap.start),
-            MonthShape::Skipped => 0,
+            MonthShape::Skipped { .. } => 0,
         }
     }
 
@@ -249,14 +252,14 @@ impl MonthShape {
             &MonthShape::HasGap {
                 ref gap, max_mday, ..
             } => (1..=max_mday).contains(&mday) && !gap.contains(&mday),
-            MonthShape::Skipped => false,
+            MonthShape::Skipped { .. } => false,
         }
     }
 
     // Returns a one-based ordinal
     pub(crate) fn get_mday_ordinal(&self, mday: u32) -> Result<u32, Error> {
-        match self {
-            &MonthShape::Solid {
+        match *self {
+            MonthShape::Solid {
                 year,
                 month,
                 ref range,
@@ -266,10 +269,10 @@ impl MonthShape {
                 } else if *range.start() == 1 {
                     Err(Error::MdayOutOfRange { year, month, mday })
                 } else {
-                    Err(Error::SkippedDate)
+                    Err(Error::SkippedDate { year, month, mday })
                 }
             }
-            &MonthShape::HasGap {
+            MonthShape::HasGap {
                 year,
                 month,
                 ref gap,
@@ -280,14 +283,14 @@ impl MonthShape {
                 } else if mday < gap.start {
                     Ok(mday)
                 } else if mday < gap.end {
-                    Err(Error::SkippedDate)
+                    Err(Error::SkippedDate { year, month, mday })
                 } else if mday <= max_mday {
                     Ok(mday - u32::try_from(gap.len()).unwrap())
                 } else {
                     Err(Error::MdayOutOfRange { year, month, mday })
                 }
             }
-            MonthShape::Skipped => Err(Error::SkippedDate),
+            MonthShape::Skipped { year, month } => Err(Error::SkippedDate { year, month, mday }),
         }
     }
 
@@ -308,7 +311,7 @@ impl MonthShape {
                     (mday <= max_mday).then_some(mday)
                 }
             }
-            MonthShape::Skipped => None,
+            MonthShape::Skipped { .. } => None,
         }
     }
 }
