@@ -417,11 +417,19 @@ impl Calendar {
                         };
                         use inner::GapKind::*;
                         match gap.kind {
-                            // TODO: PROBLEM: If the gap crossed a leap day,
-                            // the year kind will be ReformCommon, but an extra
-                            // day will be included in gap_length
                             IntraMonth | CrossMonth => {
                                 length -= gap.gap_length;
+                                // If the gap crossed a leap day, the year kind
+                                // will be ReformCommon, but an extra day will
+                                // be included in gap_length, so we need to
+                                // add back 1.
+                                if (gap.pre_reform.month, gap.pre_reform.mday)
+                                    < (Month::February, 29)
+                                    && (Month::February, 29)
+                                        < (gap.post_reform.month, gap.post_reform.mday)
+                                {
+                                    length += 1;
+                                }
                             }
                             CrossYear | MultiYear => {
                                 if year == gap.pre_reform.year {
@@ -2720,5 +2728,59 @@ mod tests {
         assert_eq!(shape.get_mday_label(5), Some(15));
         assert_eq!(shape.get_mday_label(21), Some(31));
         assert_eq!(shape.get_mday_label(22), None);
+    }
+
+    #[test]
+    fn test_init_german_reformation() {
+        let cal = Calendar::reforming(2342032).unwrap();
+        // Use assert_matches! instead of assert_eq! because Calendar's Eq
+        // implementation ignores `gap`
+        assert_matches!(
+            cal.0,
+            inner::Calendar::Reforming {
+                reformation: 2342032,
+                gap: inner::ReformGap {
+                    pre_reform: inner::Date {
+                        year: 1700,
+                        ordinal: 49,
+                        month: Month::February,
+                        mday: 18
+                    },
+                    post_reform: inner::Date {
+                        year: 1700,
+                        ordinal: 50,
+                        month: Month::March,
+                        mday: 1
+                    },
+                    gap_length: 11,
+                    kind: inner::GapKind::CrossMonth
+                }
+            }
+        );
+    }
+
+    #[test]
+    fn test_german_reformation_year() {
+        let cal = Calendar::reforming(2342032).unwrap();
+        assert_eq!(cal.year_kind(1700), YearKind::ReformCommon);
+        assert_eq!(cal.year_length(1700), 355);
+        let shape_feb = cal.month_shape(1700, Month::February);
+        assert_eq!(
+            shape_feb,
+            inner::MonthShape::Solid {
+                year: 1700,
+                month: Month::February,
+                range: 1..=18
+            }
+        );
+        let shape_mar = cal.month_shape(1700, Month::March);
+        assert_eq!(
+            shape_mar,
+            inner::MonthShape::Solid {
+                year: 1700,
+                month: Month::March,
+                range: 1..=31
+            }
+        );
     }
 }
