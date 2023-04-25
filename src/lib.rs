@@ -152,9 +152,10 @@ impl Calendar {
     }
 
     pub fn at_unix_timestamp(&self, unix_time: i64) -> Result<(Date, u32), Error> {
-        let jd = JulianDayT::try_from(unix_time / SECONDS_IN_DAY + (UNIX_EPOCH_JD as i64))
-            .map_err(|_| Error::ArithmeticOutOfBounds)?;
-        let secs = u32::try_from(unix_time % SECONDS_IN_DAY).unwrap();
+        let jd =
+            JulianDayT::try_from(unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JD as i64))
+                .map_err(|_| Error::ArithmeticOutOfBounds)?;
+        let secs = u32::try_from(unix_time.rem_euclid(SECONDS_IN_DAY)).unwrap();
         Ok((self.at_julian_day(jd)?, secs))
     }
 
@@ -2471,9 +2472,14 @@ mod tests {
         assert_eq!(format!("{date:#}"), "2023-074");
     }
 
-    // TODO: Test with negative timestamps
     #[rstest]
+    #[case(-2147483647, 1901, Month::December, 13, 74753)]
+    #[case(-1234567890, 1930, Month::November, 18, 1710)]
+    #[case(-1000000000, 1938, Month::April, 24, 80000)]
+    #[case(-100000000, 1966, Month::October, 31, 51200)]
+    #[case(-1, 1969, Month::December, 31, 86399)]
     #[case(0, 1970, Month::January, 1, 0)]
+    #[case(1, 1970, Month::January, 1, 1)]
     #[case(100000000, 1973, Month::March, 3, 35200)]
     #[case(1000000000, 2001, Month::September, 9, 6400)]
     #[case(1234567890, 2009, Month::February, 13, 84690)]
