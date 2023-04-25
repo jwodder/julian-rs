@@ -11,9 +11,8 @@ const JD0_YEAR: YearT = -4712;
 const GREGORIAN_CYCLE_DAYS: JulianDayT = 146097;
 const GREGORIAN_CYCLE_YEARS: YearT = 400;
 
-// TODO: Rename these consts, as this is just the "leap cycle":
-const JULIAN_CYCLE_DAYS: JulianDayT = 1461;
-const JULIAN_CYCLE_YEARS: YearT = 4;
+const JULIAN_LEAP_CYCLE_DAYS: JulianDayT = 1461;
+const JULIAN_LEAP_CYCLE_YEARS: YearT = 4;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Calendar {
@@ -317,11 +316,11 @@ impl MonthShape {
 }
 
 pub(crate) fn is_julian_leap_year(year: YearT) -> bool {
-    year % JULIAN_CYCLE_YEARS == 0
+    year % JULIAN_LEAP_CYCLE_YEARS == 0
 }
 
 pub(crate) fn is_gregorian_leap_year(year: YearT) -> bool {
-    year % JULIAN_CYCLE_YEARS == 0 && (year % 100 != 0 || year % GREGORIAN_CYCLE_YEARS == 0)
+    year % JULIAN_LEAP_CYCLE_YEARS == 0 && (year % 100 != 0 || year % GREGORIAN_CYCLE_YEARS == 0)
 }
 
 // Convert a date in the proleptic Gregorian calendar to a Julian day
@@ -331,9 +330,9 @@ pub(crate) fn is_gregorian_leap_year(year: YearT) -> bool {
 pub(crate) fn gregorian_ymd_to_jd(year: YearT, month: Month, mday: u32) -> JulianDayT {
     const MONTHS: JulianDayT = 12;
     let a = (month.number() as JulianDayT) - 14;
-    (JULIAN_CYCLE_DAYS * (year + 4800 + a / MONTHS)) / JULIAN_CYCLE_YEARS
+    (JULIAN_LEAP_CYCLE_DAYS * (year + 4800 + a / MONTHS)) / JULIAN_LEAP_CYCLE_YEARS
         + (367 * (month.number() as JulianDayT - 2 - MONTHS * (a / MONTHS))) / MONTHS
-        - (3 * ((year + 4900 + a / MONTHS) / 100)) / JULIAN_CYCLE_YEARS
+        - (3 * ((year + 4900 + a / MONTHS) / 100)) / JULIAN_LEAP_CYCLE_YEARS
         + (mday as JulianDayT)
         - 32075
 }
@@ -344,10 +343,10 @@ pub(crate) fn julian_yj_to_jd(year: YearT, ordinal: DaysT) -> JulianDayT {
     let idays = JulianDayT::try_from(ordinal - 1).unwrap();
     if year < JD0_YEAR {
         let rev_year = JD0_YEAR - year;
-        idays - (rev_year * COMMON_YEAR_LENGTH + rev_year / JULIAN_CYCLE_YEARS)
+        idays - (rev_year * COMMON_YEAR_LENGTH + rev_year / JULIAN_LEAP_CYCLE_YEARS)
     } else {
         (year - JD0_YEAR) * COMMON_YEAR_LENGTH
-            + (year - JD0_YEAR + JULIAN_CYCLE_YEARS - 1) / JULIAN_CYCLE_YEARS
+            + (year - JD0_YEAR + JULIAN_LEAP_CYCLE_YEARS - 1) / JULIAN_LEAP_CYCLE_YEARS
             + idays
     }
 }
@@ -359,7 +358,7 @@ pub(crate) fn jd_to_gregorian_ymd(jd: JulianDayT) -> (YearT, Month, u32) {
     let n = (4 * ell) / GREGORIAN_CYCLE_DAYS;
     let ell = ell - (GREGORIAN_CYCLE_DAYS * n + 3) / 4;
     let i = (4000 * (ell + 1)) / 1461001;
-    let ell = ell - (JULIAN_CYCLE_DAYS * i) / 4 + 31;
+    let ell = ell - (JULIAN_LEAP_CYCLE_DAYS * i) / 4 + 31;
     let j = (80 * ell) / 2447;
     let d = ell - (2447 * j) / 80;
     let ell = j / 11;
@@ -387,8 +386,8 @@ pub(crate) fn jd_to_julian_yj(jd: JulianDayT) -> (YearT, DaysT) {
         let ordinal = year_length - alt_ordinal + 1;
         (year, ordinal)
     } else {
-        let mut year: YearT = jd / JULIAN_CYCLE_DAYS * JULIAN_CYCLE_YEARS;
-        let mut ordinal: JulianDayT = jd % JULIAN_CYCLE_DAYS;
+        let mut year: YearT = jd / JULIAN_LEAP_CYCLE_DAYS * JULIAN_LEAP_CYCLE_YEARS;
+        let mut ordinal: JulianDayT = jd % JULIAN_LEAP_CYCLE_DAYS;
         // Add a "virtual leap day" to the end of each common year so that
         // `ordinal` can be divided & modded by LEAP_YEAR_LENGTH evenly:
         if ordinal > COMMON_YEAR_LENGTH {
