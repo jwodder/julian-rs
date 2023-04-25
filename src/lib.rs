@@ -199,59 +199,30 @@ impl Calendar {
     }
 
     pub fn at_julian_day(&self, julian_day: JulianDayT) -> Result<Date, Error> {
-        match self.0 {
-            inner::Calendar::Julian => {
-                let (year, ordinal) = inner::jd_to_julian_yj(julian_day);
-                let (month, mday) = self.ordinal2ymd(year, ordinal)?;
-                let mday_ordinal = self
-                    .month_shape(year, month)
-                    .get_mday_ordinal(mday)
-                    .unwrap();
-                Ok(Date {
-                    calendar: *self,
-                    year,
-                    ordinal,
-                    month,
-                    mday,
-                    mday_ordinal,
-                    julian_day,
-                })
-            }
-            inner::Calendar::Reforming { reformation, .. } if julian_day < reformation => {
-                let (year, ordinal) = inner::jd_to_julian_yj(julian_day);
-                let (month, mday) = self.ordinal2ymd(year, ordinal)?;
-                let mday_ordinal = self
-                    .month_shape(year, month)
-                    .get_mday_ordinal(mday)
-                    .unwrap();
-                Ok(Date {
-                    calendar: *self,
-                    year,
-                    ordinal,
-                    month,
-                    mday,
-                    mday_ordinal,
-                    julian_day,
-                })
-            }
-            _ => {
-                let (year, month, mday) = inner::jd_to_gregorian_ymd(julian_day);
-                let ordinal = self.ymd2ordinal(year, month, mday)?;
-                let mday_ordinal = self
-                    .month_shape(year, month)
-                    .get_mday_ordinal(mday)
-                    .unwrap();
-                Ok(Date {
-                    calendar: *self,
-                    year,
-                    ordinal,
-                    month,
-                    mday,
-                    mday_ordinal,
-                    julian_day,
-                })
-            }
+        use inner::Calendar::*;
+        let (year, ordinal, month, mday);
+        if self.0 == Julian
+            || matches!(self.0, Reforming { reformation, .. } if julian_day < reformation)
+        {
+            (year, ordinal) = inner::jd_to_julian_yj(julian_day);
+            (month, mday) = self.ordinal2ymd(year, ordinal)?;
+        } else {
+            (year, month, mday) = inner::jd_to_gregorian_ymd(julian_day);
+            ordinal = self.ymd2ordinal(year, month, mday)?;
         }
+        let mday_ordinal = self
+            .month_shape(year, month)
+            .get_mday_ordinal(mday)
+            .unwrap();
+        Ok(Date {
+            calendar: *self,
+            year,
+            ordinal,
+            month,
+            mday,
+            mday_ordinal,
+            julian_day,
+        })
     }
 
     // Formats:
