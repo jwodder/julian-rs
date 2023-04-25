@@ -355,7 +355,7 @@ pub(crate) fn is_gregorian_leap_year(year: YearT) -> bool {
 
 // Convert a date in the proleptic Gregorian calendar to a Julian day
 // Returns None on arithmetic underflow/overflow
-// TODO: This doesn't work for dates with negative JDs; address
+// TODO: PROBLEM: This doesn't work for dates with negative JDs; address
 // TODO: Try to rewrite to take ordinal instead of month & mday?
 pub(crate) fn gregorian_ymd_to_jd(year: YearT, month: Month, mday: u32) -> Option<JulianDayT> {
     const MONTHS: JulianDayT = 12;
@@ -401,7 +401,7 @@ pub(crate) fn julian_yj_to_jd(year: YearT, ordinal: DaysT) -> Option<JulianDayT>
 }
 
 // Returns None on arithmetic underflow/overflow
-// TODO: This doesn't work for dates with negative JDs; address
+// TODO: PROBLEM: This doesn't work for dates with negative JDs; address
 // TODO: Rewrite to return ordinal instead of month & mday?
 pub(crate) fn jd_to_gregorian_ymd(jd: JulianDayT) -> Option<(YearT, Month, u32)> {
     let ell = add(jd, 68569)?;

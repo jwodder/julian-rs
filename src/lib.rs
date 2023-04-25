@@ -17,12 +17,12 @@ pub type YearT = i32;
 pub type DaysT = u32;
 pub type JulianDayT = i32;
 
+pub const UNIX_EPOCH_JD: JulianDayT = 2440588; // noon on 1970-01-01
+
 const SECONDS_IN_DAY: i64 = 24 * 60 * 60;
 
 const COMMON_YEAR_LENGTH: JulianDayT = 365;
 const LEAP_YEAR_LENGTH: JulianDayT = 366;
-
-const UNIX_EPOCH_JD: JulianDayT = 2440588; // noon on 1970-01-01
 
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub enum YearKind {
@@ -177,10 +177,7 @@ impl Calendar {
         })
     }
 
-    // TODO: Rethink name
-    // at_yo()?
-    // year_with_ordinal()?
-    pub fn at_year_ordinal(&self, year: YearT, ordinal: DaysT) -> Result<Date, Error> {
+    pub fn at_ordinal_date(&self, year: YearT, ordinal: DaysT) -> Result<Date, Error> {
         let (month, mday) = self.ordinal2ymd(year, ordinal)?;
         let julian_day = self.get_julian_day(year, ordinal, month, mday)?;
         let mday_ordinal = self
@@ -238,7 +235,7 @@ impl Calendar {
             return Err(ParseDateError::HasTrailing);
         }
         match diny {
-            inner::DayInYear::Ordinal(ordinal) => Ok(self.at_year_ordinal(year, ordinal)?),
+            inner::DayInYear::Ordinal(ordinal) => Ok(self.at_ordinal_date(year, ordinal)?),
             inner::DayInYear::Date { month, mday } => Ok(self.at_ymd(year, month, mday)?),
         }
     }
@@ -2424,7 +2421,7 @@ mod tests {
         #[case] mday: u32,
     ) {
         let date = Calendar::gregorian_reform()
-            .at_year_ordinal(year, ordinal)
+            .at_ordinal_date(year, ordinal)
             .unwrap();
         assert_eq!(date.year(), year);
         assert_eq!(date.ordinal(), ordinal);
@@ -2640,7 +2637,7 @@ mod tests {
     #[case(1582, 356)]
     #[case(1582, 1000)]
     fn test_gregorian_reform_at_year_ordinal_err(#[case] year: YearT, #[case] ordinal: DaysT) {
-        let r = Calendar::gregorian_reform().at_year_ordinal(year, ordinal);
+        let r = Calendar::gregorian_reform().at_ordinal_date(year, ordinal);
         assert_eq!(r, Err(Error::OrdinalOutOfRange { year, ordinal }));
         assert_eq!(
             r.unwrap_err().to_string(),
