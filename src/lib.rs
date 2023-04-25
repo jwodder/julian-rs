@@ -85,7 +85,7 @@ impl Calendar {
             .at_ymd(post_reform.year(), post_reform.month(), post_reform.mday())?
             .julian_day();
         if post_reform_as_julian <= reformation {
-            return Err(Error::Generic);
+            return Err(Error::BadReformation);
         }
         let gap_length = u32::try_from(post_reform_as_julian - reformation).unwrap();
         let kind = inner::GapKind::for_dates(
@@ -446,7 +446,6 @@ impl Calendar {
     }
 
     // This uses a one-based ordinal.
-    // TODO: Rethink name
     fn ordinal2ymd(&self, year: YearT, ordinal: u32) -> Result<(Month, u32), Error> {
         if ordinal == 0 {
             return Err(Error::OrdinalOutOfRange { year, ordinal });
@@ -463,7 +462,6 @@ impl Calendar {
     }
 
     // This uses a one-based ordinal.
-    // TODO: Rethink name
     fn ymd2ordinal(&self, year: YearT, month: Month, mday: u32) -> Result<u32, Error> {
         let mord = self.get_mday_ordinal(year, month, mday)?;
         Ok(MonthIter::new()
@@ -841,8 +839,8 @@ impl DoubleEndedIterator for MonthIter {
 
 #[derive(Copy, Clone, Debug, Eq, Error, PartialEq)]
 pub enum Error {
-    #[error("TODO")]
-    Generic,
+    #[error("reformation date would not cause calendar to advance")]
+    BadReformation,
     #[error("arithmetic overflow/underflow")]
     ArithmeticOutOfBounds,
     #[error("mday {mday} is outside of valid range for {month} {year}")]
@@ -1269,7 +1267,7 @@ mod tests {
 
         #[test]
         fn test_parse_bad_month_mday_sep() {
-            // TODO: Try to make this return a more helpful error?
+            // TODO: Try to make this return a more helpful error
             let r = Calendar::gregorian_reform().parse_date("2023-04:20");
             assert_eq!(r, Err(ParseDateError::InvalidOrdinal));
             assert_eq!(
