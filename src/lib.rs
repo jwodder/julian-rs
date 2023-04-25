@@ -442,8 +442,7 @@ impl Calendar {
     }
 
     fn get_mday_ordinal(&self, year: YearT, month: Month, mday: u32) -> Result<u32, Error> {
-        self.month_shape(year, month)
-            .get_ordinal_mday(year, month, mday)
+        self.month_shape(year, month).get_mday_ordinal(mday)
     }
 
     fn month_shape(&self, year: YearT, month: Month) -> inner::MonthShape {
@@ -472,11 +471,15 @@ impl Calendar {
             if (year, month) == (gap.pre_reform.year, gap.pre_reform.month) {
                 if gap.kind == inner::GapKind::IntraMonth {
                     return inner::MonthShape::HasGap {
+                        year,
+                        month,
                         gap: (gap.pre_reform.mday + 1)..(gap.post_reform.mday),
                         max_mday: length,
                     };
                 } else {
                     return inner::MonthShape::Solid {
+                        year,
+                        month,
                         range: 1..=(gap.pre_reform.mday),
                     };
                 }
@@ -486,11 +489,17 @@ impl Calendar {
                 return inner::MonthShape::Skipped;
             } else if (year, month) == (gap.post_reform.year, gap.post_reform.month) {
                 return inner::MonthShape::Solid {
+                    year,
+                    month,
                     range: (gap.post_reform.mday)..=length,
                 };
             }
         }
-        inner::MonthShape::Solid { range: 1..=length }
+        inner::MonthShape::Solid {
+            year,
+            month,
+            range: 1..=length,
+        }
     }
 
     fn get_julian_day(&self, year: YearT, ordinal: DaysT, month: Month, mday: u32) -> JulianDayT {
@@ -2631,6 +2640,8 @@ mod tests {
         assert_eq!(
             shape,
             inner::MonthShape::HasGap {
+                year: 1582,
+                month: October,
                 gap: 5..15,
                 max_mday: 31
             }
@@ -2645,27 +2656,21 @@ mod tests {
         assert!(shape.has_mday(31));
         assert!(!shape.has_mday(32));
         assert_eq!(
-            shape.get_ordinal_mday(1582, October, 0),
+            shape.get_mday_ordinal(0),
             Err(Error::MdayOutOfRange {
                 year: 1582,
                 month: October,
                 mday: 0
             })
         );
-        assert_eq!(shape.get_ordinal_mday(1582, October, 1), Ok(1));
-        assert_eq!(shape.get_ordinal_mday(1582, October, 4), Ok(4));
+        assert_eq!(shape.get_mday_ordinal(1), Ok(1));
+        assert_eq!(shape.get_mday_ordinal(4), Ok(4));
+        assert_eq!(shape.get_mday_ordinal(5), Err(Error::SkippedDate));
+        assert_eq!(shape.get_mday_ordinal(14), Err(Error::SkippedDate));
+        assert_eq!(shape.get_mday_ordinal(15), Ok(5));
+        assert_eq!(shape.get_mday_ordinal(31), Ok(21));
         assert_eq!(
-            shape.get_ordinal_mday(1582, October, 5),
-            Err(Error::SkippedDate)
-        );
-        assert_eq!(
-            shape.get_ordinal_mday(1582, October, 14),
-            Err(Error::SkippedDate)
-        );
-        assert_eq!(shape.get_ordinal_mday(1582, October, 15), Ok(5));
-        assert_eq!(shape.get_ordinal_mday(1582, October, 31), Ok(21));
-        assert_eq!(
-            shape.get_ordinal_mday(1582, October, 32),
+            shape.get_mday_ordinal(32),
             Err(Error::MdayOutOfRange {
                 year: 1582,
                 month: October,
