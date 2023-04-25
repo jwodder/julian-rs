@@ -212,9 +212,9 @@ impl<'a> DateParser<'a> {
             .last()
             .map(|(i, _)| i + 1)
         {
-            Some(2) => {
-                let n = self.data[..2].parse::<u32>().unwrap();
-                self.data = &self.data[2..];
+            Some(i @ (1 | 2)) => {
+                let n = self.data[..i].parse::<u32>().unwrap();
+                self.data = &self.data[i..];
                 Ok(n)
             }
             Some(got) => Err(ParseDateError::Invalid02dLength { got }),

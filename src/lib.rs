@@ -224,9 +224,10 @@ impl Calendar {
         })
     }
 
-    // Formats:
+    // Formats (digit components other than `DDD` may be shorter than the given
+    // number of digits):
     // - [+/-]YYYY-MM-DD
-    // - [+/-]YYYY-DDD
+    // - [+/-]YYYY-DDD (TODO: Accept ordinals that aren't exactly three digits)
     pub fn parse_date(&self, s: &str) -> Result<Date, ParseDateError> {
         let mut parser = inner::DateParser::new(s);
         let year = parser.parse_year()?;
@@ -872,11 +873,11 @@ pub enum ParseDateError {
     UnterminatedYear,
     #[error("ordinal must be three digits long")]
     InvalidOrdinal,
-    #[error("expected two digits, got {got} digits")]
+    #[error("expected one or two digits, got {got} digits")]
     Invalid02dLength { got: usize },
-    #[error("expected two digits, got non-digit {got:?}")]
+    #[error("expected one or two digits, got non-digit {got:?}")]
     Invalid02dStart { got: char },
-    #[error("expected two digits, reached end of input")]
+    #[error("expected one or two digits, reached end of input")]
     Invalid02dSuddenEnd,
     #[error("expected {expected:?}, got {got:?}")]
     UnexpectedChar { expected: char, got: char },
@@ -1037,7 +1038,6 @@ mod tests {
 
         #[test]
         fn test_parse_ymd_short_year() {
-            // TODO: Should this be an error instead?
             let date = Calendar::gregorian_reform().parse_date("20-04-20").unwrap();
             assert_eq!(date.year(), 20);
             assert_eq!(date.month(), Month::April);
@@ -1067,12 +1067,12 @@ mod tests {
 
         #[test]
         fn test_parse_ymd_short_month() {
-            let r = Calendar::gregorian_reform().parse_date("2023-4-20");
-            assert_eq!(r, Err(ParseDateError::Invalid02dLength { got: 1 }));
-            assert_eq!(
-                r.unwrap_err().to_string(),
-                "expected two digits, got 1 digits"
-            );
+            let date = Calendar::gregorian_reform()
+                .parse_date("2023-4-20")
+                .unwrap();
+            assert_eq!(date.year(), 2023);
+            assert_eq!(date.month(), Month::April);
+            assert_eq!(date.day(), 20);
         }
 
         #[test]
@@ -1081,18 +1081,18 @@ mod tests {
             assert_eq!(r, Err(ParseDateError::Invalid02dLength { got: 3 }));
             assert_eq!(
                 r.unwrap_err().to_string(),
-                "expected two digits, got 3 digits"
+                "expected one or two digits, got 3 digits"
             );
         }
 
         #[test]
         fn test_parse_ymd_short_mday() {
-            let r = Calendar::gregorian_reform().parse_date("2023-04-2");
-            assert_eq!(r, Err(ParseDateError::Invalid02dLength { got: 1 }));
-            assert_eq!(
-                r.unwrap_err().to_string(),
-                "expected two digits, got 1 digits"
-            );
+            let date = Calendar::gregorian_reform()
+                .parse_date("2023-04-2")
+                .unwrap();
+            assert_eq!(date.year(), 2023);
+            assert_eq!(date.month(), Month::April);
+            assert_eq!(date.day(), 2);
         }
 
         #[test]
@@ -1111,7 +1111,7 @@ mod tests {
             assert_eq!(r, Err(ParseDateError::Invalid02dSuddenEnd));
             assert_eq!(
                 r.unwrap_err().to_string(),
-                "expected two digits, reached end of input"
+                "expected one or two digits, reached end of input"
             );
         }
 
@@ -1121,7 +1121,7 @@ mod tests {
             assert_eq!(r, Err(ParseDateError::Invalid02dStart { got: '-' }));
             assert_eq!(
                 r.unwrap_err().to_string(),
-                "expected two digits, got non-digit '-'"
+                "expected one or two digits, got non-digit '-'"
             );
         }
 
