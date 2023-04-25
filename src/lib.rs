@@ -359,19 +359,26 @@ impl Calendar {
                 }
             }
             inner::Calendar::Reforming { gap, .. } => {
-                match (
-                    gap.pre_reform.year.cmp(&year),
-                    year.cmp(&gap.post_reform.year),
-                ) {
-                    (Ordering::Greater, _) => {
+                use inner::RangeOrdering::*;
+                match gap.cmp_year(year) {
+                    Less => {
                         if inner::is_julian_leap_year(year) {
                             YearKind::Leap
                         } else {
                             YearKind::Common
                         }
                     }
-                    (Ordering::Less, Ordering::Less) => YearKind::Skipped,
-                    (Ordering::Equal, Ordering::Equal) => {
+                    EqLower => {
+                        if Month::February < gap.pre_reform.month
+                            && inner::is_julian_leap_year(year)
+                        {
+                            YearKind::ReformLeap
+                        } else {
+                            YearKind::ReformCommon
+                        }
+                    }
+                    Between => YearKind::Skipped,
+                    EqBoth => {
                         if (Month::February < gap.pre_reform.month
                             && inner::is_julian_leap_year(year))
                             || (gap.post_reform.month <= Month::February
@@ -382,16 +389,7 @@ impl Calendar {
                             YearKind::ReformCommon
                         }
                     }
-                    (Ordering::Equal, _) => {
-                        if Month::February < gap.pre_reform.month
-                            && inner::is_julian_leap_year(year)
-                        {
-                            YearKind::ReformLeap
-                        } else {
-                            YearKind::ReformCommon
-                        }
-                    }
-                    (_, Ordering::Equal) => {
+                    EqUpper => {
                         if gap.post_reform.month <= Month::February
                             && inner::is_gregorian_leap_year(year)
                         {
@@ -400,7 +398,7 @@ impl Calendar {
                             YearKind::ReformCommon
                         }
                     }
-                    (_, Ordering::Greater) => {
+                    Greater => {
                         if inner::is_gregorian_leap_year(year) {
                             YearKind::Leap
                         } else {
@@ -437,10 +435,8 @@ impl Calendar {
                                 // will be ReformCommon, but an extra day will
                                 // be included in gap_length, so we need to
                                 // add back 1.
-                                if (gap.pre_reform.month, gap.pre_reform.mday)
-                                    < (Month::February, 29)
-                                    && (Month::February, 29)
-                                        < (gap.post_reform.month, gap.post_reform.mday)
+                                if gap.cmp_ymd(year, Month::February, 29)
+                                    == inner::RangeOrdering::Between
                                 {
                                     length += 1;
                                 }
@@ -520,32 +516,36 @@ impl Calendar {
             December => 31,
         };
         if let inner::Calendar::Reforming { gap, .. } = self.0 {
-            if (year, month) == (gap.pre_reform.year, gap.pre_reform.month) {
-                if gap.kind == inner::GapKind::IntraMonth {
-                    return inner::MonthShape::HasGap {
-                        year,
-                        month,
-                        gap: (gap.pre_reform.mday + 1)..(gap.post_reform.mday),
-                        max_mday: length,
-                    };
-                } else {
-                    return inner::MonthShape::Solid {
-                        year,
-                        month,
-                        range: 1..=(gap.pre_reform.mday),
-                    };
+            use inner::RangeOrdering::*;
+            return match gap.cmp_year_month(year, month) {
+                EqLower | EqBoth => {
+                    if gap.kind == inner::GapKind::IntraMonth {
+                        inner::MonthShape::HasGap {
+                            year,
+                            month,
+                            gap: (gap.pre_reform.mday + 1)..(gap.post_reform.mday),
+                            max_mday: length,
+                        }
+                    } else {
+                        inner::MonthShape::Solid {
+                            year,
+                            month,
+                            range: 1..=(gap.pre_reform.mday),
+                        }
+                    }
                 }
-            } else if (gap.pre_reform.year, gap.pre_reform.month) < (year, month)
-                && (year, month) < (gap.post_reform.year, gap.post_reform.month)
-            {
-                return inner::MonthShape::Skipped { year, month };
-            } else if (year, month) == (gap.post_reform.year, gap.post_reform.month) {
-                return inner::MonthShape::Solid {
+                Between => inner::MonthShape::Skipped { year, month },
+                EqUpper => inner::MonthShape::Solid {
                     year,
                     month,
                     range: (gap.post_reform.mday)..=length,
-                };
-            }
+                },
+                _ => inner::MonthShape::Solid {
+                    year,
+                    month,
+                    range: 1..=length,
+                },
+            };
         }
         inner::MonthShape::Solid {
             year,

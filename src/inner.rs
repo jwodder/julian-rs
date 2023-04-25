@@ -84,6 +84,36 @@ pub(crate) struct ReformGap {
     pub(crate) kind: GapKind,
 }
 
+impl ReformGap {
+    pub(crate) fn cmp_year(&self, year: YearT) -> RangeOrdering {
+        cmp_range(year, self.pre_reform.year, self.post_reform.year)
+    }
+
+    pub(crate) fn cmp_year_month(&self, year: YearT, month: Month) -> RangeOrdering {
+        cmp_range(
+            (year, month),
+            (self.pre_reform.year, self.pre_reform.month),
+            (self.post_reform.year, self.post_reform.month),
+        )
+    }
+
+    pub(crate) fn cmp_ymd(&self, year: YearT, month: Month, mday: u32) -> RangeOrdering {
+        cmp_range(
+            (year, month, mday),
+            (
+                self.pre_reform.year,
+                self.pre_reform.month,
+                self.pre_reform.mday,
+            ),
+            (
+                self.post_reform.year,
+                self.post_reform.month,
+                self.post_reform.mday,
+            ),
+        )
+    }
+}
+
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub(crate) struct Date {
     pub(crate) year: YearT,
@@ -398,6 +428,29 @@ pub(crate) fn jd_to_julian_yj(jd: JulianDayT) -> (YearT, DaysT) {
         ordinal %= LEAP_YEAR_LENGTH;
         (year, DaysT::try_from(ordinal + 1).unwrap())
     }
+}
+
+pub(crate) fn cmp_range<T: Ord>(value: T, lower: T, upper: T) -> RangeOrdering {
+    assert!(lower <= upper);
+    match (value.cmp(&lower), value.cmp(&upper)) {
+        (Ordering::Less, _) => RangeOrdering::Less,
+        (Ordering::Equal, Ordering::Less) => RangeOrdering::EqLower,
+        (Ordering::Equal, Ordering::Equal) => RangeOrdering::EqBoth,
+        (Ordering::Equal, Ordering::Greater) => unreachable!(),
+        (Ordering::Greater, Ordering::Less) => RangeOrdering::Between,
+        (Ordering::Greater, Ordering::Equal) => RangeOrdering::EqUpper,
+        (Ordering::Greater, Ordering::Greater) => RangeOrdering::Greater,
+    }
+}
+
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
+pub(crate) enum RangeOrdering {
+    Less,
+    EqLower,
+    Between,
+    EqBoth,
+    EqUpper,
+    Greater,
 }
 
 #[cfg(test)]
