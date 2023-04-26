@@ -981,7 +981,6 @@ mod tests {
         #[case] month: Month,
         #[case] mday: u32,
     ) {
-        eprintln!("year = {year}, month = {month}, mday = {mday}, days = {days}");
         let date = Calendar::gregorian_reform()
             .at_ymd(year, month, mday)
             .unwrap();
