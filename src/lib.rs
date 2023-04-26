@@ -224,10 +224,9 @@ impl Calendar {
         })
     }
 
-    // Formats (digit components other than `DDD` may be shorter than the given
-    // number of digits):
+    // Formats (fields may be shorter than the given number of digits):
     // - [+/-]YYYY-MM-DD
-    // - [+/-]YYYY-DDD (TODO: Accept ordinals that aren't exactly three digits)
+    // - [+/-]YYYY-DDD
     pub fn parse_date(&self, s: &str) -> Result<Date, ParseDateError> {
         let mut parser = inner::DateParser::new(s);
         let year = parser.parse_year()?;
@@ -871,14 +870,10 @@ pub enum ParseDateError {
     HasTrailing,
     #[error("year not terminated by '-'")]
     UnterminatedYear,
-    #[error("ordinal must be three digits long")]
-    InvalidOrdinal,
-    #[error("expected one or two digits, got {got} digits")]
-    Invalid02dLength { got: usize },
-    #[error("expected one or two digits, got non-digit {got:?}")]
-    Invalid02dStart { got: char },
-    #[error("expected one or two digits, reached end of input")]
-    Invalid02dSuddenEnd,
+    #[error("expected one or more digits, got non-digit {got:?}")]
+    InvalidIntStart { got: char },
+    #[error("expected one or more digits, reached end of input")]
+    EmptyInt,
     #[error("expected {expected:?}, got {got:?}")]
     UnexpectedChar { expected: char, got: char },
     #[error("expected {expected:?}, reached end of input")]
@@ -1047,21 +1042,33 @@ mod tests {
 
         #[test]
         fn test_parse_date_short_ordinal() {
-            let r = Calendar::gregorian_reform().parse_date("1234-56");
-            assert_eq!(r, Err(ParseDateError::InvalidOrdinal));
-            assert_eq!(
-                r.unwrap_err().to_string(),
-                "ordinal must be three digits long"
-            );
+            let date = Calendar::gregorian_reform().parse_date("1234-56").unwrap();
+            assert_eq!(date.year(), 1234);
+            assert_eq!(date.ordinal(), 56);
         }
 
         #[test]
         fn test_parse_date_long_ordinal() {
+            let date = Calendar::gregorian_reform()
+                .parse_date("1234-0078")
+                .unwrap();
+            assert_eq!(date.year(), 1234);
+            assert_eq!(date.ordinal(), 78);
+        }
+
+        #[test]
+        fn test_parse_date_big_ordinal() {
             let r = Calendar::gregorian_reform().parse_date("1234-5678");
-            assert_eq!(r, Err(ParseDateError::InvalidOrdinal));
+            assert_eq!(
+                r,
+                Err(ParseDateError::InvalidDate(Error::OrdinalOutOfRange {
+                    year: 1234,
+                    ordinal: 5678
+                }))
+            );
             assert_eq!(
                 r.unwrap_err().to_string(),
-                "ordinal must be three digits long"
+                "invalid calendar date: day-of-year ordinal 5678 is outside of valid range for year 1234",
             );
         }
 
@@ -1077,12 +1084,12 @@ mod tests {
 
         #[test]
         fn test_parse_ymd_long_month() {
-            let r = Calendar::gregorian_reform().parse_date("2023-012-20");
-            assert_eq!(r, Err(ParseDateError::Invalid02dLength { got: 3 }));
-            assert_eq!(
-                r.unwrap_err().to_string(),
-                "expected one or two digits, got 3 digits"
-            );
+            let date = Calendar::gregorian_reform()
+                .parse_date("2023-012-20")
+                .unwrap();
+            assert_eq!(date.year(), 2023);
+            assert_eq!(date.month(), Month::December);
+            assert_eq!(date.day(), 20);
         }
 
         #[test]
@@ -1098,30 +1105,30 @@ mod tests {
         #[test]
         fn test_parse_year_hyphen() {
             let r = Calendar::gregorian_reform().parse_date("2023-");
-            assert_eq!(r, Err(ParseDateError::InvalidOrdinal));
+            assert_eq!(r, Err(ParseDateError::EmptyInt));
             assert_eq!(
                 r.unwrap_err().to_string(),
-                "ordinal must be three digits long"
+                "expected one or more digits, reached end of input",
             );
         }
 
         #[test]
         fn test_parse_year_month_hyphen() {
             let r = Calendar::gregorian_reform().parse_date("2023-04-");
-            assert_eq!(r, Err(ParseDateError::Invalid02dSuddenEnd));
+            assert_eq!(r, Err(ParseDateError::EmptyInt));
             assert_eq!(
                 r.unwrap_err().to_string(),
-                "expected one or two digits, reached end of input"
+                "expected one or more digits, reached end of input"
             );
         }
 
         #[test]
         fn test_parse_year_hyphen_hyphen_md() {
             let r = Calendar::gregorian_reform().parse_date("2023--04-20");
-            assert_eq!(r, Err(ParseDateError::Invalid02dStart { got: '-' }));
+            assert_eq!(r, Err(ParseDateError::InvalidIntStart { got: '-' }));
             assert_eq!(
                 r.unwrap_err().to_string(),
-                "expected one or two digits, got non-digit '-'"
+                "expected one or more digits, got non-digit '-'"
             );
         }
 
@@ -1292,13 +1299,15 @@ mod tests {
 
         #[test]
         fn test_parse_bad_month_mday_sep() {
-            // TODO: Try to make this return a more helpful error
             let r = Calendar::gregorian_reform().parse_date("2023-04:20");
-            assert_eq!(r, Err(ParseDateError::InvalidOrdinal));
             assert_eq!(
-                r.unwrap_err().to_string(),
-                "ordinal must be three digits long"
+                r,
+                Err(ParseDateError::UnexpectedChar {
+                    expected: '-',
+                    got: ':'
+                })
             );
+            assert_eq!(r.unwrap_err().to_string(), "expected '-', got ':'");
         }
 
         #[test]

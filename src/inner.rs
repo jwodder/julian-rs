@@ -176,35 +176,19 @@ impl<'a> DateParser<'a> {
     }
 
     pub(crate) fn parse_day_in_year(&mut self) -> Result<DayInYear, ParseDateError> {
-        if let Some(i) = self.data.find(['-', 'T']) {
-            if &self.data[i..(i + 1)] == "T" {
-                let ordinal = Self::parse_ordinal(&self.data[..i])?;
-                self.data = &self.data[i..];
-                Ok(ordinal)
-            } else {
-                let month_index = self.parse_02d()?;
-                let month = Month::try_from(month_index)
-                    .map_err(|_| ParseDateError::InvalidMonth { value: month_index })?;
-                self.scan_char('-')?;
-                let mday = self.parse_02d()?;
-                Ok(DayInYear::Date { month, mday })
-            }
+        let field1 = self.parse_uint()?;
+        if self.data.is_empty() {
+            Ok(DayInYear::Ordinal(field1))
         } else {
-            let ordinal = Self::parse_ordinal(self.data)?;
-            self.data = "";
-            Ok(ordinal)
+            let month = Month::try_from(field1)
+                .map_err(|_| ParseDateError::InvalidMonth { value: field1 })?;
+            self.scan_char('-')?;
+            let mday = self.parse_uint()?;
+            Ok(DayInYear::Date { month, mday })
         }
     }
 
-    pub(crate) fn parse_ordinal(s: &str) -> Result<DayInYear, ParseDateError> {
-        if s.len() == 3 && s.chars().all(|c| c.is_ascii_digit()) {
-            Ok(DayInYear::Ordinal(s.parse::<DaysT>()?))
-        } else {
-            Err(ParseDateError::InvalidOrdinal)
-        }
-    }
-
-    pub(crate) fn parse_02d(&mut self) -> Result<u32, ParseDateError> {
+    pub(crate) fn parse_uint(&mut self) -> Result<u32, ParseDateError> {
         match self
             .data
             .char_indices()
@@ -212,15 +196,14 @@ impl<'a> DateParser<'a> {
             .last()
             .map(|(i, _)| i + 1)
         {
-            Some(i @ (1 | 2)) => {
-                let n = self.data[..i].parse::<u32>().unwrap();
+            Some(i) => {
+                let n = self.data[..i].parse::<u32>()?;
                 self.data = &self.data[i..];
                 Ok(n)
             }
-            Some(got) => Err(ParseDateError::Invalid02dLength { got }),
             None => match self.data.chars().next() {
-                Some(got) => Err(ParseDateError::Invalid02dStart { got }),
-                None => Err(ParseDateError::Invalid02dSuddenEnd),
+                Some(got) => Err(ParseDateError::InvalidIntStart { got }),
+                None => Err(ParseDateError::EmptyInt),
             },
         }
     }
