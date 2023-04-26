@@ -97,7 +97,7 @@ impl Calendar {
             .at_ymd(post_reform.year(), post_reform.month(), post_reform.day())?
             .julian_day();
         if post_reform_as_julian <= reformation {
-            return Err(Error::BadReformation);
+            return Err(Error::InvalidReformation);
         }
         let gap_length = u32::try_from(post_reform_as_julian - reformation).unwrap();
         let kind = inner::GapKind::for_dates(
@@ -841,7 +841,7 @@ impl DoubleEndedIterator for MonthIter {
 #[derive(Copy, Clone, Debug, Eq, Error, PartialEq)]
 pub enum Error {
     #[error("reformation date would not cause calendar to advance")]
-    BadReformation,
+    InvalidReformation,
     #[error("arithmetic overflow/underflow")]
     ArithmeticOutOfBounds,
     #[error("mday {mday} is outside of valid range for {month} {year}")]
