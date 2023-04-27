@@ -550,8 +550,8 @@ pub struct Date {
 }
 
 impl Date {
-    pub fn calendar(&self) -> Calendar {
-        self.calendar
+    pub fn calendar(&self) -> &Calendar {
+        &self.calendar
     }
 
     pub fn year(&self) -> YearT {
