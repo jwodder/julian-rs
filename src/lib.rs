@@ -1120,24 +1120,40 @@ impl DoubleEndedIterator for MonthIter {
     }
 }
 
-// TODO: Docs
+/// Error returned by [`Calendar::reforming()`] when given an invalid
+/// reformation date
 #[derive(Copy, Clone, Debug, Eq, Error, Hash, PartialEq)]
 pub enum ReformingError {
+    /// Returned if the reformation date would not cause the calendar to skip
+    /// forwards over any dates
     #[error("reformation date would not cause calendar to advance")]
     InvalidReformation,
+
+    /// Returned if an internal arithmetic operation encounters numeric
+    /// overflow or underflow
     #[error("arithmetic overflow/underflow")]
     ArithmeticOutOfBounds,
 }
 
-// TODO: Docs
+/// Error returned by various date-construction methods on invalid input
 #[derive(Copy, Clone, Debug, Eq, Error, Hash, PartialEq)]
 pub enum DateError {
+    /// Returned if an internal arithmetic operation encounters numeric
+    /// overflow or underflow
     #[error("arithmetic overflow/underflow")]
     ArithmeticOutOfBounds,
+
+    /// Returned if a given day of month value was zero or greater than the
+    /// last day of the given month for the given year
     #[error("day {day} is outside of valid range for {month} {year}")]
     DayOutOfRange { year: YearT, month: Month, day: u32 },
+
+    /// Returned if a given day of year value was zero or greater than the
+    /// length of the given year
     #[error("day-of-year ordinal {ordinal} is outside of valid range for year {year}")]
     OrdinalOutOfRange { year: YearT, ordinal: DaysT },
+
+    /// Returned if a given date was skipped by a calendar reformation
     #[error("date {year:04}-{:02}-{day:02} was skipped by calendar reform", month.number())]
     SkippedDate { year: YearT, month: Month, day: u32 },
 }
