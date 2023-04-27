@@ -128,15 +128,14 @@ impl Options {
             self.fmt_styled(&mut s, cal, jdn);
             write!(&mut s, " = ").unwrap();
         }
-        self.fmt_julian(&mut s, jdn);
+        write!(&mut s, "{jdn}").unwrap();
         s
     }
 
     fn show_julian_to_cal(&self, cal: Date, jdn: JulianDayT) -> String {
         let mut s = String::new();
         if self.verbose {
-            self.fmt_julian(&mut s, jdn);
-            write!(&mut s, " = ").unwrap();
+            write!(&mut s, "{jdn} = ").unwrap();
         }
         self.fmt_styled(&mut s, cal, jdn);
         s
@@ -157,10 +156,6 @@ impl Options {
         } else {
             write!(s, "{when}").unwrap();
         }
-    }
-
-    fn fmt_julian(&self, s: &mut String, jdn: JulianDayT) {
-        write!(s, "{jdn}").unwrap();
     }
 }
 
