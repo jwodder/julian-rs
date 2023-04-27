@@ -18,12 +18,12 @@ fn at_unix_time(
     #[case] ts: i64,
     #[case] year: YearT,
     #[case] month: Month,
-    #[case] mday: u32,
+    #[case] day: u32,
     #[case] seconds: u32,
 ) {
     let (date, s) = Calendar::gregorian_reform().at_unix_time(ts).unwrap();
     assert_eq!(date.year(), year);
     assert_eq!(date.month(), month);
-    assert_eq!(date.day(), mday);
+    assert_eq!(date.day(), day);
     assert_eq!(s, seconds);
 }

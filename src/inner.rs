@@ -97,18 +97,18 @@ impl ReformGap {
         )
     }
 
-    pub(crate) fn cmp_ymd(&self, year: YearT, month: Month, mday: u32) -> RangeOrdering {
+    pub(crate) fn cmp_ymd(&self, year: YearT, month: Month, day: u32) -> RangeOrdering {
         cmp_range(
-            (year, month, mday),
+            (year, month, day),
             (
                 self.pre_reform.year,
                 self.pre_reform.month,
-                self.pre_reform.mday,
+                self.pre_reform.day,
             ),
             (
                 self.post_reform.year,
                 self.post_reform.month,
-                self.post_reform.mday,
+                self.post_reform.day,
             ),
         )
     }
@@ -119,7 +119,7 @@ pub(crate) struct Date {
     pub(crate) year: YearT,
     pub(crate) ordinal: DaysT,
     pub(crate) month: Month,
-    pub(crate) mday: u32,
+    pub(crate) day: u32,
 }
 
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
@@ -183,8 +183,8 @@ impl<'a> DateParser<'a> {
             let month = Month::try_from(field1)
                 .map_err(|_| ParseDateError::InvalidMonth { value: field1 })?;
             self.scan_char('-')?;
-            let mday = self.parse_uint()?;
-            Ok(DayInYear::Date { month, mday })
+            let day = self.parse_uint()?;
+            Ok(DayInYear::Date { month, day })
         }
     }
 
@@ -227,7 +227,7 @@ impl<'a> DateParser<'a> {
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub(crate) enum DayInYear {
     Ordinal(DaysT),
-    Date { month: Month, mday: u32 },
+    Date { month: Month, day: u32 },
 }
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
@@ -241,7 +241,7 @@ pub(crate) enum MonthShape {
         year: YearT,
         month: Month,
         gap: Range<u32>,
-        max_mday: u32,
+        max_day: u32,
     },
     Skipped {
         year: YearT,
@@ -253,74 +253,74 @@ impl MonthShape {
     pub(crate) fn len(&self) -> u32 {
         match self {
             MonthShape::Solid { range, .. } => range.end() - range.start() + 1,
-            MonthShape::HasGap { gap, max_mday, .. } => max_mday - (gap.end - gap.start),
+            MonthShape::HasGap { gap, max_day, .. } => max_day - (gap.end - gap.start),
             MonthShape::Skipped { .. } => 0,
         }
     }
 
-    pub(crate) fn has_mday(&self, mday: u32) -> bool {
+    pub(crate) fn has_day(&self, day: u32) -> bool {
         match self {
-            MonthShape::Solid { range, .. } => range.contains(&mday),
+            MonthShape::Solid { range, .. } => range.contains(&day),
             &MonthShape::HasGap {
-                ref gap, max_mday, ..
-            } => (1..=max_mday).contains(&mday) && !gap.contains(&mday),
+                ref gap, max_day, ..
+            } => (1..=max_day).contains(&day) && !gap.contains(&day),
             MonthShape::Skipped { .. } => false,
         }
     }
 
     // Returns a one-based ordinal
-    pub(crate) fn get_mday_ordinal(&self, mday: u32) -> Result<u32, Error> {
+    pub(crate) fn get_day_ordinal(&self, day: u32) -> Result<u32, Error> {
         match *self {
             MonthShape::Solid {
                 year,
                 month,
                 ref range,
             } => {
-                if self.has_mday(mday) {
-                    Ok(mday)
+                if self.has_day(day) {
+                    Ok(day)
                 } else if *range.start() == 1 {
-                    Err(Error::MdayOutOfRange { year, month, mday })
+                    Err(Error::DayOutOfRange { year, month, day })
                 } else {
-                    Err(Error::SkippedDate { year, month, mday })
+                    Err(Error::SkippedDate { year, month, day })
                 }
             }
             MonthShape::HasGap {
                 year,
                 month,
                 ref gap,
-                max_mday,
+                max_day,
             } => {
-                if mday == 0 {
-                    Err(Error::MdayOutOfRange { year, month, mday })
-                } else if mday < gap.start {
-                    Ok(mday)
-                } else if mday < gap.end {
-                    Err(Error::SkippedDate { year, month, mday })
-                } else if mday <= max_mday {
-                    Ok(mday - u32::try_from(gap.len()).unwrap())
+                if day == 0 {
+                    Err(Error::DayOutOfRange { year, month, day })
+                } else if day < gap.start {
+                    Ok(day)
+                } else if day < gap.end {
+                    Err(Error::SkippedDate { year, month, day })
+                } else if day <= max_day {
+                    Ok(day - u32::try_from(gap.len()).unwrap())
                 } else {
-                    Err(Error::MdayOutOfRange { year, month, mday })
+                    Err(Error::DayOutOfRange { year, month, day })
                 }
             }
-            MonthShape::Skipped { year, month } => Err(Error::SkippedDate { year, month, mday }),
+            MonthShape::Skipped { year, month } => Err(Error::SkippedDate { year, month, day }),
         }
     }
 
-    // mday_ordinal is one-based
-    pub(crate) fn get_mday_label(&self, mday_ordinal: u32) -> Option<u32> {
+    // day_ordinal is one-based
+    pub(crate) fn get_day_label(&self, day_ordinal: u32) -> Option<u32> {
         match self {
             MonthShape::Solid { range, .. } => {
-                let mday = mday_ordinal - 1 + range.start();
-                (mday <= *range.end()).then_some(mday)
+                let day = day_ordinal - 1 + range.start();
+                (day <= *range.end()).then_some(day)
             }
             &MonthShape::HasGap {
-                ref gap, max_mday, ..
+                ref gap, max_day, ..
             } => {
-                if mday_ordinal < gap.start {
-                    Some(mday_ordinal)
+                if day_ordinal < gap.start {
+                    Some(day_ordinal)
                 } else {
-                    let mday = mday_ordinal + (gap.end - gap.start);
-                    (mday <= max_mday).then_some(mday)
+                    let day = day_ordinal + (gap.end - gap.start);
+                    (day <= max_day).then_some(day)
                 }
             }
             MonthShape::Skipped { .. } => None,
@@ -339,8 +339,8 @@ pub(crate) fn is_gregorian_leap_year(year: YearT) -> bool {
 // Convert a date in the proleptic Gregorian calendar to a Julian day number
 // Returns None on arithmetic underflow/overflow
 // TODO: PROBLEM: This doesn't work for dates with negative JDNs; address
-// TODO: Try to rewrite to take ordinal instead of month & mday?
-pub(crate) fn gregorian_ymd_to_jd(year: YearT, month: Month, mday: u32) -> Option<JulianDayT> {
+// TODO: Try to rewrite to take ordinal instead of month & day?
+pub(crate) fn gregorian_ymd_to_jd(year: YearT, month: Month, day: u32) -> Option<JulianDayT> {
     const MONTHS: JulianDayT = 12;
     let a = (month.number() as JulianDayT) - 14;
     add(
@@ -355,7 +355,7 @@ pub(crate) fn gregorian_ymd_to_jd(year: YearT, month: Month, mday: u32) -> Optio
             )?,
             mul(3, (add(year, 4900)? + a / MONTHS) / 100)? / JULIAN_LEAP_CYCLE_YEARS,
         )?,
-        sub(mday as JulianDayT, 32075)?,
+        sub(day as JulianDayT, 32075)?,
     )
 }
 
@@ -385,7 +385,7 @@ pub(crate) fn julian_yj_to_jd(year: YearT, ordinal: DaysT) -> Option<JulianDayT>
 
 // Returns None on arithmetic underflow/overflow
 // TODO: PROBLEM: This doesn't work for dates with negative JDNs; address
-// TODO: Rewrite to return ordinal instead of or in addition to month & mday?
+// TODO: Rewrite to return ordinal instead of or in addition to month & day?
 pub(crate) fn jd_to_gregorian_ymd(jd: JulianDayT) -> Option<(YearT, Month, u32)> {
     let ell = add(jd, 68569)?;
     let n = mul(4, ell)? / GREGORIAN_CYCLE_DAYS;

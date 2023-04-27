@@ -16,13 +16,13 @@ fn init_gregorian_reform() {
                     year: 1582,
                     ordinal: 277,
                     month: Month::October,
-                    mday: 4
+                    day: 4
                 },
                 post_reform: inner::Date {
                     year: 1582,
                     ordinal: 278,
                     month: Month::October,
-                    mday: 15
+                    day: 15
                 },
                 gap_length: 10,
                 kind: inner::GapKind::IntraMonth
@@ -42,60 +42,60 @@ fn reformation_month_shape() {
             year: 1582,
             month: October,
             gap: 5..15,
-            max_mday: 31
+            max_day: 31
         }
     );
     assert_eq!(shape.len(), 21);
-    assert!(!shape.has_mday(0));
-    assert!(shape.has_mday(1));
-    assert!(shape.has_mday(4));
-    assert!(!shape.has_mday(5));
-    assert!(!shape.has_mday(14));
-    assert!(shape.has_mday(15));
-    assert!(shape.has_mday(31));
-    assert!(!shape.has_mday(32));
+    assert!(!shape.has_day(0));
+    assert!(shape.has_day(1));
+    assert!(shape.has_day(4));
+    assert!(!shape.has_day(5));
+    assert!(!shape.has_day(14));
+    assert!(shape.has_day(15));
+    assert!(shape.has_day(31));
+    assert!(!shape.has_day(32));
     assert_eq!(
-        shape.get_mday_ordinal(0),
-        Err(Error::MdayOutOfRange {
+        shape.get_day_ordinal(0),
+        Err(Error::DayOutOfRange {
             year: 1582,
             month: October,
-            mday: 0
+            day: 0
         })
     );
-    assert_eq!(shape.get_mday_ordinal(1), Ok(1));
-    assert_eq!(shape.get_mday_ordinal(4), Ok(4));
+    assert_eq!(shape.get_day_ordinal(1), Ok(1));
+    assert_eq!(shape.get_day_ordinal(4), Ok(4));
     assert_eq!(
-        shape.get_mday_ordinal(5),
+        shape.get_day_ordinal(5),
         Err(Error::SkippedDate {
             year: 1582,
             month: October,
-            mday: 5
+            day: 5
         })
     );
     assert_eq!(
-        shape.get_mday_ordinal(14),
+        shape.get_day_ordinal(14),
         Err(Error::SkippedDate {
             year: 1582,
             month: October,
-            mday: 14
+            day: 14
         })
     );
-    assert_eq!(shape.get_mday_ordinal(15), Ok(5));
-    assert_eq!(shape.get_mday_ordinal(31), Ok(21));
+    assert_eq!(shape.get_day_ordinal(15), Ok(5));
+    assert_eq!(shape.get_day_ordinal(31), Ok(21));
     assert_eq!(
-        shape.get_mday_ordinal(32),
-        Err(Error::MdayOutOfRange {
+        shape.get_day_ordinal(32),
+        Err(Error::DayOutOfRange {
             year: 1582,
             month: October,
-            mday: 32
+            day: 32
         })
     );
-    assert_eq!(shape.get_mday_label(1), Some(1));
-    assert_eq!(shape.get_mday_label(2), Some(2));
-    assert_eq!(shape.get_mday_label(4), Some(4));
-    assert_eq!(shape.get_mday_label(5), Some(15));
-    assert_eq!(shape.get_mday_label(21), Some(31));
-    assert_eq!(shape.get_mday_label(22), None);
+    assert_eq!(shape.get_day_label(1), Some(1));
+    assert_eq!(shape.get_day_label(2), Some(2));
+    assert_eq!(shape.get_day_label(4), Some(4));
+    assert_eq!(shape.get_day_label(5), Some(15));
+    assert_eq!(shape.get_day_label(21), Some(31));
+    assert_eq!(shape.get_day_label(22), None);
 }
 
 #[rstest]

@@ -114,7 +114,7 @@ impl Calendar {
             year: pre_reform.year,
             ordinal: pre_reform.ordinal,
             month: pre_reform.month,
-            mday: pre_reform.mday,
+            day: pre_reform.day,
         };
         let post_ordinal = match kind {
             inner::GapKind::IntraMonth | inner::GapKind::CrossMonth => pre_reform.ordinal + 1,
@@ -124,7 +124,7 @@ impl Calendar {
             year: post_reform.year,
             ordinal: post_ordinal,
             month: post_reform.month,
-            mday: post_reform.mday,
+            day: post_reform.day,
         };
         Ok(Calendar(inner::Calendar::Reforming {
             reformation,
@@ -155,65 +155,55 @@ impl Calendar {
         Ok((self.at_julian_day_number(jdn)?, secs))
     }
 
-    // `mday` is one-indexed
-    pub fn at_ymd(&self, year: YearT, month: Month, mday: u32) -> Result<Date, Error> {
-        let ordinal = self.ymd2ordinal(year, month, mday)?;
-        let jdn = self.get_julian_day_number(year, ordinal, month, mday)?;
-        let mday_ordinal = self
-            .month_shape(year, month)
-            .get_mday_ordinal(mday)
-            .unwrap();
+    pub fn at_ymd(&self, year: YearT, month: Month, day: u32) -> Result<Date, Error> {
+        let ordinal = self.ymd2ordinal(year, month, day)?;
+        let jdn = self.get_julian_day_number(year, ordinal, month, day)?;
+        let day_ordinal = self.month_shape(year, month).get_day_ordinal(day).unwrap();
         Ok(Date {
             calendar: *self,
             year,
             ordinal,
             month,
-            mday,
-            mday_ordinal,
+            day,
+            day_ordinal,
             jdn,
         })
     }
 
     pub fn at_ordinal_date(&self, year: YearT, ordinal: DaysT) -> Result<Date, Error> {
-        let (month, mday) = self.ordinal2ymd(year, ordinal)?;
-        let jdn = self.get_julian_day_number(year, ordinal, month, mday)?;
-        let mday_ordinal = self
-            .month_shape(year, month)
-            .get_mday_ordinal(mday)
-            .unwrap();
+        let (month, day) = self.ordinal2ymd(year, ordinal)?;
+        let jdn = self.get_julian_day_number(year, ordinal, month, day)?;
+        let day_ordinal = self.month_shape(year, month).get_day_ordinal(day).unwrap();
         Ok(Date {
             calendar: *self,
             year,
             ordinal,
             month,
-            mday,
-            mday_ordinal,
+            day,
+            day_ordinal,
             jdn,
         })
     }
 
     pub fn at_julian_day_number(&self, jdn: JulianDayT) -> Result<Date, ArithmeticOutOfBounds> {
         use inner::Calendar::*;
-        let (year, ordinal, month, mday);
+        let (year, ordinal, month, day);
         if self.0 == Julian || matches!(self.0, Reforming { reformation, .. } if jdn < reformation)
         {
             (year, ordinal) = inner::jd_to_julian_yj(jdn).ok_or(ArithmeticOutOfBounds)?;
-            (month, mday) = self.ordinal2ymd(year, ordinal).unwrap();
+            (month, day) = self.ordinal2ymd(year, ordinal).unwrap();
         } else {
-            (year, month, mday) = inner::jd_to_gregorian_ymd(jdn).ok_or(ArithmeticOutOfBounds)?;
-            ordinal = self.ymd2ordinal(year, month, mday).unwrap();
+            (year, month, day) = inner::jd_to_gregorian_ymd(jdn).ok_or(ArithmeticOutOfBounds)?;
+            ordinal = self.ymd2ordinal(year, month, day).unwrap();
         }
-        let mday_ordinal = self
-            .month_shape(year, month)
-            .get_mday_ordinal(mday)
-            .unwrap();
+        let day_ordinal = self.month_shape(year, month).get_day_ordinal(day).unwrap();
         Ok(Date {
             calendar: *self,
             year,
             ordinal,
             month,
-            mday,
-            mday_ordinal,
+            day,
+            day_ordinal,
             jdn,
         })
     }
@@ -230,7 +220,7 @@ impl Calendar {
         }
         match diny {
             inner::DayInYear::Ordinal(ordinal) => Ok(self.at_ordinal_date(year, ordinal)?),
-            inner::DayInYear::Date { month, mday } => Ok(self.at_ymd(year, month, mday)?),
+            inner::DayInYear::Date { month, day } => Ok(self.at_ymd(year, month, day)?),
         }
     }
 
@@ -265,8 +255,8 @@ impl Calendar {
                 year: gap.pre_reform.year,
                 ordinal: gap.pre_reform.ordinal,
                 month: gap.pre_reform.month,
-                mday: gap.pre_reform.mday,
-                mday_ordinal: gap.pre_reform.mday,
+                day: gap.pre_reform.day,
+                day_ordinal: gap.pre_reform.day,
                 jdn: reformation - 1,
             })
         } else {
@@ -276,8 +266,8 @@ impl Calendar {
 
     pub fn first_gregorian_date(&self) -> Option<Date> {
         if let inner::Calendar::Reforming { reformation, gap } = self.0 {
-            let mday_ordinal = if gap.kind == inner::GapKind::IntraMonth {
-                gap.pre_reform.mday + 1
+            let day_ordinal = if gap.kind == inner::GapKind::IntraMonth {
+                gap.pre_reform.day + 1
             } else {
                 1
             };
@@ -286,8 +276,8 @@ impl Calendar {
                 year: gap.post_reform.year,
                 ordinal: gap.post_reform.ordinal,
                 month: gap.post_reform.month,
-                mday: gap.post_reform.mday,
-                mday_ordinal,
+                day: gap.post_reform.day,
+                day_ordinal,
                 jdn: reformation,
             })
         } else {
@@ -333,7 +323,7 @@ impl Calendar {
                         }
                     }
                     EqLower => {
-                        if (gap.pre_reform.month, gap.pre_reform.mday) == (Month::December, 31) {
+                        if (gap.pre_reform.month, gap.pre_reform.day) == (Month::December, 31) {
                             if inner::is_julian_leap_year(year) {
                                 YearKind::Leap
                             } else {
@@ -360,7 +350,7 @@ impl Calendar {
                         }
                     }
                     EqUpper => {
-                        if (gap.post_reform.month, gap.post_reform.mday) == (Month::January, 1) {
+                        if (gap.post_reform.month, gap.post_reform.day) == (Month::January, 1) {
                             if inner::is_gregorian_leap_year(year) {
                                 YearKind::Leap
                             } else {
@@ -447,8 +437,8 @@ impl Calendar {
         let mut days = ordinal;
         for month in MonthIter::new() {
             let shape = self.month_shape(year, month);
-            if let Some(mday) = shape.get_mday_label(days) {
-                return Ok((month, mday));
+            if let Some(day) = shape.get_day_label(days) {
+                return Ok((month, day));
             }
             days -= shape.len();
         }
@@ -456,8 +446,8 @@ impl Calendar {
     }
 
     // This uses a one-based ordinal.
-    fn ymd2ordinal(&self, year: YearT, month: Month, mday: u32) -> Result<u32, Error> {
-        let mord = self.get_mday_ordinal(year, month, mday)?;
+    fn ymd2ordinal(&self, year: YearT, month: Month, day: u32) -> Result<u32, Error> {
+        let mord = self.get_day_ordinal(year, month, day)?;
         Ok(MonthIter::new()
             .take_while(|&m| m < month)
             .map(|m| self.month_length(year, m))
@@ -465,8 +455,8 @@ impl Calendar {
             + mord)
     }
 
-    fn get_mday_ordinal(&self, year: YearT, month: Month, mday: u32) -> Result<u32, Error> {
-        self.month_shape(year, month).get_mday_ordinal(mday)
+    fn get_day_ordinal(&self, year: YearT, month: Month, day: u32) -> Result<u32, Error> {
+        self.month_shape(year, month).get_day_ordinal(day)
     }
 
     fn month_shape(&self, year: YearT, month: Month) -> inner::MonthShape {
@@ -499,14 +489,14 @@ impl Calendar {
                         inner::MonthShape::HasGap {
                             year,
                             month,
-                            gap: (gap.pre_reform.mday + 1)..(gap.post_reform.mday),
-                            max_mday: length,
+                            gap: (gap.pre_reform.day + 1)..(gap.post_reform.day),
+                            max_day: length,
                         }
                     } else {
                         inner::MonthShape::Solid {
                             year,
                             month,
-                            range: 1..=(gap.pre_reform.mday),
+                            range: 1..=(gap.pre_reform.day),
                         }
                     }
                 }
@@ -514,7 +504,7 @@ impl Calendar {
                 EqUpper => inner::MonthShape::Solid {
                     year,
                     month,
-                    range: (gap.post_reform.mday)..=length,
+                    range: (gap.post_reform.day)..=length,
                 },
                 _ => inner::MonthShape::Solid {
                     year,
@@ -535,7 +525,7 @@ impl Calendar {
         year: YearT,
         ordinal: DaysT,
         month: Month,
-        mday: u32,
+        day: u32,
     ) -> Result<JulianDayT, ArithmeticOutOfBounds> {
         use inner::Calendar::*;
         if self.0 == Julian
@@ -543,7 +533,7 @@ impl Calendar {
         {
             inner::julian_yj_to_jd(year, ordinal)
         } else {
-            inner::gregorian_ymd_to_jd(year, month, mday)
+            inner::gregorian_ymd_to_jd(year, month, day)
         }.ok_or(ArithmeticOutOfBounds)
     }
 }
@@ -554,8 +544,8 @@ pub struct Date {
     year: YearT,    // 0 == 1 BC
     ordinal: DaysT, // ordinal day of year; 1 == Jan 1
     month: Month,
-    mday: u32,         // one-based
-    mday_ordinal: u32, // one-based
+    day: u32,         // one-based
+    day_ordinal: u32, // one-based
     jdn: JulianDayT,
 }
 
@@ -572,19 +562,19 @@ impl Date {
         self.month
     }
 
-    // The "display" mday (one-indexed, counting skipped days)
+    // The "display" day (one-indexed, counting skipped days)
     pub fn day(&self) -> u32 {
-        self.mday
+        self.day
     }
 
     // Returns the index of the day within the month, starting from one, not
     // counting days skipped due to reformation
     pub fn day_ordinal(&self) -> u32 {
-        self.mday_ordinal
+        self.day_ordinal
     }
 
     pub fn day_ordinal0(&self) -> u32 {
-        self.mday_ordinal - 1
+        self.day_ordinal - 1
     }
 
     pub fn ordinal(&self) -> DaysT {
@@ -855,20 +845,12 @@ pub enum Error {
     InvalidReformation,
     #[error("arithmetic overflow/underflow")]
     ArithmeticOutOfBounds,
-    #[error("mday {mday} is outside of valid range for {month} {year}")]
-    MdayOutOfRange {
-        year: YearT,
-        month: Month,
-        mday: u32,
-    },
+    #[error("day {day} is outside of valid range for {month} {year}")]
+    DayOutOfRange { year: YearT, month: Month, day: u32 },
     #[error("day-of-year ordinal {ordinal} is outside of valid range for year {year}")]
     OrdinalOutOfRange { year: YearT, ordinal: DaysT },
-    #[error("date {year:04}-{:02}-{mday:02} was skipped by calendar reform", month.number())]
-    SkippedDate {
-        year: YearT,
-        month: Month,
-        mday: u32,
-    },
+    #[error("date {year:04}-{:02}-{day:02} was skipped by calendar reform", month.number())]
+    SkippedDate { year: YearT, month: Month, day: u32 },
 }
 
 #[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
@@ -903,6 +885,7 @@ pub enum ParseDateError {
     ParseInt(#[from] ParseIntError),
 }
 
+// Seconds count from midnight, as that's when JDN numbers change
 pub fn system_time_to_julian_day_number(
     t: SystemTime,
 ) -> Result<(JulianDayT, u32), ArithmeticOutOfBounds> {
@@ -914,6 +897,7 @@ pub fn system_time_to_julian_day_number(
     unix_time_to_julian_day_number(ts)
 }
 
+// Seconds count from midnight, as that's when JDN numbers change
 pub fn unix_time_to_julian_day_number(
     unix_time: i64,
 ) -> Result<(JulianDayT, u32), ArithmeticOutOfBounds> {

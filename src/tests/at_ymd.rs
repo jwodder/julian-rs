@@ -1,36 +1,36 @@
 use crate::{Calendar, Error, Month};
 
 #[test]
-fn mday_0() {
+fn day_0() {
     let r = Calendar::gregorian_reform().at_ymd(2023, Month::April, 0);
     assert_eq!(
         r,
-        Err(Error::MdayOutOfRange {
+        Err(Error::DayOutOfRange {
             year: 2023,
             month: Month::April,
-            mday: 0
+            day: 0
         })
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "mday 0 is outside of valid range for April 2023"
+        "day 0 is outside of valid range for April 2023"
     );
 }
 
 #[test]
-fn mday_32() {
+fn day_32() {
     let r = Calendar::gregorian_reform().at_ymd(2023, Month::April, 32);
     assert_eq!(
         r,
-        Err(Error::MdayOutOfRange {
+        Err(Error::DayOutOfRange {
             year: 2023,
             month: Month::April,
-            mday: 32
+            day: 32
         })
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "mday 32 is outside of valid range for April 2023"
+        "day 32 is outside of valid range for April 2023"
     );
 }
 
@@ -39,15 +39,15 @@ fn sep_31() {
     let r = Calendar::gregorian_reform().at_ymd(2023, Month::September, 31);
     assert_eq!(
         r,
-        Err(Error::MdayOutOfRange {
+        Err(Error::DayOutOfRange {
             year: 2023,
             month: Month::September,
-            mday: 31
+            day: 31
         })
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "mday 31 is outside of valid range for September 2023"
+        "day 31 is outside of valid range for September 2023"
     );
 }
 
@@ -56,15 +56,15 @@ fn invalid_leap_day() {
     let r = Calendar::gregorian_reform().at_ymd(2023, Month::February, 29);
     assert_eq!(
         r,
-        Err(Error::MdayOutOfRange {
+        Err(Error::DayOutOfRange {
             year: 2023,
             month: Month::February,
-            mday: 29
+            day: 29
         })
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "mday 29 is outside of valid range for February 2023"
+        "day 29 is outside of valid range for February 2023"
     );
 }
 
@@ -86,7 +86,7 @@ fn skipped_date() {
         Err(Error::SkippedDate {
             year: 1582,
             month: Month::October,
-            mday: 10
+            day: 10
         })
     );
     assert_eq!(
@@ -103,7 +103,7 @@ fn first_skipped_date() {
         Err(Error::SkippedDate {
             year: 1582,
             month: Month::October,
-            mday: 5
+            day: 5
         })
     );
     assert_eq!(
@@ -120,7 +120,7 @@ fn last_skipped_date() {
         Err(Error::SkippedDate {
             year: 1582,
             month: Month::October,
-            mday: 14
+            day: 14
         })
     );
     assert_eq!(

@@ -16,13 +16,13 @@ fn init_german_reformation() {
                     year: 1700,
                     ordinal: 49,
                     month: Month::February,
-                    mday: 18
+                    day: 18
                 },
                 post_reform: inner::Date {
                     year: 1700,
                     ordinal: 50,
                     month: Month::March,
-                    mday: 1
+                    day: 1
                 },
                 gap_length: 11,
                 kind: inner::GapKind::CrossMonth
@@ -76,13 +76,13 @@ fn min_valid_reformation() {
                     year: 300,
                     ordinal: 59,
                     month: Month::February,
-                    mday: 28
+                    day: 28
                 },
                 post_reform: inner::Date {
                     year: 300,
                     ordinal: 60,
                     month: Month::March,
-                    mday: 1
+                    day: 1
                 },
                 gap_length: 1,
                 kind: inner::GapKind::CrossMonth
@@ -105,13 +105,13 @@ fn test_first_skipped_year() {
                     year: 48900,
                     ordinal: 366,
                     month: Month::December,
-                    mday: 31
+                    day: 31
                 },
                 post_reform: inner::Date {
                     year: 48902,
                     ordinal: 1,
                     month: Month::January,
-                    mday: 1
+                    day: 1
                 },
                 gap_length: 365,
                 kind: inner::GapKind::MultiYear

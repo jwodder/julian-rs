@@ -1092,7 +1092,7 @@ fn at_ordinal_date(
     #[case] year: YearT,
     #[case] ordinal: DaysT,
     #[case] month: Month,
-    #[case] mday: u32,
+    #[case] day: u32,
 ) {
     let date = Calendar::gregorian_reform()
         .at_ordinal_date(year, ordinal)
@@ -1100,7 +1100,7 @@ fn at_ordinal_date(
     assert_eq!(date.year(), year);
     assert_eq!(date.ordinal(), ordinal);
     assert_eq!(date.month(), month);
-    assert_eq!(date.day(), mday);
+    assert_eq!(date.day(), day);
 }
 
 #[rstest]

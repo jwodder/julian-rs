@@ -115,7 +115,7 @@ fn ymd_long_month() {
 }
 
 #[test]
-fn ymd_short_mday() {
+fn ymd_short_day() {
     let date = Calendar::gregorian_reform()
         .parse_date("2023-04-2")
         .unwrap();
@@ -169,36 +169,36 @@ fn smarch() {
 }
 
 #[test]
-fn mday_0() {
+fn day_0() {
     let r = Calendar::gregorian_reform().parse_date("2023-04-00");
     assert_eq!(
         r,
-        Err(ParseDateError::InvalidDate(Error::MdayOutOfRange {
+        Err(ParseDateError::InvalidDate(Error::DayOutOfRange {
             year: 2023,
             month: Month::April,
-            mday: 0
+            day: 0
         }))
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "invalid calendar date: mday 0 is outside of valid range for April 2023"
+        "invalid calendar date: day 0 is outside of valid range for April 2023"
     );
 }
 
 #[test]
-fn mday_32() {
+fn day_32() {
     let r = Calendar::gregorian_reform().parse_date("2023-04-32");
     assert_eq!(
         r,
-        Err(ParseDateError::InvalidDate(Error::MdayOutOfRange {
+        Err(ParseDateError::InvalidDate(Error::DayOutOfRange {
             year: 2023,
             month: Month::April,
-            mday: 32
+            day: 32
         }))
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "invalid calendar date: mday 32 is outside of valid range for April 2023"
+        "invalid calendar date: day 32 is outside of valid range for April 2023"
     );
 }
 
@@ -207,15 +207,15 @@ fn sep_31() {
     let r = Calendar::gregorian_reform().parse_date("2023-09-31");
     assert_eq!(
         r,
-        Err(ParseDateError::InvalidDate(Error::MdayOutOfRange {
+        Err(ParseDateError::InvalidDate(Error::DayOutOfRange {
             year: 2023,
             month: Month::September,
-            mday: 31
+            day: 31
         }))
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "invalid calendar date: mday 31 is outside of valid range for September 2023"
+        "invalid calendar date: day 31 is outside of valid range for September 2023"
     );
 }
 
@@ -224,15 +224,15 @@ fn invalid_leap_day() {
     let r = Calendar::gregorian_reform().parse_date("2023-02-29");
     assert_eq!(
         r,
-        Err(ParseDateError::InvalidDate(Error::MdayOutOfRange {
+        Err(ParseDateError::InvalidDate(Error::DayOutOfRange {
             year: 2023,
             month: Month::February,
-            mday: 29
+            day: 29
         }))
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "invalid calendar date: mday 29 is outside of valid range for February 2023"
+        "invalid calendar date: day 29 is outside of valid range for February 2023"
     );
 }
 
@@ -254,7 +254,7 @@ fn skipped_date() {
         Err(ParseDateError::InvalidDate(Error::SkippedDate {
             year: 1582,
             month: Month::October,
-            mday: 10
+            day: 10
         }))
     );
     assert_eq!(
@@ -271,7 +271,7 @@ fn first_skipped_date() {
         Err(ParseDateError::InvalidDate(Error::SkippedDate {
             year: 1582,
             month: Month::October,
-            mday: 5
+            day: 5
         }))
     );
     assert_eq!(
@@ -288,7 +288,7 @@ fn last_skipped_date() {
         Err(ParseDateError::InvalidDate(Error::SkippedDate {
             year: 1582,
             month: Month::October,
-            mday: 14
+            day: 14
         }))
     );
     assert_eq!(
@@ -320,7 +320,7 @@ fn invalid_ordinal_date(#[case] year: YearT, #[case] ordinal: DaysT) {
 }
 
 #[test]
-fn bad_month_mday_sep() {
+fn bad_month_day_sep() {
     let r = Calendar::gregorian_reform().parse_date("2023-04:20");
     assert_eq!(
         r,
