@@ -43,6 +43,17 @@ fn negative_ymd() {
 }
 
 #[test]
+fn plus_ymd() {
+    let date = Calendar::gregorian_reform()
+        .parse_date("+2023-04-20")
+        .unwrap();
+    assert_eq!(date.year(), 2023);
+    assert_eq!(date.month(), Month::April);
+    assert_eq!(date.day(), 20);
+    assert_eq!(date.ordinal(), 110);
+}
+
+#[test]
 fn ymd_short_year() {
     let date = Calendar::gregorian_reform().parse_date("20-04-20").unwrap();
     assert_eq!(date.year(), 20);
