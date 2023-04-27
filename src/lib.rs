@@ -17,7 +17,7 @@ pub type YearT = i32;
 pub type DaysT = u32;
 pub type JulianDayT = i32;
 
-pub const UNIX_EPOCH_JD: JulianDayT = 2440588; // noon on 1970-01-01
+pub const UNIX_EPOCH_JDN: JulianDayT = 2440588; // noon on 1970-01-01
 
 const SECONDS_IN_DAY: i64 = 24 * 60 * 60;
 
@@ -85,7 +85,8 @@ impl Calendar {
     }
 
     // Errors on reformation dates that would lead to negative or empty
-    // reformation gaps
+    // reformation gaps (i.e., any Julian day number less than 1830692, the
+    // value of which is available as `julian::reformations::MIN_REFORM_JDN`)
     pub fn reforming(reformation: JulianDayT) -> Result<Calendar, Error> {
         let pre_reform = Calendar::julian().at_julian_day_number(
             reformation
@@ -152,7 +153,7 @@ impl Calendar {
 
     pub fn at_unix_timestamp(&self, unix_time: i64) -> Result<(Date, u32), Error> {
         let jd =
-            JulianDayT::try_from(unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JD as i64))
+            JulianDayT::try_from(unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JDN as i64))
                 .map_err(|_| Error::ArithmeticOutOfBounds)?;
         let secs = u32::try_from(unix_time.rem_euclid(SECONDS_IN_DAY)).unwrap();
         Ok((self.at_julian_day_number(jd)?, secs))
@@ -890,9 +891,9 @@ mod tests {
     mod at_ordinal_date;
     mod at_ymd;
     mod date;
-    mod german_reform;
     mod gregorian_reform;
     mod jdn;
+    mod misc_reforms;
     mod month;
     mod parse_date;
     mod unix;

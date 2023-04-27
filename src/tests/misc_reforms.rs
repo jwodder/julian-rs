@@ -1,4 +1,5 @@
-use crate::{inner, Calendar, Month, YearKind};
+use crate::reformations::MIN_REFORM_JDN;
+use crate::{inner, Calendar, Error, Month, YearKind};
 use assert_matches::assert_matches;
 
 #[test]
@@ -51,6 +52,41 @@ fn german_reformation_year() {
             year: 1700,
             month: Month::March,
             range: 1..=31
+        }
+    );
+}
+
+#[test]
+fn max_invalid_reformation() {
+    let r = Calendar::reforming(MIN_REFORM_JDN - 1);
+    assert_eq!(r, Err(Error::InvalidReformation));
+}
+
+#[test]
+fn min_valid_reformation() {
+    let cal = Calendar::reforming(MIN_REFORM_JDN).unwrap();
+    // Use assert_matches! instead of assert_eq! because Calendar's Eq
+    // implementation ignores `gap`
+    assert_matches!(
+        cal.0,
+        inner::Calendar::Reforming {
+            reformation: 1830692,
+            gap: inner::ReformGap {
+                pre_reform: inner::Date {
+                    year: 300,
+                    ordinal: 59,
+                    month: Month::February,
+                    mday: 28
+                },
+                post_reform: inner::Date {
+                    year: 300,
+                    ordinal: 60,
+                    month: Month::March,
+                    mday: 1
+                },
+                gap_length: 1,
+                kind: inner::GapKind::CrossMonth
+            }
         }
     );
 }

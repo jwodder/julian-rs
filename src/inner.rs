@@ -6,7 +6,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::{Range, RangeInclusive};
 
 // Julian-calendar year in which Julian day number 0 occurs
-const JD0_YEAR: YearT = -4712;
+const JDN0_YEAR: YearT = -4712;
 
 const GREGORIAN_CYCLE_DAYS: JulianDayT = 146097;
 const GREGORIAN_CYCLE_YEARS: YearT = 400;
@@ -338,7 +338,7 @@ pub(crate) fn is_gregorian_leap_year(year: YearT) -> bool {
 
 // Convert a date in the proleptic Gregorian calendar to a Julian day number
 // Returns None on arithmetic underflow/overflow
-// TODO: PROBLEM: This doesn't work for dates with negative JDs; address
+// TODO: PROBLEM: This doesn't work for dates with negative JDNs; address
 // TODO: Try to rewrite to take ordinal instead of month & mday?
 pub(crate) fn gregorian_ymd_to_jd(year: YearT, month: Month, mday: u32) -> Option<JulianDayT> {
     const MONTHS: JulianDayT = 12;
@@ -363,8 +363,8 @@ pub(crate) fn gregorian_ymd_to_jd(year: YearT, month: Month, mday: u32) -> Optio
 // Returns None on arithmetic underflow/overflow
 pub(crate) fn julian_yj_to_jd(year: YearT, ordinal: DaysT) -> Option<JulianDayT> {
     let idays = JulianDayT::try_from(ordinal - 1).unwrap();
-    if year < JD0_YEAR {
-        let rev_year = sub(JD0_YEAR, year)?;
+    if year < JDN0_YEAR {
+        let rev_year = sub(JDN0_YEAR, year)?;
         sub(
             idays,
             add(
@@ -375,8 +375,8 @@ pub(crate) fn julian_yj_to_jd(year: YearT, ordinal: DaysT) -> Option<JulianDayT>
     } else {
         add(
             add(
-                mul(sub(year, JD0_YEAR)?, COMMON_YEAR_LENGTH)?,
-                add(year, -JD0_YEAR + JULIAN_LEAP_CYCLE_YEARS - 1)? / JULIAN_LEAP_CYCLE_YEARS,
+                mul(sub(year, JDN0_YEAR)?, COMMON_YEAR_LENGTH)?,
+                add(year, -JDN0_YEAR + JULIAN_LEAP_CYCLE_YEARS - 1)? / JULIAN_LEAP_CYCLE_YEARS,
             )?,
             idays,
         )
@@ -409,7 +409,7 @@ pub(crate) fn jd_to_julian_yj(jd: JulianDayT) -> Option<(YearT, DaysT)> {
     if jd < 0 {
         let alt = sub(COMMON_YEAR_LENGTH, jd)?;
         let (alt_year, alt_ordinal) = jd_to_julian_yj(alt)?;
-        let year = sub(JD0_YEAR, sub(alt_year, JD0_YEAR)?)?;
+        let year = sub(JDN0_YEAR, sub(alt_year, JDN0_YEAR)?)?;
         let year_length = if is_julian_leap_year(year) {
             LEAP_YEAR_LENGTH as DaysT
         } else {
@@ -425,7 +425,7 @@ pub(crate) fn jd_to_julian_yj(jd: JulianDayT) -> Option<(YearT, DaysT)> {
         if ordinal > COMMON_YEAR_LENGTH {
             ordinal += (ordinal - LEAP_YEAR_LENGTH) / COMMON_YEAR_LENGTH;
         }
-        year = add(year, add(ordinal / LEAP_YEAR_LENGTH, JD0_YEAR)?)?;
+        year = add(year, add(ordinal / LEAP_YEAR_LENGTH, JDN0_YEAR)?)?;
         ordinal %= LEAP_YEAR_LENGTH;
         Some((year, DaysT::try_from(ordinal + 1).unwrap()))
     }
