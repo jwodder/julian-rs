@@ -138,23 +138,23 @@ impl Calendar {
         Self::reforming(reformations::GREGORIAN).unwrap()
     }
 
-    pub fn now(&self) -> Result<(Date, u32), Error> {
+    pub fn now(&self) -> Result<(Date, u32), ArithmeticOutOfBounds> {
         self.at_system_time(SystemTime::now())
     }
 
-    pub fn at_system_time(&self, t: SystemTime) -> Result<(Date, u32), Error> {
+    pub fn at_system_time(&self, t: SystemTime) -> Result<(Date, u32), ArithmeticOutOfBounds> {
         let ts = match t.duration_since(UNIX_EPOCH) {
             Ok(d) => i64::try_from(d.as_secs()),
             Err(e) => i64::try_from(e.duration().as_secs()).map(|i| -i),
         }
-        .map_err(|_| Error::ArithmeticOutOfBounds)?;
+        .map_err(|_| ArithmeticOutOfBounds)?;
         self.at_unix_timestamp(ts)
     }
 
-    pub fn at_unix_timestamp(&self, unix_time: i64) -> Result<(Date, u32), Error> {
+    pub fn at_unix_timestamp(&self, unix_time: i64) -> Result<(Date, u32), ArithmeticOutOfBounds> {
         let jd =
             JulianDayT::try_from(unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JDN as i64))
-                .map_err(|_| Error::ArithmeticOutOfBounds)?;
+                .map_err(|_| ArithmeticOutOfBounds)?;
         let secs = u32::try_from(unix_time.rem_euclid(SECONDS_IN_DAY)).unwrap();
         Ok((self.at_julian_day_number(jd)?, secs))
     }
@@ -196,17 +196,16 @@ impl Calendar {
         })
     }
 
-    pub fn at_julian_day_number(&self, jdn: JulianDayT) -> Result<Date, Error> {
+    pub fn at_julian_day_number(&self, jdn: JulianDayT) -> Result<Date, ArithmeticOutOfBounds> {
         use inner::Calendar::*;
         let (year, ordinal, month, mday);
         if self.0 == Julian || matches!(self.0, Reforming { reformation, .. } if jdn < reformation)
         {
-            (year, ordinal) = inner::jd_to_julian_yj(jdn).ok_or(Error::ArithmeticOutOfBounds)?;
-            (month, mday) = self.ordinal2ymd(year, ordinal)?;
+            (year, ordinal) = inner::jd_to_julian_yj(jdn).ok_or(ArithmeticOutOfBounds)?;
+            (month, mday) = self.ordinal2ymd(year, ordinal).unwrap();
         } else {
-            (year, month, mday) =
-                inner::jd_to_gregorian_ymd(jdn).ok_or(Error::ArithmeticOutOfBounds)?;
-            ordinal = self.ymd2ordinal(year, month, mday)?;
+            (year, month, mday) = inner::jd_to_gregorian_ymd(jdn).ok_or(ArithmeticOutOfBounds)?;
+            ordinal = self.ymd2ordinal(year, month, mday).unwrap();
         }
         let mday_ordinal = self
             .month_shape(year, month)
@@ -529,7 +528,7 @@ impl Calendar {
         ordinal: DaysT,
         month: Month,
         mday: u32,
-    ) -> Result<JulianDayT, Error> {
+    ) -> Result<JulianDayT, ArithmeticOutOfBounds> {
         use inner::Calendar::*;
         if self.0 == Julian
             || matches!(self.0, Reforming {gap, ..} if (year, ordinal) < (gap.post_reform.year, gap.post_reform.ordinal))
@@ -537,7 +536,7 @@ impl Calendar {
             inner::julian_yj_to_jd(year, ordinal)
         } else {
             inner::gregorian_ymd_to_jd(year, month, mday)
-        }.ok_or(Error::ArithmeticOutOfBounds)
+        }.ok_or(ArithmeticOutOfBounds)
     }
 }
 
@@ -614,7 +613,7 @@ impl Date {
         }
     }
 
-    pub fn convert_to(&self, calendar: Calendar) -> Result<Date, Error> {
+    pub fn convert_to(&self, calendar: Calendar) -> Result<Date, ArithmeticOutOfBounds> {
         calendar.at_julian_day_number(self.julian_day_number())
     }
 }
@@ -842,7 +841,7 @@ impl DoubleEndedIterator for MonthIter {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, Error, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, Error, Hash, PartialEq)]
 pub enum Error {
     #[error("reformation date would not cause calendar to advance")]
     InvalidReformation,
@@ -862,6 +861,16 @@ pub enum Error {
         month: Month,
         mday: u32,
     },
+}
+
+#[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
+#[error("arithmetic overflow/underflow")]
+pub struct ArithmeticOutOfBounds;
+
+impl From<ArithmeticOutOfBounds> for Error {
+    fn from(_: ArithmeticOutOfBounds) -> Error {
+        Error::ArithmeticOutOfBounds
+    }
 }
 
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
