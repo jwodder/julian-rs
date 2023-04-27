@@ -17,7 +17,8 @@ pub type YearT = i32;
 pub type DaysT = u32;
 pub type JulianDayT = i32;
 
-pub const UNIX_EPOCH_JDN: JulianDayT = 2440588; // noon on 1970-01-01
+/// The Julian day number of the start of the Unix epoch (1970-01-01)
+pub const UNIX_EPOCH_JDN: JulianDayT = 2440588;
 
 const SECONDS_IN_DAY: i64 = 24 * 60 * 60;
 
@@ -145,20 +146,13 @@ impl Calendar {
     }
 
     pub fn at_system_time(&self, t: SystemTime) -> Result<(Date, u32), ArithmeticOutOfBounds> {
-        let ts = match t.duration_since(UNIX_EPOCH) {
-            Ok(d) => i64::try_from(d.as_secs()),
-            Err(e) => i64::try_from(e.duration().as_secs()).map(|i| -i),
-        }
-        .map_err(|_| ArithmeticOutOfBounds)?;
-        self.at_unix_timestamp(ts)
+        let (jdn, secs) = system_time_to_julian_day_number(t)?;
+        Ok((self.at_julian_day_number(jdn)?, secs))
     }
 
-    pub fn at_unix_timestamp(&self, unix_time: i64) -> Result<(Date, u32), ArithmeticOutOfBounds> {
-        let jd =
-            JulianDayT::try_from(unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JDN as i64))
-                .map_err(|_| ArithmeticOutOfBounds)?;
-        let secs = u32::try_from(unix_time.rem_euclid(SECONDS_IN_DAY)).unwrap();
-        Ok((self.at_julian_day_number(jd)?, secs))
+    pub fn at_unix_time(&self, unix_time: i64) -> Result<(Date, u32), ArithmeticOutOfBounds> {
+        let (jdn, secs) = unix_time_to_julian_day_number(unix_time)?;
+        Ok((self.at_julian_day_number(jdn)?, secs))
     }
 
     // `mday` is one-indexed
@@ -907,6 +901,26 @@ pub enum ParseDateError {
     UnexpectedEnd { expected: char },
     #[error("invalid calendar date: numeric parse error: {0}")]
     ParseInt(#[from] ParseIntError),
+}
+
+pub fn system_time_to_julian_day_number(
+    t: SystemTime,
+) -> Result<(JulianDayT, u32), ArithmeticOutOfBounds> {
+    let ts = match t.duration_since(UNIX_EPOCH) {
+        Ok(d) => i64::try_from(d.as_secs()),
+        Err(e) => i64::try_from(e.duration().as_secs()).map(|i| -i),
+    }
+    .map_err(|_| ArithmeticOutOfBounds)?;
+    unix_time_to_julian_day_number(ts)
+}
+
+pub fn unix_time_to_julian_day_number(
+    unix_time: i64,
+) -> Result<(JulianDayT, u32), ArithmeticOutOfBounds> {
+    let jd = JulianDayT::try_from(unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JDN as i64))
+        .map_err(|_| ArithmeticOutOfBounds)?;
+    let secs = u32::try_from(unix_time.rem_euclid(SECONDS_IN_DAY)).unwrap();
+    Ok((jd, secs))
 }
 
 #[cfg(test)]

@@ -14,14 +14,14 @@ use rstest::rstest;
 #[case(1234567890, 2009, Month::February, 13, 84690)]
 #[case(1682028168, 2023, Month::April, 20, 79368)]
 #[case(2147483647, 2038, Month::January, 19, 11647)]
-fn at_unix_timestamp(
+fn at_unix_time(
     #[case] ts: i64,
     #[case] year: YearT,
     #[case] month: Month,
     #[case] mday: u32,
     #[case] seconds: u32,
 ) {
-    let (date, s) = Calendar::gregorian_reform().at_unix_timestamp(ts).unwrap();
+    let (date, s) = Calendar::gregorian_reform().at_unix_time(ts).unwrap();
     assert_eq!(date.year(), year);
     assert_eq!(date.month(), month);
     assert_eq!(date.day(), mday);
