@@ -5,9 +5,9 @@
 
 [GitHub](https://github.com/jwodder/julian-rs) <!-- | [crates.io](https://crates.io/crates/julian) | [Documentation](https://docs.rs/julian) --> | [Issues](https://github.com/jwodder/julian-rs/issues)
 
-`julian` is a Rust library for converting between [Julian days][] and dates in
-the [Gregorian calendar][] (non-proleptic, with the Reformation at 1582-10-05)
-and [Julian calendar][].
+`julian` is a Rust library for converting between [Julian day numbers][] and
+dates in the [Gregorian calendar][] (non-proleptic, with the Reformation at
+1582-10-05) and [Julian calendar][].
 
 [Julian days]: https://en.wikipedia.org/wiki/Julian_day
 [Gregorian calendar]: https://en.wikipedia.org/wiki/Gregorian_calendar

@@ -87,15 +87,15 @@ impl Calendar {
     // Errors on reformation dates that would lead to negative or empty
     // reformation gaps
     pub fn reforming(reformation: JulianDayT) -> Result<Calendar, Error> {
-        let pre_reform = Calendar::julian().at_julian_day(
+        let pre_reform = Calendar::julian().at_julian_day_number(
             reformation
                 .checked_sub(1)
                 .ok_or(Error::ArithmeticOutOfBounds)?,
         )?;
-        let post_reform = Calendar::gregorian().at_julian_day(reformation)?;
+        let post_reform = Calendar::gregorian().at_julian_day_number(reformation)?;
         let post_reform_as_julian = Calendar::julian()
             .at_ymd(post_reform.year(), post_reform.month(), post_reform.day())?
-            .julian_day();
+            .julian_day_number();
         if post_reform_as_julian <= reformation {
             return Err(Error::InvalidReformation);
         }
@@ -155,13 +155,13 @@ impl Calendar {
             JulianDayT::try_from(unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JD as i64))
                 .map_err(|_| Error::ArithmeticOutOfBounds)?;
         let secs = u32::try_from(unix_time.rem_euclid(SECONDS_IN_DAY)).unwrap();
-        Ok((self.at_julian_day(jd)?, secs))
+        Ok((self.at_julian_day_number(jd)?, secs))
     }
 
     // `mday` is one-indexed
     pub fn at_ymd(&self, year: YearT, month: Month, mday: u32) -> Result<Date, Error> {
         let ordinal = self.ymd2ordinal(year, month, mday)?;
-        let julian_day = self.get_julian_day(year, ordinal, month, mday)?;
+        let jdn = self.get_julian_day_number(year, ordinal, month, mday)?;
         let mday_ordinal = self
             .month_shape(year, month)
             .get_mday_ordinal(mday)
@@ -173,13 +173,13 @@ impl Calendar {
             month,
             mday,
             mday_ordinal,
-            julian_day,
+            jdn,
         })
     }
 
     pub fn at_ordinal_date(&self, year: YearT, ordinal: DaysT) -> Result<Date, Error> {
         let (month, mday) = self.ordinal2ymd(year, ordinal)?;
-        let julian_day = self.get_julian_day(year, ordinal, month, mday)?;
+        let jdn = self.get_julian_day_number(year, ordinal, month, mday)?;
         let mday_ordinal = self
             .month_shape(year, month)
             .get_mday_ordinal(mday)
@@ -191,22 +191,20 @@ impl Calendar {
             month,
             mday,
             mday_ordinal,
-            julian_day,
+            jdn,
         })
     }
 
-    pub fn at_julian_day(&self, julian_day: JulianDayT) -> Result<Date, Error> {
+    pub fn at_julian_day_number(&self, jdn: JulianDayT) -> Result<Date, Error> {
         use inner::Calendar::*;
         let (year, ordinal, month, mday);
-        if self.0 == Julian
-            || matches!(self.0, Reforming { reformation, .. } if julian_day < reformation)
+        if self.0 == Julian || matches!(self.0, Reforming { reformation, .. } if jdn < reformation)
         {
-            (year, ordinal) =
-                inner::jd_to_julian_yj(julian_day).ok_or(Error::ArithmeticOutOfBounds)?;
+            (year, ordinal) = inner::jd_to_julian_yj(jdn).ok_or(Error::ArithmeticOutOfBounds)?;
             (month, mday) = self.ordinal2ymd(year, ordinal)?;
         } else {
             (year, month, mday) =
-                inner::jd_to_gregorian_ymd(julian_day).ok_or(Error::ArithmeticOutOfBounds)?;
+                inner::jd_to_gregorian_ymd(jdn).ok_or(Error::ArithmeticOutOfBounds)?;
             ordinal = self.ymd2ordinal(year, month, mday)?;
         }
         let mday_ordinal = self
@@ -220,7 +218,7 @@ impl Calendar {
             month,
             mday,
             mday_ordinal,
-            julian_day,
+            jdn,
         })
     }
 
@@ -273,7 +271,7 @@ impl Calendar {
                 month: gap.pre_reform.month,
                 mday: gap.pre_reform.mday,
                 mday_ordinal: gap.pre_reform.mday,
-                julian_day: reformation - 1,
+                jdn: reformation - 1,
             })
         } else {
             None
@@ -294,7 +292,7 @@ impl Calendar {
                 month: gap.post_reform.month,
                 mday: gap.post_reform.mday,
                 mday_ordinal,
-                julian_day: reformation,
+                jdn: reformation,
             })
         } else {
             None
@@ -524,7 +522,7 @@ impl Calendar {
         }
     }
 
-    fn get_julian_day(
+    fn get_julian_day_number(
         &self,
         year: YearT,
         ordinal: DaysT,
@@ -550,7 +548,7 @@ pub struct Date {
     month: Month,
     mday: u32,         // one-based
     mday_ordinal: u32, // one-based
-    julian_day: JulianDayT,
+    jdn: JulianDayT,
 }
 
 impl Date {
@@ -589,15 +587,17 @@ impl Date {
         self.ordinal - 1
     }
 
-    pub fn julian_day(&self) -> JulianDayT {
-        self.julian_day
+    pub fn julian_day_number(&self) -> JulianDayT {
+        self.jdn
     }
 
     // a.k.a. "is Old Style"
     pub fn is_julian(&self) -> bool {
         match self.calendar.0 {
             inner::Calendar::Julian => true,
-            inner::Calendar::Reforming { reformation, .. } => self.julian_day() < reformation,
+            inner::Calendar::Reforming { reformation, .. } => {
+                self.julian_day_number() < reformation
+            }
             inner::Calendar::Gregorian => false,
         }
     }
@@ -606,13 +606,15 @@ impl Date {
     pub fn is_gregorian(&self) -> bool {
         match self.calendar.0 {
             inner::Calendar::Julian => false,
-            inner::Calendar::Reforming { reformation, .. } => reformation <= self.julian_day(),
+            inner::Calendar::Reforming { reformation, .. } => {
+                reformation <= self.julian_day_number()
+            }
             inner::Calendar::Gregorian => true,
         }
     }
 
     pub fn convert_to(&self, calendar: Calendar) -> Result<Date, Error> {
-        calendar.at_julian_day(self.julian_day())
+        calendar.at_julian_day_number(self.julian_day_number())
     }
 }
 
@@ -624,7 +626,8 @@ impl PartialOrd for Date {
 
 impl Ord for Date {
     fn cmp(&self, other: &Date) -> Ordering {
-        (self.julian_day(), self.calendar()).cmp(&(other.julian_day(), other.calendar()))
+        (self.julian_day_number(), self.calendar())
+            .cmp(&(other.julian_day_number(), other.calendar()))
     }
 }
 
@@ -889,7 +892,7 @@ mod tests {
     mod date;
     mod german_reform;
     mod gregorian_reform;
-    mod julian_days;
+    mod jdn;
     mod month;
     mod parse_date;
     mod unix;

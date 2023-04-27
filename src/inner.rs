@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::ops::{Range, RangeInclusive};
 
-// Julian-calendar year in which Julian day 0 occurs
+// Julian-calendar year in which Julian day number 0 occurs
 const JD0_YEAR: YearT = -4712;
 
 const GREGORIAN_CYCLE_DAYS: JulianDayT = 146097;
@@ -336,7 +336,7 @@ pub(crate) fn is_gregorian_leap_year(year: YearT) -> bool {
     year % JULIAN_LEAP_CYCLE_YEARS == 0 && (year % 100 != 0 || year % GREGORIAN_CYCLE_YEARS == 0)
 }
 
-// Convert a date in the proleptic Gregorian calendar to a Julian day
+// Convert a date in the proleptic Gregorian calendar to a Julian day number
 // Returns None on arithmetic underflow/overflow
 // TODO: PROBLEM: This doesn't work for dates with negative JDs; address
 // TODO: Try to rewrite to take ordinal instead of month & mday?
@@ -359,7 +359,7 @@ pub(crate) fn gregorian_ymd_to_jd(year: YearT, month: Month, mday: u32) -> Optio
     )
 }
 
-// Convert a date in the proleptic Julian calendar to a Julian day
+// Convert a date in the proleptic Julian calendar to a Julian day number
 // Returns None on arithmetic underflow/overflow
 pub(crate) fn julian_yj_to_jd(year: YearT, ordinal: DaysT) -> Option<JulianDayT> {
     let idays = JulianDayT::try_from(ordinal - 1).unwrap();
@@ -384,7 +384,7 @@ pub(crate) fn julian_yj_to_jd(year: YearT, ordinal: DaysT) -> Option<JulianDayT>
 }
 
 // Returns None on arithmetic underflow/overflow
-// TODO: PROBLEM: This doesn't work for dates with negative JDs; address
+// TODO: PROBLEM: This doesn't work for dates with negative JDNs; address
 // TODO: Rewrite to return ordinal instead of or in addition to month & mday?
 pub(crate) fn jd_to_gregorian_ymd(jd: JulianDayT) -> Option<(YearT, Month, u32)> {
     let ell = add(jd, 68569)?;
