@@ -90,3 +90,35 @@ fn min_valid_reformation() {
         }
     );
 }
+
+#[test]
+fn test_first_skipped_year() {
+    let cal = Calendar::reforming(19582149).unwrap();
+    // Use assert_matches! instead of assert_eq! because Calendar's Eq
+    // implementation ignores `gap`
+    assert_matches!(
+        cal.0,
+        inner::Calendar::Reforming {
+            reformation: 19582149,
+            gap: inner::ReformGap {
+                pre_reform: inner::Date {
+                    year: 48900,
+                    ordinal: 366,
+                    month: Month::December,
+                    mday: 31
+                },
+                post_reform: inner::Date {
+                    year: 48902,
+                    ordinal: 1,
+                    month: Month::January,
+                    mday: 1
+                },
+                gap_length: 365,
+                kind: inner::GapKind::MultiYear
+            }
+        }
+    );
+    assert_eq!(cal.year_kind(48900), YearKind::Leap);
+    assert_eq!(cal.year_kind(48901), YearKind::Skipped);
+    assert_eq!(cal.year_kind(48902), YearKind::Common);
+}

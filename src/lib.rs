@@ -46,8 +46,10 @@ pub enum YearKind {
     /// reformation into account) contains February 29.
     ReformLeap,
 
-    /// A year that was skipped entirely by a calendar reformation
-    // TODO: Give the smallest such reformation date
+    /// A year that was skipped entirely by a calendar reformation.
+    ///
+    /// This can only happen for reformations of at least JDN 19582149
+    /// (48902-01-01 in the Gregorian calendar).
     Skipped,
 }
 
@@ -337,7 +339,13 @@ impl Calendar {
                         }
                     }
                     EqLower => {
-                        if Month::February < gap.pre_reform.month
+                        if (gap.pre_reform.month, gap.pre_reform.mday) == (Month::December, 31) {
+                            if inner::is_julian_leap_year(year) {
+                                YearKind::Leap
+                            } else {
+                                YearKind::Common
+                            }
+                        } else if Month::February < gap.pre_reform.month
                             && inner::is_julian_leap_year(year)
                         {
                             YearKind::ReformLeap
@@ -358,7 +366,13 @@ impl Calendar {
                         }
                     }
                     EqUpper => {
-                        if gap.post_reform.month <= Month::February
+                        if (gap.post_reform.month, gap.post_reform.mday) == (Month::January, 1) {
+                            if inner::is_gregorian_leap_year(year) {
+                                YearKind::Leap
+                            } else {
+                                YearKind::Common
+                            }
+                        } else if gap.post_reform.month <= Month::February
                             && inner::is_gregorian_leap_year(year)
                         {
                             YearKind::ReformLeap
