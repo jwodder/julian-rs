@@ -1,4 +1,4 @@
-use crate::{Calendar, DaysT, Error, Month, YearT};
+use crate::{Calendar, DateError, DaysT, Month, YearT};
 use rstest::rstest;
 
 #[rstest]
@@ -1112,7 +1112,7 @@ fn at_ordinal_date(
 #[case(1582, 1000)]
 fn at_ordinal_date_err(#[case] year: YearT, #[case] ordinal: DaysT) {
     let r = Calendar::gregorian_reform().at_ordinal_date(year, ordinal);
-    assert_eq!(r, Err(Error::OrdinalOutOfRange { year, ordinal }));
+    assert_eq!(r, Err(DateError::OrdinalOutOfRange { year, ordinal }));
     assert_eq!(
         r.unwrap_err().to_string(),
         format!("day-of-year ordinal {ordinal} is outside of valid range for year {year}")

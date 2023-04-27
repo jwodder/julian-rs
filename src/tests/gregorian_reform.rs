@@ -1,4 +1,4 @@
-use crate::{inner, Calendar, Error, Month, YearT};
+use crate::{inner, Calendar, DateError, Month, YearT};
 use assert_matches::assert_matches;
 use rstest::rstest;
 
@@ -56,7 +56,7 @@ fn reformation_month_shape() {
     assert!(!shape.has_day(32));
     assert_eq!(
         shape.get_day_ordinal(0),
-        Err(Error::DayOutOfRange {
+        Err(DateError::DayOutOfRange {
             year: 1582,
             month: October,
             day: 0
@@ -66,7 +66,7 @@ fn reformation_month_shape() {
     assert_eq!(shape.get_day_ordinal(4), Ok(4));
     assert_eq!(
         shape.get_day_ordinal(5),
-        Err(Error::SkippedDate {
+        Err(DateError::SkippedDate {
             year: 1582,
             month: October,
             day: 5
@@ -74,7 +74,7 @@ fn reformation_month_shape() {
     );
     assert_eq!(
         shape.get_day_ordinal(14),
-        Err(Error::SkippedDate {
+        Err(DateError::SkippedDate {
             year: 1582,
             month: October,
             day: 14
@@ -84,7 +84,7 @@ fn reformation_month_shape() {
     assert_eq!(shape.get_day_ordinal(31), Ok(21));
     assert_eq!(
         shape.get_day_ordinal(32),
-        Err(Error::DayOutOfRange {
+        Err(DateError::DayOutOfRange {
             year: 1582,
             month: October,
             day: 32

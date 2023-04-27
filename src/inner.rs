@@ -1,5 +1,6 @@
 use super::{
-    DaysT, Error, JulianDayT, Month, ParseDateError, YearT, COMMON_YEAR_LENGTH, LEAP_YEAR_LENGTH,
+    DateError, DaysT, JulianDayT, Month, ParseDateError, YearT, COMMON_YEAR_LENGTH,
+    LEAP_YEAR_LENGTH,
 };
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
@@ -269,7 +270,7 @@ impl MonthShape {
     }
 
     // Returns a one-based ordinal
-    pub(crate) fn get_day_ordinal(&self, day: u32) -> Result<u32, Error> {
+    pub(crate) fn get_day_ordinal(&self, day: u32) -> Result<u32, DateError> {
         match *self {
             MonthShape::Solid {
                 year,
@@ -279,9 +280,9 @@ impl MonthShape {
                 if self.has_day(day) {
                     Ok(day)
                 } else if *range.start() == 1 {
-                    Err(Error::DayOutOfRange { year, month, day })
+                    Err(DateError::DayOutOfRange { year, month, day })
                 } else {
-                    Err(Error::SkippedDate { year, month, day })
+                    Err(DateError::SkippedDate { year, month, day })
                 }
             }
             MonthShape::HasGap {
@@ -291,18 +292,18 @@ impl MonthShape {
                 max_day,
             } => {
                 if day == 0 {
-                    Err(Error::DayOutOfRange { year, month, day })
+                    Err(DateError::DayOutOfRange { year, month, day })
                 } else if day < gap.start {
                     Ok(day)
                 } else if day < gap.end {
-                    Err(Error::SkippedDate { year, month, day })
+                    Err(DateError::SkippedDate { year, month, day })
                 } else if day <= max_day {
                     Ok(day - u32::try_from(gap.len()).unwrap())
                 } else {
-                    Err(Error::DayOutOfRange { year, month, day })
+                    Err(DateError::DayOutOfRange { year, month, day })
                 }
             }
-            MonthShape::Skipped { year, month } => Err(Error::SkippedDate { year, month, day }),
+            MonthShape::Skipped { year, month } => Err(DateError::SkippedDate { year, month, day }),
         }
     }
 

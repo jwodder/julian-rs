@@ -1,4 +1,4 @@
-use crate::{Calendar, DaysT, Error, Month, ParseDateError, YearT};
+use crate::{Calendar, DateError, DaysT, Month, ParseDateError, YearT};
 use assert_matches::assert_matches;
 use rstest::rstest;
 
@@ -83,7 +83,7 @@ fn big_ordinal() {
     let r = Calendar::gregorian_reform().parse_date("1234-5678");
     assert_eq!(
         r,
-        Err(ParseDateError::InvalidDate(Error::OrdinalOutOfRange {
+        Err(ParseDateError::InvalidDate(DateError::OrdinalOutOfRange {
             year: 1234,
             ordinal: 5678
         }))
@@ -173,7 +173,7 @@ fn day_0() {
     let r = Calendar::gregorian_reform().parse_date("2023-04-00");
     assert_eq!(
         r,
-        Err(ParseDateError::InvalidDate(Error::DayOutOfRange {
+        Err(ParseDateError::InvalidDate(DateError::DayOutOfRange {
             year: 2023,
             month: Month::April,
             day: 0
@@ -190,7 +190,7 @@ fn day_32() {
     let r = Calendar::gregorian_reform().parse_date("2023-04-32");
     assert_eq!(
         r,
-        Err(ParseDateError::InvalidDate(Error::DayOutOfRange {
+        Err(ParseDateError::InvalidDate(DateError::DayOutOfRange {
             year: 2023,
             month: Month::April,
             day: 32
@@ -207,7 +207,7 @@ fn sep_31() {
     let r = Calendar::gregorian_reform().parse_date("2023-09-31");
     assert_eq!(
         r,
-        Err(ParseDateError::InvalidDate(Error::DayOutOfRange {
+        Err(ParseDateError::InvalidDate(DateError::DayOutOfRange {
             year: 2023,
             month: Month::September,
             day: 31
@@ -224,7 +224,7 @@ fn invalid_leap_day() {
     let r = Calendar::gregorian_reform().parse_date("2023-02-29");
     assert_eq!(
         r,
-        Err(ParseDateError::InvalidDate(Error::DayOutOfRange {
+        Err(ParseDateError::InvalidDate(DateError::DayOutOfRange {
             year: 2023,
             month: Month::February,
             day: 29
@@ -251,7 +251,7 @@ fn skipped_date() {
     let r = Calendar::gregorian_reform().parse_date("1582-10-10");
     assert_eq!(
         r,
-        Err(ParseDateError::InvalidDate(Error::SkippedDate {
+        Err(ParseDateError::InvalidDate(DateError::SkippedDate {
             year: 1582,
             month: Month::October,
             day: 10
@@ -268,7 +268,7 @@ fn first_skipped_date() {
     let r = Calendar::gregorian_reform().parse_date("1582-10-05");
     assert_eq!(
         r,
-        Err(ParseDateError::InvalidDate(Error::SkippedDate {
+        Err(ParseDateError::InvalidDate(DateError::SkippedDate {
             year: 1582,
             month: Month::October,
             day: 5
@@ -285,7 +285,7 @@ fn last_skipped_date() {
     let r = Calendar::gregorian_reform().parse_date("1582-10-14");
     assert_eq!(
         r,
-        Err(ParseDateError::InvalidDate(Error::SkippedDate {
+        Err(ParseDateError::InvalidDate(DateError::SkippedDate {
             year: 1582,
             month: Month::October,
             day: 14
@@ -308,7 +308,7 @@ fn invalid_ordinal_date(#[case] year: YearT, #[case] ordinal: DaysT) {
     let r = Calendar::gregorian_reform().parse_date(&format!("{year:04}-{ordinal:03}"));
     assert_eq!(
         r,
-        Err(ParseDateError::InvalidDate(Error::OrdinalOutOfRange {
+        Err(ParseDateError::InvalidDate(DateError::OrdinalOutOfRange {
             year,
             ordinal
         }))

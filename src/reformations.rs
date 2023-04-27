@@ -12,8 +12,8 @@ pub const GREGORIAN: JulianDayT = 2299161;
 pub const UNITED_KINGDOM: JulianDayT = 2361222;
 
 /// The smallest Julian day number that can be passed to
-/// [`Calendar::reforming()`][crate::Calendar::reforming] without getting an
-/// [`Error::InvalidReformation`][crate::Error::InvalidReformation] error.
+/// [`Calendar::reforming()`][crate::Calendar::reforming] without getting a
+/// [`ReformingError`][crate::ReformingError] error.
 ///
 /// This Julian day number corresponds to the date 0300-03-01 N.S. (0300-02-29
 /// O.S.).

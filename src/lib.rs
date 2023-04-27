@@ -123,25 +123,27 @@ impl Calendar {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::ArithmeticOutOfBounds`] if numeric overflow/underflow
-    /// occurs while converting `reformation` to a calendar date.
+    /// Returns [`ReformingError::ArithmeticOutOfBounds`] if numeric
+    /// overflow/underflow occurs while converting `reformation` to a calendar
+    /// date.
     ///
-    /// Returns [`Error::InvalidReformation`] if observing a reformation at the
-    /// given date would not cause the calendar to skip forwards over any
-    /// dates; this can only happen for Julian day numbers less than
-    /// [`reformations::MIN_REFORM_JDN`].
-    pub fn reforming(reformation: JulianDayT) -> Result<Calendar, Error> {
+    /// Returns [`ReformingError::InvalidReformation`] if observing a
+    /// reformation at the given date would not cause the calendar to skip
+    /// forwards over any dates; this can only happen for Julian day numbers
+    /// less than [`reformations::MIN_REFORM_JDN`].
+    pub fn reforming(reformation: JulianDayT) -> Result<Calendar, ReformingError> {
         let pre_reform = Calendar::julian().at_julian_day_number(
             reformation
                 .checked_sub(1)
-                .ok_or(Error::ArithmeticOutOfBounds)?,
+                .ok_or(ReformingError::ArithmeticOutOfBounds)?,
         )?;
         let post_reform = Calendar::gregorian().at_julian_day_number(reformation)?;
         let post_reform_as_julian = Calendar::julian()
-            .at_ymd(post_reform.year(), post_reform.month(), post_reform.day())?
+            .at_ymd(post_reform.year(), post_reform.month(), post_reform.day())
+            .unwrap()
             .julian_day_number();
         if post_reform_as_julian <= reformation {
-            return Err(Error::InvalidReformation);
+            return Err(ReformingError::InvalidReformation);
         }
         let gap_length = u32::try_from(post_reform_as_julian - reformation).unwrap();
         let kind = inner::GapKind::for_dates(
@@ -231,15 +233,16 @@ impl Calendar {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::DayOutOfRange`] if `day` is zero or greater than the
-    /// last day of the given month for the given year.
+    /// Returns [`DateError::DayOutOfRange`] if `day` is zero or greater than
+    /// the last day of the given month for the given year.
     ///
-    /// Returns [`Error::SkippedDate`] if the given date was skipped by a
+    /// Returns [`DateError::SkippedDate`] if the given date was skipped by a
     /// calendar reformation.
     ///
-    /// Returns [`Error::ArithmeticOutOfBounds`] if numeric overflow/underflow
-    /// occurs while calculating the date's Julian day number.
-    pub fn at_ymd(&self, year: YearT, month: Month, day: u32) -> Result<Date, Error> {
+    /// Returns [`DateError::ArithmeticOutOfBounds`] if numeric
+    /// overflow/underflow occurs while calculating the date's Julian day
+    /// number.
+    pub fn at_ymd(&self, year: YearT, month: Month, day: u32) -> Result<Date, DateError> {
         let ordinal = self.ymd2ordinal(year, month, day)?;
         let jdn = self.get_julian_day_number(year, ordinal, month, day)?;
         let day_ordinal = self.month_shape(year, month).get_day_ordinal(day).unwrap();
@@ -259,12 +262,13 @@ impl Calendar {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::OrdinalOutOfRange`] if `ordinal` is zero or greater
-    /// than the length of the year.
+    /// Returns [`DateError::OrdinalOutOfRange`] if `ordinal` is zero or
+    /// greater than the length of the year.
     ///
-    /// Returns [`Error::ArithmeticOutOfBounds`] if numeric overflow/underflow
-    /// occurs while calculating the date's Julian day number.
-    pub fn at_ordinal_date(&self, year: YearT, ordinal: DaysT) -> Result<Date, Error> {
+    /// Returns [`DateError::ArithmeticOutOfBounds`] if numeric
+    /// overflow/underflow occurs while calculating the date's Julian day
+    /// number.
+    pub fn at_ordinal_date(&self, year: YearT, ordinal: DaysT) -> Result<Date, DateError> {
         let (month, day) = self.ordinal2ymd(year, ordinal)?;
         let jdn = self.get_julian_day_number(year, ordinal, month, day)?;
         let day_ordinal = self.month_shape(year, month).get_day_ordinal(day).unwrap();
@@ -561,11 +565,11 @@ impl Calendar {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::OrdinalOutOfRange`] if `ordinal` is zero or greater
-    /// than the length of the year.
-    fn ordinal2ymd(&self, year: YearT, ordinal: u32) -> Result<(Month, u32), Error> {
+    /// Returns [`DateError::OrdinalOutOfRange`] if `ordinal` is zero or
+    /// greater than the length of the year.
+    fn ordinal2ymd(&self, year: YearT, ordinal: u32) -> Result<(Month, u32), DateError> {
         if ordinal == 0 {
-            return Err(Error::OrdinalOutOfRange { year, ordinal });
+            return Err(DateError::OrdinalOutOfRange { year, ordinal });
         }
         let mut days = ordinal;
         for month in MonthIter::new() {
@@ -575,7 +579,7 @@ impl Calendar {
             }
             days -= shape.len();
         }
-        Err(Error::OrdinalOutOfRange { year, ordinal })
+        Err(DateError::OrdinalOutOfRange { year, ordinal })
     }
 
     /// [Private] Calculate the day of year for a given year, month, and day of
@@ -583,12 +587,12 @@ impl Calendar {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::DayOutOfRange`] if `day` is zero or greater than the
-    /// last day of the given month for the given year.
+    /// Returns [`DateError::DayOutOfRange`] if `day` is zero or greater than
+    /// the last day of the given month for the given year.
     ///
-    /// Returns [`Error::SkippedDate`] if the given date was skipped by a
+    /// Returns [`DateError::SkippedDate`] if the given date was skipped by a
     /// calendar reformation.
-    fn ymd2ordinal(&self, year: YearT, month: Month, day: u32) -> Result<u32, Error> {
+    fn ymd2ordinal(&self, year: YearT, month: Month, day: u32) -> Result<u32, DateError> {
         // TODO: Pass this a day ordinal instead in order to cut down on
         // redundant calculations?
         let mord = self.get_day_ordinal(year, month, day)?;
@@ -604,12 +608,12 @@ impl Calendar {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::DayOutOfRange`] if `day` is zero or greater than the
-    /// last day of the given month for the given year.
+    /// Returns [`DateError::DayOutOfRange`] if `day` is zero or greater than
+    /// the last day of the given month for the given year.
     ///
-    /// Returns [`Error::SkippedDate`] if the given date was skipped by a
+    /// Returns [`DateError::SkippedDate`] if the given date was skipped by a
     /// calendar reformation.
-    fn get_day_ordinal(&self, year: YearT, month: Month, day: u32) -> Result<u32, Error> {
+    fn get_day_ordinal(&self, year: YearT, month: Month, day: u32) -> Result<u32, DateError> {
         self.month_shape(year, month).get_day_ordinal(day)
     }
 
@@ -1118,9 +1122,16 @@ impl DoubleEndedIterator for MonthIter {
 
 // TODO: Docs
 #[derive(Copy, Clone, Debug, Eq, Error, Hash, PartialEq)]
-pub enum Error {
+pub enum ReformingError {
     #[error("reformation date would not cause calendar to advance")]
     InvalidReformation,
+    #[error("arithmetic overflow/underflow")]
+    ArithmeticOutOfBounds,
+}
+
+// TODO: Docs
+#[derive(Copy, Clone, Debug, Eq, Error, Hash, PartialEq)]
+pub enum DateError {
     #[error("arithmetic overflow/underflow")]
     ArithmeticOutOfBounds,
     #[error("day {day} is outside of valid range for {month} {year}")]
@@ -1137,9 +1148,15 @@ pub enum Error {
 #[error("arithmetic overflow/underflow")]
 pub struct ArithmeticOutOfBounds;
 
-impl From<ArithmeticOutOfBounds> for Error {
-    fn from(_: ArithmeticOutOfBounds) -> Error {
-        Error::ArithmeticOutOfBounds
+impl From<ArithmeticOutOfBounds> for ReformingError {
+    fn from(_: ArithmeticOutOfBounds) -> ReformingError {
+        ReformingError::ArithmeticOutOfBounds
+    }
+}
+
+impl From<ArithmeticOutOfBounds> for DateError {
+    fn from(_: ArithmeticOutOfBounds) -> DateError {
+        DateError::ArithmeticOutOfBounds
     }
 }
 
@@ -1150,7 +1167,7 @@ pub enum ParseDateError {
     /// Returned if the date specified by the date string does not occur in the
     /// calendar
     #[error("invalid calendar date: {0}")]
-    InvalidDate(#[from] Error),
+    InvalidDate(#[from] DateError),
 
     /// Returned if the month component of the date string had an invalid
     /// numeric value (i.e., zero or greater than twelve)

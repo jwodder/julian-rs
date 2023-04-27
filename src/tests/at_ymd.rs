@@ -1,11 +1,11 @@
-use crate::{Calendar, Error, Month};
+use crate::{Calendar, DateError, Month};
 
 #[test]
 fn day_0() {
     let r = Calendar::gregorian_reform().at_ymd(2023, Month::April, 0);
     assert_eq!(
         r,
-        Err(Error::DayOutOfRange {
+        Err(DateError::DayOutOfRange {
             year: 2023,
             month: Month::April,
             day: 0
@@ -22,7 +22,7 @@ fn day_32() {
     let r = Calendar::gregorian_reform().at_ymd(2023, Month::April, 32);
     assert_eq!(
         r,
-        Err(Error::DayOutOfRange {
+        Err(DateError::DayOutOfRange {
             year: 2023,
             month: Month::April,
             day: 32
@@ -39,7 +39,7 @@ fn sep_31() {
     let r = Calendar::gregorian_reform().at_ymd(2023, Month::September, 31);
     assert_eq!(
         r,
-        Err(Error::DayOutOfRange {
+        Err(DateError::DayOutOfRange {
             year: 2023,
             month: Month::September,
             day: 31
@@ -56,7 +56,7 @@ fn invalid_leap_day() {
     let r = Calendar::gregorian_reform().at_ymd(2023, Month::February, 29);
     assert_eq!(
         r,
-        Err(Error::DayOutOfRange {
+        Err(DateError::DayOutOfRange {
             year: 2023,
             month: Month::February,
             day: 29
@@ -83,7 +83,7 @@ fn skipped_date() {
     let r = Calendar::gregorian_reform().at_ymd(1582, Month::October, 10);
     assert_eq!(
         r,
-        Err(Error::SkippedDate {
+        Err(DateError::SkippedDate {
             year: 1582,
             month: Month::October,
             day: 10
@@ -100,7 +100,7 @@ fn first_skipped_date() {
     let r = Calendar::gregorian_reform().at_ymd(1582, Month::October, 5);
     assert_eq!(
         r,
-        Err(Error::SkippedDate {
+        Err(DateError::SkippedDate {
             year: 1582,
             month: Month::October,
             day: 5
@@ -117,7 +117,7 @@ fn last_skipped_date() {
     let r = Calendar::gregorian_reform().at_ymd(1582, Month::October, 14);
     assert_eq!(
         r,
-        Err(Error::SkippedDate {
+        Err(DateError::SkippedDate {
             year: 1582,
             month: Month::October,
             day: 14

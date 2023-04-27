@@ -1,5 +1,5 @@
 use crate::reformations::MIN_REFORM_JDN;
-use crate::{inner, Calendar, Error, Month, YearKind};
+use crate::{inner, Calendar, Month, ReformingError, YearKind};
 use assert_matches::assert_matches;
 
 #[test]
@@ -59,7 +59,7 @@ fn german_reformation_year() {
 #[test]
 fn max_invalid_reformation() {
     let r = Calendar::reforming(MIN_REFORM_JDN - 1);
-    assert_eq!(r, Err(Error::InvalidReformation));
+    assert_eq!(r, Err(ReformingError::InvalidReformation));
 }
 
 #[test]
