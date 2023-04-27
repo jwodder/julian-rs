@@ -20,6 +20,15 @@ pub type JulianDayT = i32;
 /// The Julian day number of the start of the Unix epoch (1970-01-01)
 pub const UNIX_EPOCH_JDN: JulianDayT = 2440588;
 
+/// The Julian day number of the zero [Rata Die][] day number, i.e., 0000-12-31
+/// in the proleptic Gregorian calendar.
+///
+/// The Rata Die day number for a given date can be determined by subtracting
+/// this constant from the date's Julian day number.
+///
+/// [Rata Die]: https://en.wikipedia.org/wiki/Rata_Die
+pub const RATA_DIE_ZERO_JDN: JulianDayT = 1721425;
+
 const SECONDS_IN_DAY: i64 = 24 * 60 * 60;
 
 const COMMON_YEAR_LENGTH: JulianDayT = 365;
