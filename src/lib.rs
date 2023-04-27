@@ -114,7 +114,7 @@ impl Calendar {
         };
         let post_ordinal = match kind {
             inner::GapKind::IntraMonth | inner::GapKind::CrossMonth => pre_reform.ordinal + 1,
-            _ => 0,
+            _ => 1,
         };
         let post_reform = inner::Date {
             year: post_reform.year,

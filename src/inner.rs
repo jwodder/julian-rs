@@ -425,7 +425,7 @@ pub(crate) fn jd_to_julian_yj(jd: JulianDayT) -> Option<(YearT, DaysT)> {
         if ordinal > COMMON_YEAR_LENGTH {
             ordinal += (ordinal - LEAP_YEAR_LENGTH) / COMMON_YEAR_LENGTH;
         }
-        year += add(ordinal / LEAP_YEAR_LENGTH, JD0_YEAR)?;
+        year = add(year, add(ordinal / LEAP_YEAR_LENGTH, JD0_YEAR)?)?;
         ordinal %= LEAP_YEAR_LENGTH;
         Some((year, DaysT::try_from(ordinal + 1).unwrap()))
     }
@@ -480,7 +480,17 @@ mod tests {
     #[rstest]
     #[case(-1, -4713, 365)]
     #[case(0, -4712, 1)]
+    #[case(1, -4712, 2)]
+    #[case(365, -4712, 366)]
     #[case(366, -4711, 1)]
+    #[case(730, -4711, 365)]
+    #[case(731, -4710, 1)]
+    #[case(1095, -4710, 365)]
+    #[case(1096, -4709, 1)]
+    #[case(1460, -4709, 365)]
+    #[case(1461, -4708, 1)]
+    #[case(1826, -4708, 366)]
+    #[case(1827, -4707, 1)]
     fn test_jd_to_julian_yj(#[case] jd: JulianDayT, #[case] year: YearT, #[case] ordinal: DaysT) {
         assert_eq!(jd_to_julian_yj(jd), Some((year, ordinal)));
     }
