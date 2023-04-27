@@ -34,6 +34,7 @@ const SECONDS_IN_DAY: i64 = 24 * 60 * 60;
 const COMMON_YEAR_LENGTH: JulianDayT = 365;
 const LEAP_YEAR_LENGTH: JulianDayT = 366;
 
+// TODO: Docs
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub enum YearKind {
     /// A full-length year not containing February 29
@@ -64,41 +65,71 @@ pub enum YearKind {
 }
 
 impl YearKind {
+    /// Returns true if the year kind is `Common` or `ReformCommon`
     pub fn is_common(&self) -> bool {
         use YearKind::*;
         matches!(self, Common | ReformCommon)
     }
 
+    /// Returns true if the year kind is `Leap` or `ReformLeap`
     pub fn is_leap(&self) -> bool {
         use YearKind::*;
         matches!(self, Leap | ReformLeap)
     }
 
+    /// Returns true if the year kind is `ReformCommon` or `ReformLeap`
     pub fn is_reform(&self) -> bool {
         use YearKind::*;
         matches!(self, ReformCommon | ReformLeap)
     }
 
+    /// Returns true if the year kind is `Skipped`
     pub fn is_skipped(&self) -> bool {
         self == &YearKind::Skipped
     }
 }
 
+/// A "Julian-style" calendar, featuring twelve months and occasionally a leap
+/// day at the end of February.
+///
+/// A calendar may be a proleptic Julian calendar (in which leap years happen
+/// exactly every four years), a proleptic Gregorian calendar (in which leap
+/// years happen every four years, excepting centennial years not divisible by
+/// 400), or a "reforming" calendar that starts out as Julian and changes to
+/// Gregorian at some point, with the reformation involving skipping a number
+/// of calendar days in order to align with the proleptic Gregorian calendar.
+///
+/// The `Ord` implementation is such that the proleptic Julian calendar is
+/// smaller than all other calendars, and it is followed by "reforming"
+/// calendars in ascending order of reformation date, and then the proleptic
+/// Gregorian calendar is larger than all other calendars.
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Calendar(inner::Calendar);
 
 impl Calendar {
+    /// Construct an instance of a proleptic Julian calendar
     pub fn julian() -> Calendar {
         Calendar(inner::Calendar::Julian)
     }
 
+    /// Construct an instance of a proleptic Gregorian calendar
     pub fn gregorian() -> Calendar {
         Calendar(inner::Calendar::Gregorian)
     }
 
-    // Errors on reformation dates that would lead to negative or empty
-    // reformation gaps (i.e., any Julian day number less than 1830692, the
-    // value of which is available as `julian::reformations::MIN_REFORM_JDN`)
+    /// Construct an instance of a reforming calendar.  `reformation` is the
+    /// Julian day number of the first day on which the Gregorian calendar is
+    /// used.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::ArithmeticOutOfBounds`] if numeric overflow/underflow
+    /// occurs while converting `reformation` to a calendar date.
+    ///
+    /// Returns [`Error::InvalidReformation`] if observing a reformation at the
+    /// given date would not cause the calendar to skip forwards over any
+    /// dates; this can only happen for Julian day numbers less than
+    /// [`reformations::MIN_REFORM_JDN`].
     pub fn reforming(reformation: JulianDayT) -> Result<Calendar, Error> {
         let pre_reform = Calendar::julian().at_julian_day_number(
             reformation
@@ -146,24 +177,68 @@ impl Calendar {
         }))
     }
 
+    /// Construct an instance of a reforming calendar with the reformation set
+    /// at the date in history at which the Gregorian Reformation was first
+    /// observed.
+    ///
+    /// This is equal to
+    /// `Calendar::reforming(julian::reformations::GREGORIAN).unwrap()`.
     pub fn gregorian_reform() -> Calendar {
         Self::reforming(reformations::GREGORIAN).unwrap()
     }
 
+    /// Returns the current date according to the calendar, along with a count
+    /// of seconds since midnight.  UTC is used as the timezone.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow occurs
+    /// while converting the time.
     pub fn now(&self) -> Result<(Date, u32), ArithmeticOutOfBounds> {
         self.at_system_time(SystemTime::now())
     }
 
+    /// Returns the date according to the calendar for the given system time,
+    /// along with a count of seconds since midnight.  UTC is used as the
+    /// timezone.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow occurs
+    /// while converting the time.
     pub fn at_system_time(&self, t: SystemTime) -> Result<(Date, u32), ArithmeticOutOfBounds> {
         let (jdn, secs) = system_time_to_julian_day_number(t)?;
         Ok((self.at_julian_day_number(jdn)?, secs))
     }
 
+    /// Returns the date according to the calendar for the given [Unix time][],
+    /// along with a count of seconds since midnight.  UTC is used as the
+    /// timezone.
+    ///
+    /// [Unix time]: https://en.wikipedia.org/wiki/Unix_time
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow
+    /// occurs while converting the time.
     pub fn at_unix_time(&self, unix_time: i64) -> Result<(Date, u32), ArithmeticOutOfBounds> {
         let (jdn, secs) = unix_time_to_julian_day_number(unix_time)?;
         Ok((self.at_julian_day_number(jdn)?, secs))
     }
 
+    /// Returns the date of the calendar with the given year, month, and day of
+    /// month.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::DayOutOfRange`] if `day` is zero or greater than the
+    /// last day of the given month for the given year.
+    ///
+    /// Returns [`Error::SkippedDate`] if the given date was skipped by a
+    /// calendar reformation.
+    ///
+    /// Returns [`Error::ArithmeticOutOfBounds`] if numeric overflow/underflow
+    /// occurs while calculating the date's Julian day number.
     pub fn at_ymd(&self, year: YearT, month: Month, day: u32) -> Result<Date, Error> {
         let ordinal = self.ymd2ordinal(year, month, day)?;
         let jdn = self.get_julian_day_number(year, ordinal, month, day)?;
@@ -179,6 +254,16 @@ impl Calendar {
         })
     }
 
+    /// Returns the date of the calendar with the given year and day-of-year
+    /// (starting counting from 1 at January 1).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::OrdinalOutOfRange`] if `ordinal` is zero or greater
+    /// than the length of the year.
+    ///
+    /// Returns [`Error::ArithmeticOutOfBounds`] if numeric overflow/underflow
+    /// occurs while calculating the date's Julian day number.
     pub fn at_ordinal_date(&self, year: YearT, ordinal: DaysT) -> Result<Date, Error> {
         let (month, day) = self.ordinal2ymd(year, ordinal)?;
         let jdn = self.get_julian_day_number(year, ordinal, month, day)?;
@@ -194,6 +279,12 @@ impl Calendar {
         })
     }
 
+    /// Returns the date of the calendar with the given Julian day number.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow occurs
+    /// while converting `jdn` to a calendar date.
     pub fn at_julian_day_number(&self, jdn: JulianDayT) -> Result<Date, ArithmeticOutOfBounds> {
         use inner::Calendar::*;
         let (year, ordinal, month, day);
@@ -217,9 +308,21 @@ impl Calendar {
         })
     }
 
-    // Formats (fields may be shorter than the given number of digits):
-    // - [+/-]YYYY-MM-DD
-    // - [+/-]YYYY-DDD
+    /// Parse a calendar date from a string.
+    ///
+    /// The following string formats are accepted:
+    ///
+    /// - `YYYY-MM-DD` — year, month number, and day
+    /// - `YYYY-JJJ` — year and day-of-year
+    ///
+    /// In both forms, the year component may be preceded by a `+` or `-`, and
+    /// each component may be any number of digits long, not just the
+    /// "conventional" length shown here.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ParseDateError`] if the string or the date it represents is
+    /// invalid
     pub fn parse_date(&self, s: &str) -> Result<Date, ParseDateError> {
         let mut parser = inner::DateParser::new(s);
         let year = parser.parse_year()?;
@@ -233,22 +336,29 @@ impl Calendar {
         }
     }
 
+    /// Returns true if this is a proleptic Julian calendar
     pub fn is_julian(&self) -> bool {
         self.0 == inner::Calendar::Julian
     }
 
+    /// Returns true if this is a proleptic Gregorian calendar
     pub fn is_gregorian(&self) -> bool {
         self.0 == inner::Calendar::Gregorian
     }
 
+    /// Returns true if this is a "reforming" calendar
     pub fn is_reforming(&self) -> bool {
         matches!(self.0, inner::Calendar::Reforming { .. })
     }
 
+    /// Returns true if this is a proleptic Julian or Gregorian calendar, i.e.,
+    /// not a "reforming" calendar
     pub fn is_proleptic(&self) -> bool {
         self.is_julian() || self.is_gregorian()
     }
 
+    /// If this is a "reforming" calendar, returns the Julian day number of the
+    /// reformation (the first day on which the Gregorian calendar is used)
     pub fn reformation(&self) -> Option<JulianDayT> {
         if let inner::Calendar::Reforming { reformation, .. } = self.0 {
             Some(reformation)
@@ -257,6 +367,8 @@ impl Calendar {
         }
     }
 
+    /// If this is a "reforming" calendar, returns the last date that follows
+    /// the Julian calendar, i.e., the date immediately before the reformation.
     pub fn last_julian_date(&self) -> Option<Date> {
         if let inner::Calendar::Reforming { reformation, gap } = self.0 {
             Some(Date {
@@ -273,6 +385,8 @@ impl Calendar {
         }
     }
 
+    /// If this is a "reforming" calendar, returns the first date that follows
+    /// the Gregorian calendar, i.e., the date of the reformation.
     pub fn first_gregorian_date(&self) -> Option<Date> {
         if let inner::Calendar::Reforming { reformation, gap } = self.0 {
             let day_ordinal = if gap.kind == inner::GapKind::IntraMonth {
@@ -294,6 +408,7 @@ impl Calendar {
         }
     }
 
+    // TODO: Docs
     // Number of dates *as reckoned in the Julian calendar* (i.e., counting any
     // Julian-only leap days that may have been skipped) between the last
     // Julian date and the first Gregorian date
@@ -305,6 +420,7 @@ impl Calendar {
         }
     }
 
+    /// Returns the [`YearKind`] for the given year in the calendar
     pub fn year_kind(&self, year: YearT) -> YearKind {
         match self.0 {
             inner::Calendar::Julian => {
@@ -385,6 +501,7 @@ impl Calendar {
         }
     }
 
+    /// Returns the number of days in the given year in the calendar
     pub fn year_length(&self, year: YearT) -> u32 {
         match self.0 {
             inner::Calendar::Julian | inner::Calendar::Gregorian => match self.year_kind(year) {
@@ -434,11 +551,18 @@ impl Calendar {
         }
     }
 
+    // TODO: Docs
     pub fn month_length(&self, year: YearT, month: Month) -> u32 {
         self.month_shape(year, month).len()
     }
 
-    // This uses a one-based ordinal.
+    /// [Private] Calculate the month and day of month for a given year and day
+    /// of year.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::OrdinalOutOfRange`] if `ordinal` is zero or greater
+    /// than the length of the year.
     fn ordinal2ymd(&self, year: YearT, ordinal: u32) -> Result<(Month, u32), Error> {
         if ordinal == 0 {
             return Err(Error::OrdinalOutOfRange { year, ordinal });
@@ -454,8 +578,19 @@ impl Calendar {
         Err(Error::OrdinalOutOfRange { year, ordinal })
     }
 
-    // This uses a one-based ordinal.
+    /// [Private] Calculate the day of year for a given year, month, and day of
+    /// month.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::DayOutOfRange`] if `day` is zero or greater than the
+    /// last day of the given month for the given year.
+    ///
+    /// Returns [`Error::SkippedDate`] if the given date was skipped by a
+    /// calendar reformation.
     fn ymd2ordinal(&self, year: YearT, month: Month, day: u32) -> Result<u32, Error> {
+        // TODO: Pass this a day ordinal instead in order to cut down on
+        // redundant calculations?
         let mord = self.get_day_ordinal(year, month, day)?;
         Ok(MonthIter::new()
             .take_while(|&m| m < month)
@@ -464,10 +599,22 @@ impl Calendar {
             + mord)
     }
 
+    /// [Private] Calculate the day ordinal for a given year, month, and day of
+    /// month.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::DayOutOfRange`] if `day` is zero or greater than the
+    /// last day of the given month for the given year.
+    ///
+    /// Returns [`Error::SkippedDate`] if the given date was skipped by a
+    /// calendar reformation.
     fn get_day_ordinal(&self, year: YearT, month: Month, day: u32) -> Result<u32, Error> {
         self.month_shape(year, month).get_day_ordinal(day)
     }
 
+    /// [Private] Returns information on the "shape" of the given month of the
+    /// given year.
     fn month_shape(&self, year: YearT, month: Month) -> inner::MonthShape {
         use Month::*;
         let length = match month {
@@ -529,6 +676,12 @@ impl Calendar {
         }
     }
 
+    /// [Private] Calculates the Julian day number of the calendar date with
+    /// the given year, day of year, month, and day of month.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow occurs.
     fn get_julian_day_number(
         &self,
         year: YearT,
@@ -547,58 +700,110 @@ impl Calendar {
     }
 }
 
+/// A date (year, month, and day of month) in a certain calendar.
+///
+/// Instances of `Date` can be constructed through various methods of
+/// [`Calendar`], including [`Calendar::at_ymd()`] and
+/// [`Calendar::at_julian_day_number()`].
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct Date {
     calendar: Calendar,
-    year: YearT,    // 0 == 1 BC
-    ordinal: DaysT, // ordinal day of year; 1 == Jan 1
+    year: YearT,
+    ordinal: DaysT,
     month: Month,
-    day: u32,         // one-based
-    day_ordinal: u32, // one-based
+    day: u32,
+    day_ordinal: u32,
     jdn: JulianDayT,
 }
 
 impl Date {
+    /// Returns a reference to the [`Calendar`] to which the date belongs
     pub fn calendar(&self) -> &Calendar {
         &self.calendar
     }
 
+    /// Returns the date's year
     pub fn year(&self) -> YearT {
         self.year
     }
 
+    /// Returns the date's month
     pub fn month(&self) -> Month {
         self.month
     }
 
-    // The "display" day (one-indexed, counting skipped days)
+    /// Returns the date's day of month (the value that one would write down as
+    /// part of a date).  This is a number starting from 1 that counts any
+    /// intervening days that may have been skipped due to a calendar
+    /// reformation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, reformations::GREGORIAN};
+    ///
+    /// let cal = Calendar::gregorian_reform();
+    ///
+    /// let pre_reform = cal.at_julian_day_number(GREGORIAN - 1).unwrap();
+    /// assert_eq!(pre_reform.day(), 4);
+    ///
+    /// let post_reform = cal.at_julian_day_number(GREGORIAN).unwrap();
+    /// assert_eq!(post_reform.day(), 15);
+    /// ```
     pub fn day(&self) -> u32 {
         self.day
     }
 
-    // Returns the index of the day within the month, starting from one, not
-    // counting days skipped due to reformation
+    /// Returns the ordinal number of the day within the month.  This is a
+    /// number starting from one that does *not* count days skipped due to a
+    /// calendar reformation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, reformations::GREGORIAN};
+    ///
+    /// let cal = Calendar::gregorian_reform();
+    ///
+    /// let pre_reform = cal.at_julian_day_number(GREGORIAN - 1).unwrap();
+    /// assert_eq!(pre_reform.day_ordinal(), 4);
+    ///
+    /// let post_reform = cal.at_julian_day_number(GREGORIAN).unwrap();
+    /// assert_eq!(post_reform.day_ordinal(), 5);
+    /// ```
     pub fn day_ordinal(&self) -> u32 {
         self.day_ordinal
     }
 
+    /// Returns the zero-based ordinal number of the day within the month.
+    /// This is the same as [`Date::day_ordinal()`], except starting from 0
+    /// instead of 1.
     pub fn day_ordinal0(&self) -> u32 {
         self.day_ordinal - 1
     }
 
+    /// Returns the ordinal number of the day within the year.  Ordinal date 1
+    /// is the first day of the year, ordinal 2 is the second, etc.
     pub fn ordinal(&self) -> DaysT {
         self.ordinal
     }
 
+    /// Returns the zero-based ordinal number of the day within the year.  This
+    /// is the same as [`Date::ordinal()`], except starting from 0 instead of
+    /// 1.
     pub fn ordinal0(&self) -> DaysT {
         self.ordinal - 1
     }
 
+    /// Returns the Julian day number of the date.
     pub fn julian_day_number(&self) -> JulianDayT {
         self.jdn
     }
 
-    // a.k.a. "is Old Style"
+    /// Returns true if the date is in the Julian calendar (a.k.a. "Old
+    /// Style"), i.e., if [`Date::calendar()`] is either a proleptic Julian
+    /// calendar or a "reforming" calendar for which the reformation occurs
+    /// after the date in question.
     pub fn is_julian(&self) -> bool {
         match self.calendar.0 {
             inner::Calendar::Julian => true,
@@ -609,7 +814,10 @@ impl Date {
         }
     }
 
-    // a.k.a. "is New Style"
+    /// Returns true if the date is in the Gregorian calendar (a.k.a. "New
+    /// Style"), i.e., if [`Date::calendar()`] is either a proleptic Gregorian
+    /// calendar or a "reforming" calendar for which the reformation occurs at
+    /// or before the date in question.
     pub fn is_gregorian(&self) -> bool {
         match self.calendar.0 {
             inner::Calendar::Julian => false,
@@ -620,18 +828,25 @@ impl Date {
         }
     }
 
+    /// Convert the date to a date in the given calendar.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow occurs.
     pub fn convert_to(&self, calendar: Calendar) -> Result<Date, ArithmeticOutOfBounds> {
         calendar.at_julian_day_number(self.julian_day_number())
     }
 }
 
 impl PartialOrd for Date {
+    /// `Date` instances are ordered first by Julian day, then by `Calendar`.
     fn partial_cmp(&self, other: &Date) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for Date {
+    /// `Date` instances are ordered first by Julian day, then by `Calendar`.
     fn cmp(&self, other: &Date) -> Ordering {
         (self.julian_day_number(), self.calendar())
             .cmp(&(other.julian_day_number(), other.calendar()))
@@ -639,6 +854,10 @@ impl Ord for Date {
 }
 
 impl fmt::Display for Date {
+    /// A `Date` is displayed in the format `YYYY-MM-DD` (year, month number,
+    /// and day of month) by default.  Selecting the alternate form with `{:#}`
+    /// instead produces a string of the form `YYYY-JJJ` (year and day of
+    /// year).
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:04}-", self.year())?;
         if f.alternate() {
@@ -650,6 +869,7 @@ impl fmt::Display for Date {
     }
 }
 
+/// An enumeration of the twelve months of "Julian-style" years.
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Month {
     January = 1,
@@ -667,6 +887,8 @@ pub enum Month {
 }
 
 impl Month {
+    /// Returns the English name of the month.  This is the same as the month's
+    /// Rust identifier.
     pub fn name(&self) -> &'static str {
         use Month::*;
         match self {
@@ -685,6 +907,7 @@ impl Month {
         }
     }
 
+    /// Returns the first three letters of the English name of the month
     pub fn short_name(&self) -> &'static str {
         use Month::*;
         match self {
@@ -703,14 +926,21 @@ impl Month {
         }
     }
 
+    /// Returns the number of the month, where January is 1.
+    ///
+    /// These values are also available as the enumeration discriminants and
+    /// can be accessed by casting, e.g., `Month::January as u32`.
     pub fn number(&self) -> u32 {
         *self as u32
     }
 
+    /// Returns the zero-based number of the month, where January is 0.
     pub fn number0(&self) -> u32 {
         self.number() - 1
     }
 
+    /// Returns the month before the month in question.  Returns `None` for
+    /// January.
     pub fn pred(&self) -> Option<Month> {
         use Month::*;
         match self {
@@ -729,6 +959,8 @@ impl Month {
         }
     }
 
+    /// Returns the month after the month in question.  Returns `None` for
+    /// December.
     pub fn succ(&self) -> Option<Month> {
         use Month::*;
         match self {
@@ -749,6 +981,9 @@ impl Month {
 }
 
 impl fmt::Display for Month {
+    /// A `Month` is displayed as its English name by default.  Selecting the
+    /// alternate form with `{:#}` instead produces just the first three
+    /// letters of the English name.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if f.alternate() {
             write!(f, "{}", self.short_name())
@@ -761,6 +996,8 @@ impl fmt::Display for Month {
 impl FromStr for Month {
     type Err = ParseMonthError;
 
+    /// Parses a month from either its English name or just the first three
+    /// letters of the name.  Input is treated case-insensitively.
     fn from_str(s: &str) -> Result<Month, ParseMonthError> {
         use Month::*;
         match s.to_ascii_lowercase().as_str() {
@@ -781,6 +1018,7 @@ impl FromStr for Month {
     }
 }
 
+/// Error returned when parsing a month fails
 #[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
 #[error("invalid month name")]
 pub struct ParseMonthError;
@@ -788,6 +1026,12 @@ pub struct ParseMonthError;
 impl TryFrom<u32> for Month {
     type Error = TryIntoMonthError;
 
+    /// Convert a month number to the corresponding month.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TryIntoMonthError`] if the given number is zero or greater
+    /// than twelve.
     fn try_from(value: u32) -> Result<Month, TryIntoMonthError> {
         use Month::*;
         match value {
@@ -808,13 +1052,37 @@ impl TryFrom<u32> for Month {
     }
 }
 
+/// Error returned when converting a number to a month fails
 #[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
 #[error("value out of range for month number; must be from 1 through 12")]
 pub struct TryIntoMonthError;
 
+/// Iterator over the months of the year in order.
+///
+/// # Example
+///
+/// ```
+/// use julian::{Month, MonthIter};
+///
+/// let mut iter = MonthIter::new();
+/// assert_eq!(iter.next(), Some(Month::January));
+/// assert_eq!(iter.next(), Some(Month::February));
+/// assert_eq!(iter.next(), Some(Month::March));
+/// assert_eq!(iter.next(), Some(Month::April));
+/// assert_eq!(iter.next(), Some(Month::May));
+/// assert_eq!(iter.next(), Some(Month::June));
+/// assert_eq!(iter.next(), Some(Month::July));
+/// assert_eq!(iter.next(), Some(Month::August));
+/// assert_eq!(iter.next(), Some(Month::September));
+/// assert_eq!(iter.next(), Some(Month::October));
+/// assert_eq!(iter.next(), Some(Month::November));
+/// assert_eq!(iter.next(), Some(Month::December));
+/// assert_eq!(iter.next(), None);
+/// ```
 pub struct MonthIter(RangeInclusive<u16>);
 
 impl MonthIter {
+    /// Construct a new `MonthIter`
     pub fn new() -> MonthIter {
         MonthIter(1..=12)
     }
@@ -848,6 +1116,7 @@ impl DoubleEndedIterator for MonthIter {
     }
 }
 
+// TODO: Docs
 #[derive(Copy, Clone, Debug, Eq, Error, Hash, PartialEq)]
 pub enum Error {
     #[error("reformation date would not cause calendar to advance")]
@@ -862,6 +1131,8 @@ pub enum Error {
     SkippedDate { year: YearT, month: Month, day: u32 },
 }
 
+/// Error returned when an internal arithmetic operation encounters numeric
+/// overflow or underflow
 #[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
 #[error("arithmetic overflow/underflow")]
 pub struct ArithmeticOutOfBounds;
@@ -872,29 +1143,78 @@ impl From<ArithmeticOutOfBounds> for Error {
     }
 }
 
+/// Error returned by [`Calendar::parse_date()`] on an invalid input date
+/// string
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum ParseDateError {
+    /// Returned if the date specified by the date string does not occur in the
+    /// calendar
     #[error("invalid calendar date: {0}")]
     InvalidDate(#[from] Error),
+
+    /// Returned if the month component of the date string had an invalid
+    /// numeric value (i.e., zero or greater than twelve)
     #[error("invalid month number: {value}")]
-    InvalidMonth { value: u32 },
+    InvalidMonth {
+        /// The invalid month number
+        value: u32,
+    },
+
+    /// Returned if the date string had extra trailing characters
     #[error("trailing characters after date")]
     HasTrailing,
+
+    /// Returned if the year component of the date string was not terminated by
+    /// a hyphen/dash
     #[error("year not terminated by '-'")]
     UnterminatedYear,
+
+    /// Returned if a non-digit was encountered in the date string while
+    /// expecting an integer
     #[error("expected one or more digits, got non-digit {got:?}")]
-    InvalidIntStart { got: char },
+    InvalidIntStart {
+        /// The non-digit encountered
+        got: char,
+    },
+
+    /// Returned if the end of the date string was reached while expecting an
+    /// integer
     #[error("expected one or more digits, reached end of input")]
     EmptyInt,
+
+    /// Returned if a specific character was expected but a different one was
+    /// encountered
     #[error("expected {expected:?}, got {got:?}")]
-    UnexpectedChar { expected: char, got: char },
+    UnexpectedChar {
+        /// The expected character
+        expected: char,
+
+        /// The character encountered
+        got: char,
+    },
+
+    /// Returned if a specific character was expected but the end of the date
+    /// string was reached
     #[error("expected {expected:?}, reached end of input")]
-    UnexpectedEnd { expected: char },
+    UnexpectedEnd {
+        /// The expected character
+        expected: char,
+    },
+
+    /// Returned if a numeric component of the date string could not be parsed
+    /// as an integer
     #[error("invalid calendar date: numeric parse error: {0}")]
     ParseInt(#[from] ParseIntError),
 }
 
-// Seconds count from midnight, as that's when JDN numbers change
+/// Converts a [`std::time::SystemTime`] instance to the corresponding Julian
+/// day number, along with a count of seconds since midnight.  UTC is used as
+/// the timezone.
+///
+/// # Errors
+///
+/// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow occurs
+/// during conversion.
 pub fn system_time_to_julian_day_number(
     t: SystemTime,
 ) -> Result<(JulianDayT, u32), ArithmeticOutOfBounds> {
@@ -906,7 +1226,15 @@ pub fn system_time_to_julian_day_number(
     unix_time_to_julian_day_number(ts)
 }
 
-// Seconds count from midnight, as that's when JDN numbers change
+/// Converts a [Unix time][] to the corresponding Julian day number, along with
+/// a count of seconds since midnight.  UTC is used as the timezone.
+///
+/// [Unix time]: https://en.wikipedia.org/wiki/Unix_time
+///
+/// # Errors
+///
+/// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow occurs
+/// during conversion.
 pub fn unix_time_to_julian_day_number(
     unix_time: i64,
 ) -> Result<(JulianDayT, u32), ArithmeticOutOfBounds> {

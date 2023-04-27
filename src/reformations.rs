@@ -1,8 +1,15 @@
+// TODO: Docs
 pub mod ncal;
 use super::JulianDayT;
 
-pub const GREGORIAN: JulianDayT = 2299161; // noon on 1582-10-15
-pub const UNITED_KINGDOM: JulianDayT = 2361222; // noon on 1752-09-14
+/// The Julian day number of the date at which the Gregorian Reformation was
+/// first put into effect (1582-10-15, following 1582-10-04 O.S.)
+pub const GREGORIAN: JulianDayT = 2299161;
+
+/// The Julian day number of the date at which the United Kingdom and its
+/// colonies first used the Gregorian Calendar (1752-09-14, following
+/// 1752-09-02 O.S.)
+pub const UNITED_KINGDOM: JulianDayT = 2361222;
 
 /// The smallest Julian day number that can be passed to
 /// [`Calendar::reforming()`][crate::Calendar::reforming] without getting an
