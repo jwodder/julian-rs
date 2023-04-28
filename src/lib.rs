@@ -133,6 +133,9 @@ impl Calendar {
     /// Julian day number of the first day on which the Gregorian calendar is
     /// used.
     ///
+    /// A selection of per-country (not always historically accurate)
+    /// reformation constants is available in the [`ncal`] module.
+    ///
     /// # Errors
     ///
     /// Returns [`ReformingError::ArithmeticOutOfBounds`] if numeric
