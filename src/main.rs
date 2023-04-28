@@ -100,7 +100,7 @@ struct Options {
 impl Options {
     fn run(&self, dates: Vec<Argument>) -> Vec<String> {
         let mut output = Vec::with_capacity(dates.len());
-        let cal = Calendar::gregorian_reform();
+        let cal = Calendar::GREGORIAN_REFORM;
         if dates.is_empty() {
             let (now, _) = cal.now().unwrap();
             let jd = now.julian_day_number();
@@ -187,7 +187,7 @@ impl FromStr for Argument {
     fn from_str(s: &str) -> Result<Argument, ArgumentParseError> {
         if s.match_indices('-').any(|(i, _)| i > 0) {
             Ok(Argument::CalendarDate(
-                Calendar::gregorian_reform().parse_date(s)?,
+                Calendar::GREGORIAN_REFORM.parse_date(s)?,
             ))
         } else {
             Ok(Argument::Jdn(s.parse::<JulianDayT>()?))
@@ -355,7 +355,7 @@ mod tests {
     #[test]
     fn test_run_default_options() {
         let opts = Options::default();
-        let cal = Calendar::gregorian_reform();
+        let cal = Calendar::GREGORIAN_REFORM;
         let dates = vec![
             Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
             Argument::Jdn(2440423),
@@ -383,7 +383,7 @@ mod tests {
             verbose: true,
             ..Options::default()
         };
-        let cal = Calendar::gregorian_reform();
+        let cal = Calendar::GREGORIAN_REFORM;
         let dates = vec![
             Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
             Argument::Jdn(2440423),
@@ -411,7 +411,7 @@ mod tests {
             ospolicy: PostReform,
             ..Options::default()
         };
-        let cal = Calendar::gregorian_reform();
+        let cal = Calendar::GREGORIAN_REFORM;
         let dates = vec![
             Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
             Argument::Jdn(2440423),
@@ -439,7 +439,7 @@ mod tests {
             ospolicy: UkDelay,
             ..Options::default()
         };
-        let cal = Calendar::gregorian_reform();
+        let cal = Calendar::GREGORIAN_REFORM;
         let dates = vec![
             Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
             Argument::Jdn(2440423),
@@ -468,7 +468,7 @@ mod tests {
             verbose: true,
             ..Options::default()
         };
-        let cal = Calendar::gregorian_reform();
+        let cal = Calendar::GREGORIAN_REFORM;
         let dates = vec![
             Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
             Argument::Jdn(2440423),
@@ -497,7 +497,7 @@ mod tests {
             verbose: true,
             ..Options::default()
         };
-        let cal = Calendar::gregorian_reform();
+        let cal = Calendar::GREGORIAN_REFORM;
         let dates = vec![
             Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
             Argument::Jdn(2440423),
@@ -527,7 +527,7 @@ mod tests {
         };
         let dates = vec![
             Argument::CalendarDate(
-                Calendar::gregorian_reform()
+                Calendar::GREGORIAN_REFORM
                     .at_ymd(2023, Month::April, 20)
                     .unwrap(),
             ),
@@ -545,7 +545,7 @@ mod tests {
         };
         let dates = vec![
             Argument::CalendarDate(
-                Calendar::gregorian_reform()
+                Calendar::GREGORIAN_REFORM
                     .at_ymd(2023, Month::April, 20)
                     .unwrap(),
             ),
@@ -564,7 +564,7 @@ mod tests {
             verbose: true,
             ordinal: true,
         };
-        let cal = Calendar::gregorian_reform();
+        let cal = Calendar::GREGORIAN_REFORM;
         let dates = vec![
             Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
             Argument::Jdn(2440423),

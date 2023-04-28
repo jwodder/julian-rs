@@ -119,6 +119,31 @@ impl YearKind {
 pub struct Calendar(inner::Calendar);
 
 impl Calendar {
+    /// An instance of a reforming calendar with the reformation set at the
+    /// date in history at which the Gregorian Reformation was first observed.
+    ///
+    /// This calendar is equal to
+    /// `Calendar::reforming(julian::GREGORIAN).unwrap()`.
+    pub const GREGORIAN_REFORM: Calendar = Calendar(inner::Calendar::Reforming {
+        reformation: 2299161,
+        gap: inner::ReformGap {
+            pre_reform: inner::Date {
+                year: 1582,
+                ordinal: 277,
+                month: Month::October,
+                day: 4,
+            },
+            post_reform: inner::Date {
+                year: 1582,
+                ordinal: 278,
+                month: Month::October,
+                day: 15,
+            },
+            gap_length: 10,
+            kind: inner::GapKind::IntraMonth,
+        },
+    });
+
     /// Construct an instance of a proleptic Julian calendar
     pub fn julian() -> Calendar {
         Calendar(inner::Calendar::Julian)
@@ -192,15 +217,6 @@ impl Calendar {
                 kind,
             },
         }))
-    }
-
-    /// Construct an instance of a reforming calendar with the reformation set
-    /// at the date in history at which the Gregorian Reformation was first
-    /// observed.
-    ///
-    /// This is equal to `Calendar::reforming(julian::GREGORIAN).unwrap()`.
-    pub fn gregorian_reform() -> Calendar {
-        Self::reforming(GREGORIAN).unwrap()
     }
 
     /// Returns the current date according to the calendar, along with a count
@@ -754,7 +770,7 @@ impl Date {
     /// ```
     /// use julian::{Calendar, GREGORIAN};
     ///
-    /// let cal = Calendar::gregorian_reform();
+    /// let cal = Calendar::GREGORIAN_REFORM;
     ///
     /// let pre_reform = cal.at_julian_day_number(GREGORIAN - 1).unwrap();
     /// assert_eq!(pre_reform.day(), 4);
@@ -775,7 +791,7 @@ impl Date {
     /// ```
     /// use julian::{Calendar, GREGORIAN};
     ///
-    /// let cal = Calendar::gregorian_reform();
+    /// let cal = Calendar::GREGORIAN_REFORM;
     ///
     /// let pre_reform = cal.at_julian_day_number(GREGORIAN - 1).unwrap();
     /// assert_eq!(pre_reform.day_ordinal(), 4);

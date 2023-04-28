@@ -1,32 +1,34 @@
-use crate::{inner, Calendar, DateError, Month, YearT};
-use assert_matches::assert_matches;
+use crate::{inner, Calendar, DateError, Month, YearT, GREGORIAN};
 use rstest::rstest;
 
 #[test]
-fn init_gregorian_reform() {
-    let cal = Calendar::gregorian_reform();
-    // Use assert_matches! instead of assert_eq! because Calendar's Eq
-    // implementation ignores `gap`
-    assert_matches!(
-        cal.0,
-        inner::Calendar::Reforming {
-            reformation: 2299161,
-            gap: inner::ReformGap {
-                pre_reform: inner::Date {
-                    year: 1582,
-                    ordinal: 277,
-                    month: Month::October,
-                    day: 4
-                },
-                post_reform: inner::Date {
-                    year: 1582,
-                    ordinal: 278,
-                    month: Month::October,
-                    day: 15
-                },
-                gap_length: 10,
-                kind: inner::GapKind::IntraMonth
-            }
+fn gregorian_reform() {
+    let cal = Calendar::reforming(GREGORIAN).unwrap();
+    assert_eq!(cal, Calendar::GREGORIAN_REFORM);
+    let Calendar(inner::Calendar::Reforming {gap: gap_fn, ..}) = cal else {
+        panic!("Reforming calendar is not reforming!")
+    };
+    let Calendar(inner::Calendar::Reforming {gap: gap_const, ..}) = Calendar::GREGORIAN_REFORM else {
+        panic!("GREGORIAN_REFORM is not reforming!")
+    };
+    assert_eq!(gap_fn, gap_const);
+    assert_eq!(
+        gap_fn,
+        inner::ReformGap {
+            pre_reform: inner::Date {
+                year: 1582,
+                ordinal: 277,
+                month: Month::October,
+                day: 4
+            },
+            post_reform: inner::Date {
+                year: 1582,
+                ordinal: 278,
+                month: Month::October,
+                day: 15
+            },
+            gap_length: 10,
+            kind: inner::GapKind::IntraMonth
         }
     );
 }
@@ -34,7 +36,7 @@ fn init_gregorian_reform() {
 #[test]
 fn reformation_month_shape() {
     use Month::October;
-    let cal = Calendar::gregorian_reform();
+    let cal = Calendar::GREGORIAN_REFORM;
     let shape = cal.month_shape(1582, October);
     assert_eq!(
         shape,
@@ -140,6 +142,6 @@ fn reformation_month_shape() {
 #[case(1582, Month::November, 30)]
 #[case(1582, Month::December, 31)]
 fn month_length(#[case] year: YearT, #[case] month: Month, #[case] length: u32) {
-    let cal = Calendar::gregorian_reform();
+    let cal = Calendar::GREGORIAN_REFORM;
     assert_eq!(cal.month_length(year, month), length);
 }
