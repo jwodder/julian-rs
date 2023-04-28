@@ -59,7 +59,8 @@ fn reformation_month_shape() {
         Err(DateError::DayOutOfRange {
             year: 1582,
             month: October,
-            day: 0
+            day: 0,
+            max_day: 31,
         })
     );
     assert_eq!(shape.get_day_ordinal(1), Ok(1));
@@ -87,7 +88,8 @@ fn reformation_month_shape() {
         Err(DateError::DayOutOfRange {
             year: 1582,
             month: October,
-            day: 32
+            day: 32,
+            max_day: 31,
         })
     );
     assert_eq!(shape.get_day_label(1), Some(1));

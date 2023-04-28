@@ -569,8 +569,13 @@ impl Calendar {
     /// Returns [`DateError::OrdinalOutOfRange`] if `ordinal` is zero or
     /// greater than the length of the year.
     fn ordinal2ymd(&self, year: YearT, ordinal: u32) -> Result<(Month, u32), DateError> {
-        if ordinal == 0 {
-            return Err(DateError::OrdinalOutOfRange { year, ordinal });
+        let max_ordinal = self.year_length(year);
+        if !(1..=max_ordinal).contains(&ordinal) {
+            return Err(DateError::OrdinalOutOfRange {
+                year,
+                ordinal,
+                max_ordinal,
+            });
         }
         let mut days = ordinal;
         for month in MonthIter::new() {
@@ -580,7 +585,7 @@ impl Calendar {
             }
             days -= shape.len();
         }
-        Err(DateError::OrdinalOutOfRange { year, ordinal })
+        unreachable!()
     }
 
     /// [Private] Calculate the day of year for a given year, month, and day
@@ -1134,17 +1139,34 @@ pub enum DateError {
     #[error("arithmetic overflow/underflow")]
     ArithmeticOutOfBounds,
 
-    /// Returned if a given day of month value was zero or greater than the
-    /// last day of the given month for the given year
-    #[error("day {day} is outside of valid range for {month} {year}")]
-    DayOutOfRange { year: YearT, month: Month, day: u32 },
+    /// Returned by [`Calendar::at_ymd()`] if the given day of month value was
+    /// zero or greater than the last day of the given month for the given year
+    #[error("day {day} is outside of valid range 1-{max_day} for {month} {year:04}")]
+    DayOutOfRange {
+        /// The year value supplied
+        year: YearT,
+        /// The month value supplied
+        month: Month,
+        /// The invalid day of month supplied
+        day: u32,
+        /// The last valid day of the month
+        max_day: u32,
+    },
 
-    /// Returned if a given day of year value was zero or greater than the
-    /// length of the given year
-    #[error("day-of-year ordinal {ordinal} is outside of valid range for year {year}")]
-    OrdinalOutOfRange { year: YearT, ordinal: DaysT },
+    /// Returned by [`Calendar::at_ordinal_date()`] if the given day of year
+    /// value was zero or greater than the length of the given year
+    #[error("day-of-year ordinal {ordinal} is outside of valid range 1-{max_ordinal} for year {year:04}")]
+    OrdinalOutOfRange {
+        /// The year value supplied
+        year: YearT,
+        /// The invalid day of year value supplied
+        ordinal: DaysT,
+        /// The maximum valid day of year value
+        max_ordinal: DaysT,
+    },
 
-    /// Returned if a given date was skipped by a calendar reformation
+    /// Returned by [`Calendar::at_ymd()`] if the given date was skipped by a
+    /// calendar reformation
     #[error("date {year:04}-{:02}-{day:02} was skipped by calendar reform", month.number())]
     SkippedDate { year: YearT, month: Month, day: u32 },
 }

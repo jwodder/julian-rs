@@ -280,7 +280,12 @@ impl MonthShape {
                 if self.has_day(day) {
                     Ok(day)
                 } else if *range.start() == 1 {
-                    Err(DateError::DayOutOfRange { year, month, day })
+                    Err(DateError::DayOutOfRange {
+                        year,
+                        month,
+                        day,
+                        max_day: *range.end(),
+                    })
                 } else {
                     Err(DateError::SkippedDate { year, month, day })
                 }
@@ -292,7 +297,12 @@ impl MonthShape {
                 max_day,
             } => {
                 if day == 0 {
-                    Err(DateError::DayOutOfRange { year, month, day })
+                    Err(DateError::DayOutOfRange {
+                        year,
+                        month,
+                        day,
+                        max_day,
+                    })
                 } else if day < gap.start {
                     Ok(day)
                 } else if day < gap.end {
@@ -300,7 +310,12 @@ impl MonthShape {
                 } else if day <= max_day {
                     Ok(day - u32::try_from(gap.len()).unwrap())
                 } else {
-                    Err(DateError::DayOutOfRange { year, month, day })
+                    Err(DateError::DayOutOfRange {
+                        year,
+                        month,
+                        day,
+                        max_day,
+                    })
                 }
             }
             MonthShape::Skipped { year, month } => Err(DateError::SkippedDate { year, month, day }),

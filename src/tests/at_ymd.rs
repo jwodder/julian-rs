@@ -8,12 +8,13 @@ fn day_0() {
         Err(DateError::DayOutOfRange {
             year: 2023,
             month: Month::April,
-            day: 0
+            day: 0,
+            max_day: 30
         })
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "day 0 is outside of valid range for April 2023"
+        "day 0 is outside of valid range 1-30 for April 2023"
     );
 }
 
@@ -25,12 +26,13 @@ fn day_32() {
         Err(DateError::DayOutOfRange {
             year: 2023,
             month: Month::April,
-            day: 32
+            day: 32,
+            max_day: 30,
         })
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "day 32 is outside of valid range for April 2023"
+        "day 32 is outside of valid range 1-30 for April 2023"
     );
 }
 
@@ -42,12 +44,13 @@ fn sep_31() {
         Err(DateError::DayOutOfRange {
             year: 2023,
             month: Month::September,
-            day: 31
+            day: 31,
+            max_day: 30,
         })
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "day 31 is outside of valid range for September 2023"
+        "day 31 is outside of valid range 1-30 for September 2023"
     );
 }
 
@@ -59,12 +62,13 @@ fn invalid_leap_day() {
         Err(DateError::DayOutOfRange {
             year: 2023,
             month: Month::February,
-            day: 29
+            day: 29,
+            max_day: 28,
         })
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "day 29 is outside of valid range for February 2023"
+        "day 29 is outside of valid range 1-28 for February 2023"
     );
 }
 

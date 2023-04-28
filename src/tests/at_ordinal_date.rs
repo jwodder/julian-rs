@@ -1104,17 +1104,24 @@ fn at_ordinal_date(
 }
 
 #[rstest]
-#[case(2023, 366)]
-#[case(2023, 1000)]
-#[case(2024, 367)]
-#[case(2024, 1000)]
-#[case(1582, 356)]
-#[case(1582, 1000)]
-fn at_ordinal_date_err(#[case] year: YearT, #[case] ordinal: DaysT) {
+#[case(2023, 366, 365)]
+#[case(2023, 1000, 365)]
+#[case(2024, 367, 366)]
+#[case(2024, 1000, 366)]
+#[case(1582, 356, 355)]
+#[case(1582, 1000, 355)]
+fn at_ordinal_date_err(#[case] year: YearT, #[case] ordinal: DaysT, #[case] max_ordinal: DaysT) {
     let r = Calendar::gregorian_reform().at_ordinal_date(year, ordinal);
-    assert_eq!(r, Err(DateError::OrdinalOutOfRange { year, ordinal }));
+    assert_eq!(
+        r,
+        Err(DateError::OrdinalOutOfRange {
+            year,
+            ordinal,
+            max_ordinal
+        })
+    );
     assert_eq!(
         r.unwrap_err().to_string(),
-        format!("day-of-year ordinal {ordinal} is outside of valid range for year {year}")
+        format!("day-of-year ordinal {ordinal} is outside of valid range 1-{max_ordinal} for year {year}")
     );
 }

@@ -85,12 +85,13 @@ fn big_ordinal() {
         r,
         Err(ParseDateError::InvalidDate(DateError::OrdinalOutOfRange {
             year: 1234,
-            ordinal: 5678
+            ordinal: 5678,
+            max_ordinal: 365,
         }))
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "invalid calendar date: day-of-year ordinal 5678 is outside of valid range for year 1234",
+        "invalid calendar date: day-of-year ordinal 5678 is outside of valid range 1-365 for year 1234",
     );
 }
 
@@ -176,12 +177,13 @@ fn day_0() {
         Err(ParseDateError::InvalidDate(DateError::DayOutOfRange {
             year: 2023,
             month: Month::April,
-            day: 0
+            day: 0,
+            max_day: 30,
         }))
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "invalid calendar date: day 0 is outside of valid range for April 2023"
+        "invalid calendar date: day 0 is outside of valid range 1-30 for April 2023"
     );
 }
 
@@ -193,12 +195,13 @@ fn day_32() {
         Err(ParseDateError::InvalidDate(DateError::DayOutOfRange {
             year: 2023,
             month: Month::April,
-            day: 32
+            day: 32,
+            max_day: 30
         }))
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "invalid calendar date: day 32 is outside of valid range for April 2023"
+        "invalid calendar date: day 32 is outside of valid range 1-30 for April 2023"
     );
 }
 
@@ -210,12 +213,13 @@ fn sep_31() {
         Err(ParseDateError::InvalidDate(DateError::DayOutOfRange {
             year: 2023,
             month: Month::September,
-            day: 31
+            day: 31,
+            max_day: 30,
         }))
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "invalid calendar date: day 31 is outside of valid range for September 2023"
+        "invalid calendar date: day 31 is outside of valid range 1-30 for September 2023"
     );
 }
 
@@ -227,12 +231,13 @@ fn invalid_leap_day() {
         Err(ParseDateError::InvalidDate(DateError::DayOutOfRange {
             year: 2023,
             month: Month::February,
-            day: 29
+            day: 29,
+            max_day: 28,
         }))
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "invalid calendar date: day 29 is outside of valid range for February 2023"
+        "invalid calendar date: day 29 is outside of valid range 1-28 for February 2023"
     );
 }
 
@@ -298,24 +303,25 @@ fn last_skipped_date() {
 }
 
 #[rstest]
-#[case(2023, 366)]
-#[case(2023, 1000)]
-#[case(2024, 367)]
-#[case(2024, 1000)]
-#[case(1582, 356)]
-#[case(1582, 1000)]
-fn invalid_ordinal_date(#[case] year: YearT, #[case] ordinal: DaysT) {
+#[case(2023, 366, 365)]
+#[case(2023, 1000, 365)]
+#[case(2024, 367, 366)]
+#[case(2024, 1000, 366)]
+#[case(1582, 356, 355)]
+#[case(1582, 1000, 355)]
+fn invalid_ordinal_date(#[case] year: YearT, #[case] ordinal: DaysT, #[case] max_ordinal: DaysT) {
     let r = Calendar::gregorian_reform().parse_date(&format!("{year:04}-{ordinal:03}"));
     assert_eq!(
         r,
         Err(ParseDateError::InvalidDate(DateError::OrdinalOutOfRange {
             year,
-            ordinal
+            ordinal,
+            max_ordinal,
         }))
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        format!("invalid calendar date: day-of-year ordinal {ordinal} is outside of valid range for year {year}")
+        format!("invalid calendar date: day-of-year ordinal {ordinal} is outside of valid range 1-{max_ordinal} for year {year}")
     );
 }
 
