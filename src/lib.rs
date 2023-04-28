@@ -1151,7 +1151,7 @@ pub enum DateError {
 
     /// Returned by [`Calendar::at_ymd()`] if the given day of month value was
     /// zero or greater than the last day of the given month for the given year
-    #[error("day {day} is outside of valid range {min_day}-{max_day} for {month} {year:04}")]
+    #[error("day {day} is outside of valid range {min_day}-{max_day} for {year:04} {month}")]
     DayOutOfRange {
         /// The year value supplied
         year: YearT,

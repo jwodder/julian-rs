@@ -184,7 +184,7 @@ fn day_0() {
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "invalid calendar date: day 0 is outside of valid range 1-30 for April 2023"
+        "invalid calendar date: day 0 is outside of valid range 1-30 for 2023 April"
     );
 }
 
@@ -203,7 +203,7 @@ fn day_32() {
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "invalid calendar date: day 32 is outside of valid range 1-30 for April 2023"
+        "invalid calendar date: day 32 is outside of valid range 1-30 for 2023 April"
     );
 }
 
@@ -222,7 +222,7 @@ fn sep_31() {
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "invalid calendar date: day 31 is outside of valid range 1-30 for September 2023"
+        "invalid calendar date: day 31 is outside of valid range 1-30 for 2023 September"
     );
 }
 
@@ -241,7 +241,7 @@ fn invalid_leap_day() {
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "invalid calendar date: day 29 is outside of valid range 1-28 for February 2023"
+        "invalid calendar date: day 29 is outside of valid range 1-28 for 2023 February"
     );
 }
 

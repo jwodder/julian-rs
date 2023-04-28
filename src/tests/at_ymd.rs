@@ -16,7 +16,7 @@ fn day_0() {
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "day 0 is outside of valid range 1-30 for April 2023"
+        "day 0 is outside of valid range 1-30 for 2023 April"
     );
 }
 
@@ -35,7 +35,7 @@ fn day_32() {
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "day 32 is outside of valid range 1-30 for April 2023"
+        "day 32 is outside of valid range 1-30 for 2023 April"
     );
 }
 
@@ -54,7 +54,7 @@ fn sep_31() {
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "day 31 is outside of valid range 1-30 for September 2023"
+        "day 31 is outside of valid range 1-30 for 2023 September"
     );
 }
 
@@ -73,7 +73,7 @@ fn invalid_leap_day() {
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "day 29 is outside of valid range 1-28 for February 2023"
+        "day 29 is outside of valid range 1-28 for 2023 February"
     );
 }
 
@@ -172,7 +172,7 @@ fn past_end_of_headless_month() {
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "day 29 is outside of valid range 14-28 for February 1918"
+        "day 29 is outside of valid range 14-28 for 1918 February"
     );
 }
 
@@ -192,7 +192,7 @@ fn headless_month_day_zero() {
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "day 0 is outside of valid range 14-28 for February 1918"
+        "day 0 is outside of valid range 14-28 for 1918 February"
     );
 }
 
@@ -241,6 +241,6 @@ fn past_natural_end_of_tailless_month() {
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        "day 30 is outside of valid range 1-18 for February 1700"
+        "day 30 is outside of valid range 1-18 for 1700 February"
     );
 }
