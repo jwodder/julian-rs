@@ -433,18 +433,6 @@ impl Calendar {
         }
     }
 
-    // TODO: Docs
-    // Number of dates *as reckoned in the Julian calendar* (i.e., counting any
-    // Julian-only leap days that may have been skipped) between the last
-    // Julian date and the first Gregorian date
-    pub fn reformation_gap(&self) -> Option<JulianDayT> {
-        if let inner::Calendar::Reforming { gap, .. } = self.0 {
-            Some(JulianDayT::try_from(gap.gap_length).unwrap())
-        } else {
-            None
-        }
-    }
-
     /// Returns the [`YearKind`] for the given year in the calendar
     pub fn year_kind(&self, year: YearT) -> YearKind {
         match self.0 {

@@ -79,9 +79,17 @@ impl Hash for Calendar {
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub(crate) struct ReformGap {
+    /// Last Julian date in the calendar
     pub(crate) pre_reform: Date,
+
+    /// First Gregorian date in the calendar
     pub(crate) post_reform: Date,
+
+    /// Number of dates *as reckoned in the Julian calendar* (i.e., counting
+    /// any Julian-only leap days that may have been skipped) between the last
+    /// Julian date and the first Gregorian date
     pub(crate) gap_length: u32,
+
     pub(crate) kind: GapKind,
 }
 
