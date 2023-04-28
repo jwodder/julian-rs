@@ -304,3 +304,36 @@ fn test_month_iter() {
     assert_eq!(iter.size_hint(), (0, Some(0)));
     assert_eq!(iter.next(), None);
 }
+
+#[test]
+fn test_month_iter_rev() {
+    let mut iter = MonthIter::new().rev();
+    assert_eq!(iter.size_hint(), (12, Some(12)));
+    assert_eq!(iter.next(), Some(Month::December));
+    assert_eq!(iter.size_hint(), (11, Some(11)));
+    assert_eq!(iter.next(), Some(Month::November));
+    assert_eq!(iter.size_hint(), (10, Some(10)));
+    assert_eq!(iter.next(), Some(Month::October));
+    assert_eq!(iter.size_hint(), (9, Some(9)));
+    assert_eq!(iter.next(), Some(Month::September));
+    assert_eq!(iter.size_hint(), (8, Some(8)));
+    assert_eq!(iter.next(), Some(Month::August));
+    assert_eq!(iter.size_hint(), (7, Some(7)));
+    assert_eq!(iter.next(), Some(Month::July));
+    assert_eq!(iter.size_hint(), (6, Some(6)));
+    assert_eq!(iter.next(), Some(Month::June));
+    assert_eq!(iter.size_hint(), (5, Some(5)));
+    assert_eq!(iter.next(), Some(Month::May));
+    assert_eq!(iter.size_hint(), (4, Some(4)));
+    assert_eq!(iter.next(), Some(Month::April));
+    assert_eq!(iter.size_hint(), (3, Some(3)));
+    assert_eq!(iter.next(), Some(Month::March));
+    assert_eq!(iter.size_hint(), (2, Some(2)));
+    assert_eq!(iter.next(), Some(Month::February));
+    assert_eq!(iter.size_hint(), (1, Some(1)));
+    assert_eq!(iter.next(), Some(Month::January));
+    assert_eq!(iter.size_hint(), (0, Some(0)));
+    assert_eq!(iter.next(), None);
+    assert_eq!(iter.size_hint(), (0, Some(0)));
+    assert_eq!(iter.next(), None);
+}
