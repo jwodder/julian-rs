@@ -188,7 +188,7 @@ impl Calendar {
         if post_reform_as_julian <= reformation {
             return Err(ReformingError::InvalidReformation);
         }
-        let gap_length = u32::try_from(post_reform_as_julian - reformation).unwrap();
+        let gap_length = post_reform_as_julian.abs_diff(reformation);
         let kind = inner::GapKind::for_dates(
             pre_reform.year,
             pre_reform.month,
