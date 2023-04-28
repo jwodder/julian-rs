@@ -24,7 +24,9 @@ fn init_german_reformation() {
                     day: 1
                 },
                 gap_length: 11,
-                kind: inner::GapKind::CrossMonth
+                kind: inner::GapKind::CrossMonth,
+                ordinal_gap_start: 59,
+                ordinal_gap: 10,
             }
         }
     );
@@ -86,7 +88,9 @@ fn min_valid_reformation() {
                     day: 1
                 },
                 gap_length: 1,
-                kind: inner::GapKind::CrossMonth
+                kind: inner::GapKind::CrossMonth,
+                ordinal_gap_start: 59,
+                ordinal_gap: 0,
             }
         }
     );
@@ -115,7 +119,9 @@ fn test_first_skipped_year() {
                     day: 1
                 },
                 gap_length: 365,
-                kind: inner::GapKind::MultiYear
+                kind: inner::GapKind::MultiYear,
+                ordinal_gap_start: 0,
+                ordinal_gap: 0,
             }
         }
     );

@@ -90,6 +90,14 @@ pub(crate) struct ReformGap {
     pub(crate) gap_length: u32,
 
     pub(crate) kind: GapKind,
+
+    /// Given a year and day-of-year in the proleptic Gregorian calendar where
+    /// the year equals `post_reform.year`, if the ordinal is greater than
+    /// `ordinal_gap_start`, then `ordinal_gap` must be subtracted from it in
+    /// order to get the day-of-year in the reforming calendar.
+    pub(crate) ordinal_gap_start: u32,
+
+    pub(crate) ordinal_gap: u32,
 }
 
 impl ReformGap {
@@ -422,23 +430,32 @@ pub(crate) fn julian_yj_to_jd(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
 
 // Returns None on arithmetic underflow/overflow
 // TODO: PROBLEM: This doesn't work for dates with negative JDNs; address
-// TODO: Rewrite to return ordinal instead of or in addition to month & day?
-pub(crate) fn jd_to_gregorian_ymd(jd: JulianDayT) -> Option<(i32, Month, u32)> {
-    let ell = add(jd, 68569)?;
-    let n = mul(4, ell)? / GREGORIAN_CYCLE_DAYS;
-    let ell = sub(ell, add(mul(GREGORIAN_CYCLE_DAYS, n)?, 3)? / 4)?;
-    let i = mul(4000, add(ell, 1)?)? / 1461001;
-    let ell = add(sub(ell, mul(JULIAN_LEAP_CYCLE_DAYS, i)? / 4)?, 31)?;
-    let j = mul(80, ell)? / 2447;
-    let d = sub(ell, mul(2447, j)? / 80)?;
-    let ell = j / 11;
-    let m = sub(add(j, 2)?, mul(12, ell)?)?;
-    let y = add(add(mul(100, sub(n, 49)?)?, i)?, ell)?;
-    Some((
-        y,
-        Month::try_from(u32::try_from(m).unwrap()).unwrap(),
-        u32::try_from(d).unwrap(),
-    ))
+pub(crate) fn jd_to_gregorian_yj(jd: JulianDayT) -> Option<(i32, DaysT)> {
+    const COMMON_CENTURY_DAYS: JulianDayT = COMMON_YEAR_LENGTH * 100 + 24;
+    const LEAP_CENTURY_DAYS: JulianDayT = COMMON_CENTURY_DAYS + 1;
+    if jd < 0 {
+        todo!()
+    } else {
+        // 113993 = JDN of -4400-01-01 N.S.
+        let jd = jd - 113993;
+        // Number of 400-year cycles elapsed since -4400-01-01:
+        let quads = jd.div_euclid(GREGORIAN_CYCLE_DAYS);
+        // Zero-based day within current 400-year cycle:
+        let mut quad_point = jd.rem_euclid(GREGORIAN_CYCLE_DAYS);
+        // Add a "virtual leap day" to the end of each centennial year after
+        // the zeroth so that `quad_point` can be divided & modded by
+        // LEAP_CENTURY_DAYS evenly:
+        if let Some(after_first_year) = sub(quad_point, LEAP_YEAR_LENGTH) {
+            quad_point += after_first_year / COMMON_CENTURY_DAYS;
+        }
+        // Number of 100-year cycles elapsed within current 400-year cycle:
+        let centuries = quad_point / LEAP_CENTURY_DAYS;
+        // Zero-based day within current 100-year cycle:
+        let century_point = quad_point % LEAP_CENTURY_DAYS;
+        let (ys, ordinal) = decompose_julian(century_point)?;
+        let year = add(add(mul(quads, 400)?, mul(centuries, 100)?)?, ys - 4400)?;
+        Some((year, ordinal))
+    }
 }
 
 // Returns None on arithmetic underflow/overflow
@@ -455,17 +472,29 @@ pub(crate) fn jd_to_julian_yj(jd: JulianDayT) -> Option<(i32, DaysT)> {
         let ordinal = year_length - alt_ordinal + 1;
         Some((year, ordinal))
     } else {
-        let mut year: i32 = jd / JULIAN_LEAP_CYCLE_DAYS * JULIAN_LEAP_CYCLE_YEARS;
-        let mut ordinal: JulianDayT = jd % JULIAN_LEAP_CYCLE_DAYS;
-        // Add a "virtual leap day" to the end of each common year so that
-        // `ordinal` can be divided & modded by LEAP_YEAR_LENGTH evenly:
-        if ordinal > COMMON_YEAR_LENGTH {
-            ordinal += (ordinal - LEAP_YEAR_LENGTH) / COMMON_YEAR_LENGTH;
-        }
-        year = add(year, add(ordinal / LEAP_YEAR_LENGTH, JDN0_YEAR)?)?;
-        ordinal %= LEAP_YEAR_LENGTH;
-        Some((year, DaysT::try_from(ordinal + 1).unwrap()))
+        let (year, ordinal) = decompose_julian(jd)?;
+        Some((add(year, JDN0_YEAR)?, ordinal))
     }
+}
+
+/// Given a nonnegative number of days from the start of a period in which
+/// every fourth year is a leap year, beginning with the initial zero year,
+/// return the number of completed years and the one-based day of the last
+/// year.
+///
+/// Returns `None` on arithmetic underflow/overflow.
+fn decompose_julian(days: JulianDayT) -> Option<(i32, DaysT)> {
+    debug_assert!(days >= 0);
+    let mut year: i32 = days / JULIAN_LEAP_CYCLE_DAYS * JULIAN_LEAP_CYCLE_YEARS;
+    let mut ordinal: JulianDayT = days % JULIAN_LEAP_CYCLE_DAYS;
+    // Add a "virtual leap day" to the end of each common year so that
+    // `ordinal` can be divided & modded by LEAP_YEAR_LENGTH evenly:
+    if ordinal > COMMON_YEAR_LENGTH {
+        ordinal += (ordinal - LEAP_YEAR_LENGTH) / COMMON_YEAR_LENGTH;
+    }
+    year = add(year, ordinal / LEAP_YEAR_LENGTH)?;
+    ordinal %= LEAP_YEAR_LENGTH;
+    Some((year, DaysT::try_from(ordinal + 1).unwrap()))
 }
 
 #[inline]
@@ -530,5 +559,58 @@ mod tests {
     #[case(1827, -4707, 1)]
     fn test_jd_to_julian_yj(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
         assert_eq!(jd_to_julian_yj(jd), Some((year, ordinal)));
+    }
+
+    #[rstest]
+    #[case(0, 0, 1)]
+    #[case(1, 0, 2)]
+    #[case(365, 0, 366)]
+    #[case(366, 1, 1)]
+    #[case(730, 1, 365)]
+    #[case(731, 2, 1)]
+    #[case(1095, 2, 365)]
+    #[case(1096, 3, 1)]
+    #[case(1460, 3, 365)]
+    #[case(1461, 4, 1)]
+    #[case(1826, 4, 366)]
+    #[case(1827, 5, 1)]
+    fn test_decompose_julian(#[case] days: JulianDayT, #[case] years: i32, #[case] ordinal: DaysT) {
+        assert_eq!(decompose_julian(days), Some((years, ordinal)));
+    }
+
+    #[rstest]
+    #[case(0, -4713, 328)]
+    #[case(1, -4713, 329)]
+    #[case(37, -4713, 365)]
+    #[case(38, -4712, 1)]
+    #[case(365, -4712, 328)]
+    #[case(366, -4712, 329)]
+    #[case(403, -4712, 366)]
+    #[case(404, -4711, 1)]
+    #[case(730, -4711, 327)]
+    #[case(731, -4711, 328)]
+    #[case(768, -4711, 365)]
+    #[case(769, -4710, 1)]
+    #[case(1095, -4710, 327)]
+    #[case(1096, -4710, 328)]
+    #[case(1133, -4710, 365)]
+    #[case(1134, -4709, 1)]
+    #[case(1460, -4709, 327)]
+    #[case(1461, -4709, 328)]
+    #[case(1498, -4709, 365)]
+    #[case(1499, -4708, 1)]
+    #[case(1826, -4708, 328)]
+    #[case(1827, -4708, 329)]
+    #[case(1864, -4708, 366)]
+    #[case(1865, -4707, 1)]
+    #[case(4420, -4701, 365)]
+    #[case(4785, -4700, 365)]
+    #[case(4786, -4699, 1)]
+    #[case(40945, -4600, 1)]
+    #[case(77469, -4500, 1)]
+    #[case(113993, -4400, 1)]
+    #[case(150518, -4300, 1)]
+    fn test_jd_to_gregorian_yj(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
+        assert_eq!(jd_to_gregorian_yj(jd), Some((year, ordinal)));
     }
 }

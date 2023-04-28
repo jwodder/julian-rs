@@ -143,6 +143,8 @@ impl Calendar {
             },
             gap_length: 10,
             kind: inner::GapKind::IntraMonth,
+            ordinal_gap_start: 287,
+            ordinal_gap: 10,
         },
     });
 
@@ -199,9 +201,13 @@ impl Calendar {
             month: pre_reform.month,
             day: pre_reform.day,
         };
-        let post_ordinal = match kind {
-            inner::GapKind::IntraMonth | inner::GapKind::CrossMonth => pre_reform.ordinal + 1,
-            _ => 1,
+        let (post_ordinal, ordinal_gap_start, ordinal_gap) = match kind {
+            inner::GapKind::IntraMonth | inner::GapKind::CrossMonth => (
+                pre_reform.ordinal + 1,
+                post_reform.ordinal - 1,
+                post_reform.ordinal - pre_reform.ordinal - 1,
+            ),
+            _ => (1, 0, post_reform.ordinal - 1),
         };
         let post_reform = inner::Date {
             year: post_reform.year,
@@ -216,6 +222,8 @@ impl Calendar {
                 post_reform,
                 gap_length,
                 kind,
+                ordinal_gap_start,
+                ordinal_gap,
             },
         }))
     }
@@ -325,16 +333,20 @@ impl Calendar {
     /// converting `jdn` to a calendar date.
     pub fn at_julian_day_number(&self, jdn: JulianDayT) -> Result<Date, ArithmeticError> {
         use inner::Calendar::*;
-        let (year, ordinal, month, day, day_ordinal);
-        if self.0 == Julian || matches!(self.0, Reforming { reformation, .. } if jdn < reformation)
+        let (year, mut ordinal) = if self.0 == Julian
+            || matches!(self.0, Reforming { reformation, .. } if jdn < reformation)
         {
-            (year, ordinal) = inner::jd_to_julian_yj(jdn).ok_or(ArithmeticError)?;
-            (month, day, day_ordinal) = self.ordinal2ymddo(year, ordinal).unwrap();
+            inner::jd_to_julian_yj(jdn)
         } else {
-            (year, month, day) = inner::jd_to_gregorian_ymd(jdn).ok_or(ArithmeticError)?;
-            day_ordinal = self.get_day_ordinal(year, month, day).unwrap();
-            ordinal = self.ymdo2ordinal(year, month, day_ordinal);
+            inner::jd_to_gregorian_yj(jdn)
         }
+        .ok_or(ArithmeticError)?;
+        if let Reforming { gap, .. } = self.0 {
+            if year == gap.post_reform.year && ordinal > gap.ordinal_gap_start {
+                ordinal -= gap.ordinal_gap;
+            }
+        }
+        let (month, day, day_ordinal) = self.ordinal2ymddo(year, ordinal).unwrap();
         Ok(Date {
             calendar: *self,
             year,

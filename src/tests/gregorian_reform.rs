@@ -28,7 +28,9 @@ fn gregorian_reform() {
                 day: 15
             },
             gap_length: 10,
-            kind: inner::GapKind::IntraMonth
+            kind: inner::GapKind::IntraMonth,
+            ordinal_gap_start: 287,
+            ordinal_gap: 10,
         }
     );
 }
