@@ -562,24 +562,6 @@ mod tests {
     use rstest::rstest;
     use rstest_reuse::{apply, template};
 
-    #[rstest]
-    #[case(-1, -4713, 365)]
-    #[case(0, -4712, 1)]
-    #[case(1, -4712, 2)]
-    #[case(365, -4712, 366)]
-    #[case(366, -4711, 1)]
-    #[case(730, -4711, 365)]
-    #[case(731, -4710, 1)]
-    #[case(1095, -4710, 365)]
-    #[case(1096, -4709, 1)]
-    #[case(1460, -4709, 365)]
-    #[case(1461, -4708, 1)]
-    #[case(1826, -4708, 366)]
-    #[case(1827, -4707, 1)]
-    fn test_jd_to_julian_yj(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
-        assert_eq!(jd_to_julian_yj(jd), Some((year, ordinal)));
-    }
-
     #[template]
     #[rstest]
     #[case(0, 0, 1)]
@@ -604,6 +586,34 @@ mod tests {
     #[apply(year_days)]
     fn test_compose_julian(#[case] days: JulianDayT, #[case] years: i32, #[case] ordinal: DaysT) {
         assert_eq!(compose_julian(years, ordinal), Some(days));
+    }
+
+    #[template]
+    #[rstest]
+    #[case(-1, -4713, 365)]
+    #[case(0, -4712, 1)]
+    #[case(1, -4712, 2)]
+    #[case(365, -4712, 366)]
+    #[case(366, -4711, 1)]
+    #[case(730, -4711, 365)]
+    #[case(731, -4710, 1)]
+    #[case(1095, -4710, 365)]
+    #[case(1096, -4709, 1)]
+    #[case(1460, -4709, 365)]
+    #[case(1461, -4708, 1)]
+    #[case(1826, -4708, 366)]
+    #[case(1827, -4707, 1)]
+    #[case(2147483647, 5874777, 290)]
+    fn jd_julian_yj(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {}
+
+    #[apply(jd_julian_yj)]
+    fn test_jd_to_julian_yj(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
+        assert_eq!(jd_to_julian_yj(jd), Some((year, ordinal)));
+    }
+
+    #[apply(jd_julian_yj)]
+    fn test_julian_yj_to_jd(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
+        assert_eq!(julian_yj_to_jd(year, ordinal), Some(jd));
     }
 
     #[template]

@@ -101,8 +101,89 @@ fn gregorian_reform_to_jdn(
     assert_eq!(date.julian_day_number(), days);
 }
 
+#[template]
+#[rstest]
+#[case(-2298701, -11006, Month::July, 2)]
+#[case(-1403, -4716, Month::February, 28)]
+#[case(-1402, -4716, Month::February, 29)]
+#[case(-1401, -4716, Month::March, 1)]
+#[case(-1095, -4715, Month::January, 1)]
+#[case(-730, -4714, Month::January, 1)]
+#[case(-365, -4713, Month::January, 1)]
+#[case(-1, -4713, Month::December, 31)]
+#[case(0, -4712, Month::January, 1)]
+#[case(366, -4711, Month::January, 1)]
+#[case(1719656, -4, Month::February, 29)]
+#[case(2159358, 1200, Month::January, 1)]
+#[case(2195883, 1300, Month::January, 1)]
+#[case(2232408, 1400, Month::January, 1)]
+#[case(2268932, 1499, Month::December, 31)]
+#[case(2268933, 1500, Month::January, 1)]
+#[case(2268993, 1500, Month::March, 1)]
+#[case(2269115, 1500, Month::July, 1)]
+#[case(2269146, 1500, Month::August, 1)]
+#[case(2269177, 1500, Month::September, 1)]
+#[case(2269204, 1500, Month::September, 28)]
+#[case(2269205, 1500, Month::September, 29)]
+#[case(2269207, 1500, Month::October, 1)]
+#[case(2269298, 1500, Month::December, 31)]
+#[case(2269299, 1501, Month::January, 1)]
+#[case(2269663, 1501, Month::December, 31)]
+#[case(2270123, 1503, Month::April, 5)]
+#[case(2270489, 1504, Month::April, 5)]
+#[case(2270854, 1505, Month::April, 5)]
+#[case(2271219, 1506, Month::April, 5)]
+#[case(2271584, 1507, Month::April, 5)]
+#[case(2298796, 1581, Month::October, 5)]
+#[case(2298883, 1581, Month::December, 31)]
+#[case(2298884, 1582, Month::January, 1)]
+#[case(2299159, 1582, Month::October, 3)]
+#[case(2299160, 1582, Month::October, 4)]
+#[case(2299161, 1582, Month::October, 5)]
+#[case(2299162, 1582, Month::October, 6)]
+#[case(2299238, 1582, Month::December, 21)]
+#[case(2305517, 1600, Month::February, 29)]
+#[case(2147483647, 5874777, Month::October, 17)]
+fn julian2julian(
+    #[case] days: JulianDayT,
+    #[case] year: i32,
+    #[case] month: Month,
+    #[case] day: u32,
+) {
+}
+
+#[apply(julian2julian)]
+fn jdn_to_julian(
+    #[case] days: JulianDayT,
+    #[case] year: i32,
+    #[case] month: Month,
+    #[case] day: u32,
+) {
+    let date = Calendar::julian().at_julian_day_number(days).unwrap();
+    assert_eq!(date.year(), year);
+    assert_eq!(date.month(), month);
+    assert_eq!(date.day(), day);
+}
+
+#[apply(julian2julian)]
+fn julian_to_jdn(
+    #[case] days: JulianDayT,
+    #[case] year: i32,
+    #[case] month: Month,
+    #[case] day: u32,
+) {
+    let date = Calendar::julian().at_ymd(year, month, day).unwrap();
+    assert_eq!(date.julian_day_number(), days);
+}
+
 #[test]
-fn ymd_to_past_max_jdn() {
+fn gregorian_ymd_to_past_max_jdn() {
     let r = Calendar::gregorian().at_ymd(5874898, Month::June, 4);
+    assert_eq!(r, Err(DateError::Arithmetic));
+}
+
+#[test]
+fn julian_ymd_to_past_max_jdn() {
+    let r = Calendar::julian().at_ymd(5874777, Month::October, 18);
     assert_eq!(r, Err(DateError::Arithmetic));
 }
