@@ -178,6 +178,7 @@ fn day_0() {
             year: 2023,
             month: Month::April,
             day: 0,
+            min_day: 1,
             max_day: 30,
         }))
     );
@@ -196,6 +197,7 @@ fn day_32() {
             year: 2023,
             month: Month::April,
             day: 32,
+            min_day: 1,
             max_day: 30
         }))
     );
@@ -214,6 +216,7 @@ fn sep_31() {
             year: 2023,
             month: Month::September,
             day: 31,
+            min_day: 1,
             max_day: 30,
         }))
     );
@@ -232,6 +235,7 @@ fn invalid_leap_day() {
             year: 2023,
             month: Month::February,
             day: 29,
+            min_day: 1,
             max_day: 28,
         }))
     );
@@ -303,10 +307,13 @@ fn last_skipped_date() {
 }
 
 #[rstest]
+#[case(2023, 0, 365)]
 #[case(2023, 366, 365)]
 #[case(2023, 1000, 365)]
+#[case(2024, 0, 366)]
 #[case(2024, 367, 366)]
 #[case(2024, 1000, 366)]
+#[case(1582, 0, 355)]
 #[case(1582, 356, 355)]
 #[case(1582, 1000, 355)]
 fn invalid_ordinal_date(#[case] year: YearT, #[case] ordinal: DaysT, #[case] max_ordinal: DaysT) {

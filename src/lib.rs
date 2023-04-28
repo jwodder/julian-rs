@@ -237,7 +237,13 @@ impl Calendar {
     /// the last day of the given month for the given year.
     ///
     /// Returns [`DateError::SkippedDate`] if the given date was skipped by a
-    /// calendar reformation.
+    /// calendar reformation.  This error takes precedence over
+    /// `DayOutOfRange`, i.e., if one or more days at the end of given month
+    /// were skipped due to a calendar reformation, and the given day falls
+    /// into this range, `SkippedDate` will be returned instead of
+    /// `DayOutOfRange`.  However, any `DayOutOfRange` errors returned for the
+    /// same month will show the last non-skipped day as the maximum valid day
+    /// of the month.
     ///
     /// Returns [`DateError::ArithmeticOutOfBounds`] if numeric
     /// overflow/underflow occurs while calculating the date's Julian day
@@ -653,6 +659,7 @@ impl Calendar {
                             year,
                             month,
                             range: 1..=(gap.pre_reform.day),
+                            natural_max_day: length,
                         }
                     }
                 }
@@ -661,11 +668,13 @@ impl Calendar {
                     year,
                     month,
                     range: (gap.post_reform.day)..=length,
+                    natural_max_day: length,
                 },
                 _ => inner::MonthShape::Solid {
                     year,
                     month,
                     range: 1..=length,
+                    natural_max_day: length,
                 },
             };
         }
@@ -673,6 +682,7 @@ impl Calendar {
             year,
             month,
             range: 1..=length,
+            natural_max_day: length,
         }
     }
 
@@ -1141,7 +1151,7 @@ pub enum DateError {
 
     /// Returned by [`Calendar::at_ymd()`] if the given day of month value was
     /// zero or greater than the last day of the given month for the given year
-    #[error("day {day} is outside of valid range 1-{max_day} for {month} {year:04}")]
+    #[error("day {day} is outside of valid range {min_day}-{max_day} for {month} {year:04}")]
     DayOutOfRange {
         /// The year value supplied
         year: YearT,
@@ -1149,6 +1159,8 @@ pub enum DateError {
         month: Month,
         /// The invalid day of month supplied
         day: u32,
+        /// The first valid day of the month
+        min_day: u32,
         /// The last valid day of the month
         max_day: u32,
     },

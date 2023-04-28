@@ -1,3 +1,4 @@
+use crate::reformations::ncal;
 use crate::{Calendar, DateError, Month};
 
 #[test]
@@ -9,6 +10,7 @@ fn day_0() {
             year: 2023,
             month: Month::April,
             day: 0,
+            min_day: 1,
             max_day: 30
         })
     );
@@ -27,6 +29,7 @@ fn day_32() {
             year: 2023,
             month: Month::April,
             day: 32,
+            min_day: 1,
             max_day: 30,
         })
     );
@@ -45,6 +48,7 @@ fn sep_31() {
             year: 2023,
             month: Month::September,
             day: 31,
+            min_day: 1,
             max_day: 30,
         })
     );
@@ -63,6 +67,7 @@ fn invalid_leap_day() {
             year: 2023,
             month: Month::February,
             day: 29,
+            min_day: 1,
             max_day: 28,
         })
     );
@@ -130,5 +135,112 @@ fn last_skipped_date() {
     assert_eq!(
         r.unwrap_err().to_string(),
         "date 1582-10-14 was skipped by calendar reform"
+    );
+}
+
+#[test]
+fn skipped_month_start() {
+    let cal = Calendar::reforming(ncal::RUSSIA).unwrap();
+    let r = cal.at_ymd(1918, Month::February, 1);
+    assert_eq!(
+        r,
+        Err(DateError::SkippedDate {
+            year: 1918,
+            month: Month::February,
+            day: 1
+        })
+    );
+    assert_eq!(
+        r.unwrap_err().to_string(),
+        "date 1918-02-01 was skipped by calendar reform"
+    );
+}
+
+#[test]
+fn past_end_of_headless_month() {
+    let cal = Calendar::reforming(ncal::RUSSIA).unwrap();
+    let r = cal.at_ymd(1918, Month::February, 29);
+    assert_eq!(
+        r,
+        Err(DateError::DayOutOfRange {
+            year: 1918,
+            month: Month::February,
+            day: 29,
+            min_day: 14,
+            max_day: 28,
+        })
+    );
+    assert_eq!(
+        r.unwrap_err().to_string(),
+        "day 29 is outside of valid range 14-28 for February 1918"
+    );
+}
+
+#[test]
+fn headless_month_day_zero() {
+    let cal = Calendar::reforming(ncal::RUSSIA).unwrap();
+    let r = cal.at_ymd(1918, Month::February, 0);
+    assert_eq!(
+        r,
+        Err(DateError::DayOutOfRange {
+            year: 1918,
+            month: Month::February,
+            day: 0,
+            min_day: 14,
+            max_day: 28,
+        })
+    );
+    assert_eq!(
+        r.unwrap_err().to_string(),
+        "day 0 is outside of valid range 14-28 for February 1918"
+    );
+}
+
+#[test]
+fn headless_month_day_ordinal_1() {
+    let cal = Calendar::reforming(ncal::RUSSIA).unwrap();
+    let date = cal.at_ymd(1918, Month::February, 14).unwrap();
+    assert_eq!(date.year(), 1918);
+    assert_eq!(date.ordinal(), 32);
+    assert_eq!(date.month(), Month::February);
+    assert_eq!(date.day(), 14);
+    assert_eq!(date.day_ordinal(), 1);
+}
+
+#[test]
+fn skipped_month_end() {
+    let cal = Calendar::reforming(ncal::DENMARK).unwrap();
+    let r = cal.at_ymd(1700, Month::February, 19);
+    assert_eq!(
+        r,
+        Err(DateError::SkippedDate {
+            year: 1700,
+            month: Month::February,
+            day: 19
+        })
+    );
+    assert_eq!(
+        r.unwrap_err().to_string(),
+        "date 1700-02-19 was skipped by calendar reform"
+    );
+}
+
+#[test]
+fn past_natural_end_of_tailless_month() {
+    let cal = Calendar::reforming(ncal::DENMARK).unwrap();
+    let r = cal.at_ymd(1700, Month::February, 30);
+    assert_eq!(
+        r,
+        Err(DateError::DayOutOfRange {
+            year: 1700,
+            month: Month::February,
+            day: 30,
+            min_day: 1,
+            max_day: 18,
+        })
+    );
+    assert_eq!(
+        r.unwrap_err().to_string(),
+        "day 30 is outside of valid range 1-18 for February 1700"
     );
 }

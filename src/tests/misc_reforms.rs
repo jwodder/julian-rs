@@ -42,7 +42,8 @@ fn german_reformation_year() {
         inner::MonthShape::Solid {
             year: 1700,
             month: Month::February,
-            range: 1..=18
+            range: 1..=18,
+            natural_max_day: 28,
         }
     );
     let shape_mar = cal.month_shape(1700, Month::March);
@@ -51,7 +52,8 @@ fn german_reformation_year() {
         inner::MonthShape::Solid {
             year: 1700,
             month: Month::March,
-            range: 1..=31
+            range: 1..=31,
+            natural_max_day: 31,
         }
     );
 }

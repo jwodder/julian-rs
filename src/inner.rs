@@ -237,6 +237,7 @@ pub(crate) enum MonthShape {
         year: YearT,
         month: Month,
         range: RangeInclusive<u32>,
+        natural_max_day: DaysT,
     },
     HasGap {
         year: YearT,
@@ -259,6 +260,7 @@ impl MonthShape {
         }
     }
 
+    /*
     pub(crate) fn has_day(&self, day: u32) -> bool {
         match self {
             MonthShape::Solid { range, .. } => range.contains(&day),
@@ -268,6 +270,7 @@ impl MonthShape {
             MonthShape::Skipped { .. } => false,
         }
     }
+    */
 
     // Returns a one-based ordinal
     pub(crate) fn get_day_ordinal(&self, day: u32) -> Result<u32, DateError> {
@@ -276,14 +279,16 @@ impl MonthShape {
                 year,
                 month,
                 ref range,
+                natural_max_day,
             } => {
-                if self.has_day(day) {
-                    Ok(day)
-                } else if *range.start() == 1 {
+                if range.contains(&day) {
+                    Ok(day - *range.start() + 1)
+                } else if day == 0 || day > natural_max_day {
                     Err(DateError::DayOutOfRange {
                         year,
                         month,
                         day,
+                        min_day: *range.start(),
                         max_day: *range.end(),
                     })
                 } else {
@@ -301,6 +306,7 @@ impl MonthShape {
                         year,
                         month,
                         day,
+                        min_day: 1,
                         max_day,
                     })
                 } else if day < gap.start {
@@ -314,16 +320,22 @@ impl MonthShape {
                         year,
                         month,
                         day,
+                        min_day: 1,
                         max_day,
                     })
                 }
             }
+            // TODO: Should Skipped months return DayOutOfRange for day == 0?
+            // What should the max_day be then?
             MonthShape::Skipped { year, month } => Err(DateError::SkippedDate { year, month, day }),
         }
     }
 
     // day_ordinal is one-based
     pub(crate) fn get_day_label(&self, day_ordinal: u32) -> Option<u32> {
+        if day_ordinal == 0 {
+            return None;
+        }
         match self {
             MonthShape::Solid { range, .. } => {
                 let day = day_ordinal - 1 + range.start();
