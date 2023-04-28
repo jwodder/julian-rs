@@ -289,7 +289,7 @@ impl Calendar {
     pub fn at_ymd(&self, year: i32, month: Month, day: u32) -> Result<Date, DateError> {
         let day_ordinal = self.get_day_ordinal(year, month, day)?;
         let ordinal = self.ymdo2ordinal(year, month, day_ordinal);
-        let jdn = self.get_julian_day_number(year, ordinal, month, day)?;
+        let jdn = self.get_julian_day_number(year, ordinal)?;
         Ok(Date {
             calendar: *self,
             year,
@@ -313,7 +313,7 @@ impl Calendar {
     /// while calculating the date's Julian day number.
     pub fn at_ordinal_date(&self, year: i32, ordinal: DaysT) -> Result<Date, DateError> {
         let (month, day, day_ordinal) = self.ordinal2ymddo(year, ordinal)?;
-        let jdn = self.get_julian_day_number(year, ordinal, month, day)?;
+        let jdn = self.get_julian_day_number(year, ordinal)?;
         Ok(Date {
             calendar: *self,
             year,
@@ -717,7 +717,7 @@ impl Calendar {
     }
 
     /// [Private] Calculates the Julian day number of the calendar date with
-    /// the given year, day of year, month, and day of month.
+    /// the given year and day of year.
     ///
     /// # Errors
     ///
@@ -725,17 +725,20 @@ impl Calendar {
     fn get_julian_day_number(
         &self,
         year: i32,
-        ordinal: DaysT,
-        month: Month,
-        day: u32,
+        mut ordinal: DaysT,
     ) -> Result<JulianDayT, ArithmeticError> {
         use inner::Calendar::*;
+        if let Reforming { gap, .. } = self.0 {
+            if year == gap.post_reform.year && ordinal >= gap.post_reform.ordinal {
+                ordinal += gap.ordinal_gap;
+            }
+        }
         if self.0 == Julian
             || matches!(self.0, Reforming {gap, ..} if (year, ordinal) < (gap.post_reform.year, gap.post_reform.ordinal))
         {
             inner::julian_yj_to_jd(year, ordinal)
         } else {
-            inner::gregorian_ymd_to_jd(year, month, day)
+            inner::gregorian_yj_to_jd(year, ordinal)
         }.ok_or(ArithmeticError)
     }
 }
