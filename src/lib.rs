@@ -304,9 +304,8 @@ impl Calendar {
     /// Returns [`DateError::Arithmetic`] if numeric overflow/underflow occurs
     /// while calculating the date's Julian day number.
     pub fn at_ordinal_date(&self, year: i32, ordinal: DaysT) -> Result<Date, DateError> {
-        let (month, day) = self.ordinal2ymd(year, ordinal)?;
+        let (month, day, day_ordinal) = self.ordinal2ymddo(year, ordinal)?;
         let jdn = self.get_julian_day_number(year, ordinal, month, day)?;
-        let day_ordinal = self.get_day_ordinal(year, month, day).unwrap();
         Ok(Date {
             calendar: *self,
             year,
@@ -330,8 +329,7 @@ impl Calendar {
         if self.0 == Julian || matches!(self.0, Reforming { reformation, .. } if jdn < reformation)
         {
             (year, ordinal) = inner::jd_to_julian_yj(jdn).ok_or(ArithmeticError)?;
-            (month, day) = self.ordinal2ymd(year, ordinal).unwrap();
-            day_ordinal = self.get_day_ordinal(year, month, day).unwrap();
+            (month, day, day_ordinal) = self.ordinal2ymddo(year, ordinal).unwrap();
         } else {
             (year, month, day) = inner::jd_to_gregorian_ymd(jdn).ok_or(ArithmeticError)?;
             day_ordinal = self.get_day_ordinal(year, month, day).unwrap();
@@ -584,14 +582,14 @@ impl Calendar {
         self.month_shape(year, month).len()
     }
 
-    /// [Private] Calculate the month and day of month for a given year and day
-    /// of year.
+    /// [Private] Calculate the month, day of month, and ordinal day of month
+    /// for a given year and day of year.
     ///
     /// # Errors
     ///
     /// Returns [`DateError::OrdinalOutOfRange`] if `ordinal` is zero or
     /// greater than the length of the year.
-    fn ordinal2ymd(&self, year: i32, ordinal: u32) -> Result<(Month, u32), DateError> {
+    fn ordinal2ymddo(&self, year: i32, ordinal: u32) -> Result<(Month, u32, u32), DateError> {
         let max_ordinal = self.year_length(year);
         if !(1..=max_ordinal).contains(&ordinal) {
             return Err(DateError::OrdinalOutOfRange {
@@ -604,7 +602,7 @@ impl Calendar {
         for month in MonthIter::new() {
             let shape = self.month_shape(year, month);
             if let Some(day) = shape.get_day_label(days) {
-                return Ok((month, day));
+                return Ok((month, day, days));
             }
             days -= shape.len();
         }
