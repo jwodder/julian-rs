@@ -165,9 +165,8 @@ impl Calendar {
     ///
     /// # Errors
     ///
-    /// Returns [`ReformingError::ArithmeticOutOfBounds`] if numeric
-    /// overflow/underflow occurs while converting `reformation` to a calendar
-    /// date.
+    /// Returns [`ReformingError::Arithmetic`] if numeric overflow/underflow
+    /// occurs while converting `reformation` to a calendar date.
     ///
     /// Returns [`ReformingError::InvalidReformation`] if observing a
     /// reformation at the given date would not cause the calendar to skip
@@ -177,7 +176,7 @@ impl Calendar {
         let pre_reform = Calendar::julian().at_julian_day_number(
             reformation
                 .checked_sub(1)
-                .ok_or(ReformingError::ArithmeticOutOfBounds)?,
+                .ok_or(ReformingError::Arithmetic)?,
         )?;
         let post_reform = Calendar::gregorian().at_julian_day_number(reformation)?;
         let post_reform_as_julian = Calendar::julian()
@@ -226,9 +225,9 @@ impl Calendar {
     ///
     /// # Errors
     ///
-    /// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow occurs
-    /// while converting the time.
-    pub fn now(&self) -> Result<(Date, u32), ArithmeticOutOfBounds> {
+    /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs while
+    /// converting the time.
+    pub fn now(&self) -> Result<(Date, u32), ArithmeticError> {
         self.at_system_time(SystemTime::now())
     }
 
@@ -238,9 +237,9 @@ impl Calendar {
     ///
     /// # Errors
     ///
-    /// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow occurs
-    /// while converting the time.
-    pub fn at_system_time(&self, t: SystemTime) -> Result<(Date, u32), ArithmeticOutOfBounds> {
+    /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs while
+    /// converting the time.
+    pub fn at_system_time(&self, t: SystemTime) -> Result<(Date, u32), ArithmeticError> {
         let (jdn, secs) = system_time_to_julian_day_number(t)?;
         Ok((self.at_julian_day_number(jdn)?, secs))
     }
@@ -253,9 +252,9 @@ impl Calendar {
     ///
     /// # Errors
     ///
-    /// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow
-    /// occurs while converting the time.
-    pub fn at_unix_time(&self, unix_time: i64) -> Result<(Date, u32), ArithmeticOutOfBounds> {
+    /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs while
+    /// converting the time.
+    pub fn at_unix_time(&self, unix_time: i64) -> Result<(Date, u32), ArithmeticError> {
         let (jdn, secs) = unix_time_to_julian_day_number(unix_time)?;
         Ok((self.at_julian_day_number(jdn)?, secs))
     }
@@ -277,9 +276,8 @@ impl Calendar {
     /// same month will show the last non-skipped day as the maximum valid day
     /// of the month.
     ///
-    /// Returns [`DateError::ArithmeticOutOfBounds`] if numeric
-    /// overflow/underflow occurs while calculating the date's Julian day
-    /// number.
+    /// Returns [`DateError::Arithmetic`] if numeric overflow/underflow occurs
+    /// while calculating the date's Julian day number.
     pub fn at_ymd(&self, year: i32, month: Month, day: u32) -> Result<Date, DateError> {
         let day_ordinal = self.get_day_ordinal(year, month, day)?;
         let ordinal = self.ymdo2ordinal(year, month, day_ordinal);
@@ -303,9 +301,8 @@ impl Calendar {
     /// Returns [`DateError::OrdinalOutOfRange`] if `ordinal` is zero or
     /// greater than the length of the year.
     ///
-    /// Returns [`DateError::ArithmeticOutOfBounds`] if numeric
-    /// overflow/underflow occurs while calculating the date's Julian day
-    /// number.
+    /// Returns [`DateError::Arithmetic`] if numeric overflow/underflow occurs
+    /// while calculating the date's Julian day number.
     pub fn at_ordinal_date(&self, year: i32, ordinal: DaysT) -> Result<Date, DateError> {
         let (month, day) = self.ordinal2ymd(year, ordinal)?;
         let jdn = self.get_julian_day_number(year, ordinal, month, day)?;
@@ -325,18 +322,18 @@ impl Calendar {
     ///
     /// # Errors
     ///
-    /// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow occurs
-    /// while converting `jdn` to a calendar date.
-    pub fn at_julian_day_number(&self, jdn: JulianDayT) -> Result<Date, ArithmeticOutOfBounds> {
+    /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs while
+    /// converting `jdn` to a calendar date.
+    pub fn at_julian_day_number(&self, jdn: JulianDayT) -> Result<Date, ArithmeticError> {
         use inner::Calendar::*;
         let (year, ordinal, month, day, day_ordinal);
         if self.0 == Julian || matches!(self.0, Reforming { reformation, .. } if jdn < reformation)
         {
-            (year, ordinal) = inner::jd_to_julian_yj(jdn).ok_or(ArithmeticOutOfBounds)?;
+            (year, ordinal) = inner::jd_to_julian_yj(jdn).ok_or(ArithmeticError)?;
             (month, day) = self.ordinal2ymd(year, ordinal).unwrap();
             day_ordinal = self.get_day_ordinal(year, month, day).unwrap();
         } else {
-            (year, month, day) = inner::jd_to_gregorian_ymd(jdn).ok_or(ArithmeticOutOfBounds)?;
+            (year, month, day) = inner::jd_to_gregorian_ymd(jdn).ok_or(ArithmeticError)?;
             day_ordinal = self.get_day_ordinal(year, month, day).unwrap();
             ordinal = self.ymdo2ordinal(year, month, day_ordinal);
         }
@@ -711,14 +708,14 @@ impl Calendar {
     ///
     /// # Errors
     ///
-    /// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow occurs.
+    /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs.
     fn get_julian_day_number(
         &self,
         year: i32,
         ordinal: DaysT,
         month: Month,
         day: u32,
-    ) -> Result<JulianDayT, ArithmeticOutOfBounds> {
+    ) -> Result<JulianDayT, ArithmeticError> {
         use inner::Calendar::*;
         if self.0 == Julian
             || matches!(self.0, Reforming {gap, ..} if (year, ordinal) < (gap.post_reform.year, gap.post_reform.ordinal))
@@ -726,7 +723,7 @@ impl Calendar {
             inner::julian_yj_to_jd(year, ordinal)
         } else {
             inner::gregorian_ymd_to_jd(year, month, day)
-        }.ok_or(ArithmeticOutOfBounds)
+        }.ok_or(ArithmeticError)
     }
 }
 
@@ -862,8 +859,8 @@ impl Date {
     ///
     /// # Errors
     ///
-    /// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow occurs.
-    pub fn convert_to(&self, calendar: Calendar) -> Result<Date, ArithmeticOutOfBounds> {
+    /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs.
+    pub fn convert_to(&self, calendar: Calendar) -> Result<Date, ArithmeticError> {
         calendar.at_julian_day_number(self.julian_day_number())
     }
 }
@@ -1158,7 +1155,7 @@ pub enum ReformingError {
     /// Returned if an internal arithmetic operation encounters numeric
     /// overflow or underflow
     #[error("arithmetic overflow/underflow")]
-    ArithmeticOutOfBounds,
+    Arithmetic,
 }
 
 /// Error returned by various date-construction methods on invalid input
@@ -1167,7 +1164,7 @@ pub enum DateError {
     /// Returned if an internal arithmetic operation encounters numeric
     /// overflow or underflow
     #[error("arithmetic overflow/underflow")]
-    ArithmeticOutOfBounds,
+    Arithmetic,
 
     /// Returned by [`Calendar::at_ymd()`] if the given day of month value was
     /// zero or greater than the last day of the given month for the given year
@@ -1207,17 +1204,17 @@ pub enum DateError {
 /// overflow or underflow
 #[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
 #[error("arithmetic overflow/underflow")]
-pub struct ArithmeticOutOfBounds;
+pub struct ArithmeticError;
 
-impl From<ArithmeticOutOfBounds> for ReformingError {
-    fn from(_: ArithmeticOutOfBounds) -> ReformingError {
-        ReformingError::ArithmeticOutOfBounds
+impl From<ArithmeticError> for ReformingError {
+    fn from(_: ArithmeticError) -> ReformingError {
+        ReformingError::Arithmetic
     }
 }
 
-impl From<ArithmeticOutOfBounds> for DateError {
-    fn from(_: ArithmeticOutOfBounds) -> DateError {
-        DateError::ArithmeticOutOfBounds
+impl From<ArithmeticError> for DateError {
+    fn from(_: ArithmeticError) -> DateError {
+        DateError::Arithmetic
     }
 }
 
@@ -1291,16 +1288,16 @@ pub enum ParseDateError {
 ///
 /// # Errors
 ///
-/// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow occurs
-/// during conversion.
+/// Returns [`ArithmeticError`] if numeric overflow/underflow occurs during
+/// conversion.
 pub fn system_time_to_julian_day_number(
     t: SystemTime,
-) -> Result<(JulianDayT, u32), ArithmeticOutOfBounds> {
+) -> Result<(JulianDayT, u32), ArithmeticError> {
     let ts = match t.duration_since(UNIX_EPOCH) {
         Ok(d) => i64::try_from(d.as_secs()),
         Err(e) => i64::try_from(e.duration().as_secs()).map(|i| -i),
     }
-    .map_err(|_| ArithmeticOutOfBounds)?;
+    .map_err(|_| ArithmeticError)?;
     unix_time_to_julian_day_number(ts)
 }
 
@@ -1311,13 +1308,13 @@ pub fn system_time_to_julian_day_number(
 ///
 /// # Errors
 ///
-/// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow occurs
-/// during conversion.
+/// Returns [`ArithmeticError`] if numeric overflow/underflow occurs during
+/// conversion.
 pub fn unix_time_to_julian_day_number(
     unix_time: i64,
-) -> Result<(JulianDayT, u32), ArithmeticOutOfBounds> {
+) -> Result<(JulianDayT, u32), ArithmeticError> {
     let jd = JulianDayT::try_from(unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JDN as i64))
-        .map_err(|_| ArithmeticOutOfBounds)?;
+        .map_err(|_| ArithmeticError)?;
     let secs = u32::try_from(unix_time.rem_euclid(SECONDS_IN_DAY)).unwrap();
     Ok((jd, secs))
 }
