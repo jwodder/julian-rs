@@ -1,4 +1,4 @@
-use crate::{Calendar, Month, YearT};
+use crate::{Calendar, Month};
 use rstest::rstest;
 
 #[rstest]
@@ -16,7 +16,7 @@ use rstest::rstest;
 #[case(2147483647, 2038, Month::January, 19, 11647)]
 fn at_unix_time(
     #[case] ts: i64,
-    #[case] year: YearT,
+    #[case] year: i32,
     #[case] month: Month,
     #[case] day: u32,
     #[case] seconds: u32,

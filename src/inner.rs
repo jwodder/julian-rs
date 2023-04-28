@@ -1,19 +1,18 @@
 use super::{
-    DateError, DaysT, JulianDayT, Month, ParseDateError, YearT, COMMON_YEAR_LENGTH,
-    LEAP_YEAR_LENGTH,
+    DateError, DaysT, JulianDayT, Month, ParseDateError, COMMON_YEAR_LENGTH, LEAP_YEAR_LENGTH,
 };
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::ops::{Range, RangeInclusive};
 
 // Julian-calendar year in which Julian day number 0 occurs
-const JDN0_YEAR: YearT = -4712;
+const JDN0_YEAR: i32 = -4712;
 
 const GREGORIAN_CYCLE_DAYS: JulianDayT = 146097;
-const GREGORIAN_CYCLE_YEARS: YearT = 400;
+const GREGORIAN_CYCLE_YEARS: i32 = 400;
 
 const JULIAN_LEAP_CYCLE_DAYS: JulianDayT = 1461;
-const JULIAN_LEAP_CYCLE_YEARS: YearT = 4;
+const JULIAN_LEAP_CYCLE_YEARS: i32 = 4;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Calendar {
@@ -94,11 +93,11 @@ pub(crate) struct ReformGap {
 }
 
 impl ReformGap {
-    pub(crate) fn cmp_year(&self, year: YearT) -> RangeOrdering {
+    pub(crate) fn cmp_year(&self, year: i32) -> RangeOrdering {
         cmp_range(year, self.pre_reform.year, self.post_reform.year)
     }
 
-    pub(crate) fn cmp_year_month(&self, year: YearT, month: Month) -> RangeOrdering {
+    pub(crate) fn cmp_year_month(&self, year: i32, month: Month) -> RangeOrdering {
         cmp_range(
             (year, month),
             (self.pre_reform.year, self.pre_reform.month),
@@ -106,7 +105,7 @@ impl ReformGap {
         )
     }
 
-    pub(crate) fn cmp_ymd(&self, year: YearT, month: Month, day: u32) -> RangeOrdering {
+    pub(crate) fn cmp_ymd(&self, year: i32, month: Month, day: u32) -> RangeOrdering {
         cmp_range(
             (year, month, day),
             (
@@ -125,7 +124,7 @@ impl ReformGap {
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub(crate) struct Date {
-    pub(crate) year: YearT,
+    pub(crate) year: i32,
     pub(crate) ordinal: DaysT,
     pub(crate) month: Month,
     pub(crate) day: u32,
@@ -141,9 +140,9 @@ pub(crate) enum GapKind {
 
 impl GapKind {
     pub(crate) fn for_dates(
-        pre_year: YearT,
+        pre_year: i32,
         pre_month: Month,
-        post_year: YearT,
+        post_year: i32,
         post_month: Month,
     ) -> GapKind {
         if pre_year == post_year {
@@ -173,10 +172,10 @@ impl<'a> DateParser<'a> {
         self.data.is_empty()
     }
 
-    pub(crate) fn parse_year(&mut self) -> Result<YearT, ParseDateError> {
+    pub(crate) fn parse_year(&mut self) -> Result<i32, ParseDateError> {
         match self.data.match_indices('-').find(|&(i, _)| i > 0) {
             Some((i, _)) => {
-                let year = self.data[..i].parse::<YearT>()?;
+                let year = self.data[..i].parse::<i32>()?;
                 self.data = &self.data[i + 1..];
                 Ok(year)
             }
@@ -242,19 +241,19 @@ pub(crate) enum DayInYear {
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub(crate) enum MonthShape {
     Solid {
-        year: YearT,
+        year: i32,
         month: Month,
         range: RangeInclusive<u32>,
         natural_max_day: DaysT,
     },
     HasGap {
-        year: YearT,
+        year: i32,
         month: Month,
         gap: Range<u32>,
         max_day: u32,
     },
     Skipped {
-        year: YearT,
+        year: i32,
         month: Month,
     },
 }
@@ -366,11 +365,11 @@ impl MonthShape {
     }
 }
 
-pub(crate) fn is_julian_leap_year(year: YearT) -> bool {
+pub(crate) fn is_julian_leap_year(year: i32) -> bool {
     year % JULIAN_LEAP_CYCLE_YEARS == 0
 }
 
-pub(crate) fn is_gregorian_leap_year(year: YearT) -> bool {
+pub(crate) fn is_gregorian_leap_year(year: i32) -> bool {
     year % JULIAN_LEAP_CYCLE_YEARS == 0 && (year % 100 != 0 || year % GREGORIAN_CYCLE_YEARS == 0)
 }
 
@@ -378,7 +377,7 @@ pub(crate) fn is_gregorian_leap_year(year: YearT) -> bool {
 // Returns None on arithmetic underflow/overflow
 // TODO: PROBLEM: This doesn't work for dates with negative JDNs; address
 // TODO: Try to rewrite to take ordinal instead of month & day?
-pub(crate) fn gregorian_ymd_to_jd(year: YearT, month: Month, day: u32) -> Option<JulianDayT> {
+pub(crate) fn gregorian_ymd_to_jd(year: i32, month: Month, day: u32) -> Option<JulianDayT> {
     const MONTHS: JulianDayT = 12;
     let a = (month.number() as JulianDayT) - 14;
     add(
@@ -399,7 +398,7 @@ pub(crate) fn gregorian_ymd_to_jd(year: YearT, month: Month, day: u32) -> Option
 
 // Convert a date in the proleptic Julian calendar to a Julian day number
 // Returns None on arithmetic underflow/overflow
-pub(crate) fn julian_yj_to_jd(year: YearT, ordinal: DaysT) -> Option<JulianDayT> {
+pub(crate) fn julian_yj_to_jd(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
     let idays = JulianDayT::try_from(ordinal - 1).unwrap();
     if year < JDN0_YEAR {
         let rev_year = sub(JDN0_YEAR, year)?;
@@ -424,7 +423,7 @@ pub(crate) fn julian_yj_to_jd(year: YearT, ordinal: DaysT) -> Option<JulianDayT>
 // Returns None on arithmetic underflow/overflow
 // TODO: PROBLEM: This doesn't work for dates with negative JDNs; address
 // TODO: Rewrite to return ordinal instead of or in addition to month & day?
-pub(crate) fn jd_to_gregorian_ymd(jd: JulianDayT) -> Option<(YearT, Month, u32)> {
+pub(crate) fn jd_to_gregorian_ymd(jd: JulianDayT) -> Option<(i32, Month, u32)> {
     let ell = add(jd, 68569)?;
     let n = mul(4, ell)? / GREGORIAN_CYCLE_DAYS;
     let ell = sub(ell, add(mul(GREGORIAN_CYCLE_DAYS, n)?, 3)? / 4)?;
@@ -443,7 +442,7 @@ pub(crate) fn jd_to_gregorian_ymd(jd: JulianDayT) -> Option<(YearT, Month, u32)>
 }
 
 // Returns None on arithmetic underflow/overflow
-pub(crate) fn jd_to_julian_yj(jd: JulianDayT) -> Option<(YearT, DaysT)> {
+pub(crate) fn jd_to_julian_yj(jd: JulianDayT) -> Option<(i32, DaysT)> {
     if jd < 0 {
         let alt = sub(COMMON_YEAR_LENGTH, jd)?;
         let (alt_year, alt_ordinal) = jd_to_julian_yj(alt)?;
@@ -456,7 +455,7 @@ pub(crate) fn jd_to_julian_yj(jd: JulianDayT) -> Option<(YearT, DaysT)> {
         let ordinal = year_length - alt_ordinal + 1;
         Some((year, ordinal))
     } else {
-        let mut year: YearT = jd / JULIAN_LEAP_CYCLE_DAYS * JULIAN_LEAP_CYCLE_YEARS;
+        let mut year: i32 = jd / JULIAN_LEAP_CYCLE_DAYS * JULIAN_LEAP_CYCLE_YEARS;
         let mut ordinal: JulianDayT = jd % JULIAN_LEAP_CYCLE_DAYS;
         // Add a "virtual leap day" to the end of each common year so that
         // `ordinal` can be divided & modded by LEAP_YEAR_LENGTH evenly:
@@ -529,7 +528,7 @@ mod tests {
     #[case(1461, -4708, 1)]
     #[case(1826, -4708, 366)]
     #[case(1827, -4707, 1)]
-    fn test_jd_to_julian_yj(#[case] jd: JulianDayT, #[case] year: YearT, #[case] ordinal: DaysT) {
+    fn test_jd_to_julian_yj(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
         assert_eq!(jd_to_julian_yj(jd), Some((year, ordinal)));
     }
 }

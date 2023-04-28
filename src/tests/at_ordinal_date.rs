@@ -1,4 +1,4 @@
-use crate::{Calendar, DateError, DaysT, Month, YearT};
+use crate::{Calendar, DateError, DaysT, Month};
 use rstest::rstest;
 
 #[rstest]
@@ -1089,7 +1089,7 @@ use rstest::rstest;
 #[case(1582, 354, Month::December, 30)]
 #[case(1582, 355, Month::December, 31)]
 fn at_ordinal_date(
-    #[case] year: YearT,
+    #[case] year: i32,
     #[case] ordinal: DaysT,
     #[case] month: Month,
     #[case] day: u32,
@@ -1116,7 +1116,7 @@ fn at_ordinal_date(
 #[case(1582, 356, 355)]
 #[case(1582, 1000, 355)]
 #[case(1582, 2147483647, 355)]
-fn at_ordinal_date_err(#[case] year: YearT, #[case] ordinal: DaysT, #[case] max_ordinal: DaysT) {
+fn at_ordinal_date_err(#[case] year: i32, #[case] ordinal: DaysT, #[case] max_ordinal: DaysT) {
     let r = Calendar::GREGORIAN_REFORM.at_ordinal_date(year, ordinal);
     assert_eq!(
         r,

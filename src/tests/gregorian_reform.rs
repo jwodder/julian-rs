@@ -1,4 +1,4 @@
-use crate::{inner, Calendar, DateError, Month, YearT, GREGORIAN};
+use crate::{inner, Calendar, DateError, Month, GREGORIAN};
 use rstest::rstest;
 
 #[test]
@@ -141,7 +141,7 @@ fn reformation_month_shape() {
 #[case(1582, Month::October, 21)]
 #[case(1582, Month::November, 30)]
 #[case(1582, Month::December, 31)]
-fn month_length(#[case] year: YearT, #[case] month: Month, #[case] length: u32) {
+fn month_length(#[case] year: i32, #[case] month: Month, #[case] length: u32) {
     let cal = Calendar::GREGORIAN_REFORM;
     assert_eq!(cal.month_length(year, month), length);
 }

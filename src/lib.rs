@@ -13,7 +13,6 @@ use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 
-pub type YearT = i32;
 pub type DaysT = u32;
 pub type JulianDayT = i32;
 
@@ -281,7 +280,7 @@ impl Calendar {
     /// Returns [`DateError::ArithmeticOutOfBounds`] if numeric
     /// overflow/underflow occurs while calculating the date's Julian day
     /// number.
-    pub fn at_ymd(&self, year: YearT, month: Month, day: u32) -> Result<Date, DateError> {
+    pub fn at_ymd(&self, year: i32, month: Month, day: u32) -> Result<Date, DateError> {
         let day_ordinal = self.get_day_ordinal(year, month, day)?;
         let ordinal = self.ymdo2ordinal(year, month, day_ordinal);
         let jdn = self.get_julian_day_number(year, ordinal, month, day)?;
@@ -307,7 +306,7 @@ impl Calendar {
     /// Returns [`DateError::ArithmeticOutOfBounds`] if numeric
     /// overflow/underflow occurs while calculating the date's Julian day
     /// number.
-    pub fn at_ordinal_date(&self, year: YearT, ordinal: DaysT) -> Result<Date, DateError> {
+    pub fn at_ordinal_date(&self, year: i32, ordinal: DaysT) -> Result<Date, DateError> {
         let (month, day) = self.ordinal2ymd(year, ordinal)?;
         let jdn = self.get_julian_day_number(year, ordinal, month, day)?;
         let day_ordinal = self.get_day_ordinal(year, month, day).unwrap();
@@ -453,7 +452,7 @@ impl Calendar {
     }
 
     /// Returns the [`YearKind`] for the given year in the calendar
-    pub fn year_kind(&self, year: YearT) -> YearKind {
+    pub fn year_kind(&self, year: i32) -> YearKind {
         match self.0 {
             inner::Calendar::Julian => {
                 if inner::is_julian_leap_year(year) {
@@ -534,7 +533,7 @@ impl Calendar {
     }
 
     /// Returns the number of days in the given year in the calendar
-    pub fn year_length(&self, year: YearT) -> u32 {
+    pub fn year_length(&self, year: i32) -> u32 {
         match self.0 {
             inner::Calendar::Julian | inner::Calendar::Gregorian => match self.year_kind(year) {
                 YearKind::Common => COMMON_YEAR_LENGTH as u32,
@@ -584,7 +583,7 @@ impl Calendar {
     }
 
     // TODO: Docs
-    pub fn month_length(&self, year: YearT, month: Month) -> u32 {
+    pub fn month_length(&self, year: i32, month: Month) -> u32 {
         self.month_shape(year, month).len()
     }
 
@@ -595,7 +594,7 @@ impl Calendar {
     ///
     /// Returns [`DateError::OrdinalOutOfRange`] if `ordinal` is zero or
     /// greater than the length of the year.
-    fn ordinal2ymd(&self, year: YearT, ordinal: u32) -> Result<(Month, u32), DateError> {
+    fn ordinal2ymd(&self, year: i32, ordinal: u32) -> Result<(Month, u32), DateError> {
         let max_ordinal = self.year_length(year);
         if !(1..=max_ordinal).contains(&ordinal) {
             return Err(DateError::OrdinalOutOfRange {
@@ -618,7 +617,7 @@ impl Calendar {
     /// [Private] Calculate the day of year for a given year, month, and day
     /// ordinal of month.  The day ordinal must be valid for the given month;
     /// otherwise, the result will be garbage.
-    fn ymdo2ordinal(&self, year: YearT, month: Month, day_ordinal: u32) -> u32 {
+    fn ymdo2ordinal(&self, year: i32, month: Month, day_ordinal: u32) -> u32 {
         MonthIter::new()
             .take_while(|&m| m < month)
             .map(|m| self.month_length(year, m))
@@ -636,13 +635,13 @@ impl Calendar {
     ///
     /// Returns [`DateError::SkippedDate`] if the given date was skipped by a
     /// calendar reformation.
-    fn get_day_ordinal(&self, year: YearT, month: Month, day: u32) -> Result<u32, DateError> {
+    fn get_day_ordinal(&self, year: i32, month: Month, day: u32) -> Result<u32, DateError> {
         self.month_shape(year, month).get_day_ordinal(day)
     }
 
     /// [Private] Returns information on the "shape" of the given month of the
     /// given year.
-    fn month_shape(&self, year: YearT, month: Month) -> inner::MonthShape {
+    fn month_shape(&self, year: i32, month: Month) -> inner::MonthShape {
         use Month::*;
         let length = match month {
             January => 31,
@@ -715,7 +714,7 @@ impl Calendar {
     /// Returns [`ArithmeticOutOfBounds`] if numeric overflow/underflow occurs.
     fn get_julian_day_number(
         &self,
-        year: YearT,
+        year: i32,
         ordinal: DaysT,
         month: Month,
         day: u32,
@@ -739,7 +738,7 @@ impl Calendar {
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct Date {
     calendar: Calendar,
-    year: YearT,
+    year: i32,
     ordinal: DaysT,
     month: Month,
     day: u32,
@@ -754,7 +753,7 @@ impl Date {
     }
 
     /// Returns the date's year
-    pub fn year(&self) -> YearT {
+    pub fn year(&self) -> i32 {
         self.year
     }
 
@@ -1175,7 +1174,7 @@ pub enum DateError {
     #[error("day {day} is outside of valid range {min_day}-{max_day} for {year:04} {month}")]
     DayOutOfRange {
         /// The year value supplied
-        year: YearT,
+        year: i32,
         /// The month value supplied
         month: Month,
         /// The invalid day of month supplied
@@ -1191,7 +1190,7 @@ pub enum DateError {
     #[error("day-of-year ordinal {ordinal} is outside of valid range 1-{max_ordinal} for year {year:04}")]
     OrdinalOutOfRange {
         /// The year value supplied
-        year: YearT,
+        year: i32,
         /// The invalid day of year value supplied
         ordinal: DaysT,
         /// The maximum valid day of year value
@@ -1201,7 +1200,7 @@ pub enum DateError {
     /// Returned by [`Calendar::at_ymd()`] if the given date was skipped by a
     /// calendar reformation
     #[error("date {year:04}-{:02}-{day:02} was skipped by calendar reform", month.number())]
-    SkippedDate { year: YearT, month: Month, day: u32 },
+    SkippedDate { year: i32, month: Month, day: u32 },
 }
 
 /// Error returned when an internal arithmetic operation encounters numeric

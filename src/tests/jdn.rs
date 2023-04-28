@@ -1,4 +1,4 @@
-use crate::{Calendar, JulianDayT, Month, YearT};
+use crate::{Calendar, JulianDayT, Month};
 use rstest::rstest;
 use rstest_reuse::{apply, template};
 
@@ -68,7 +68,7 @@ use rstest_reuse::{apply, template};
 #[case(2460055, 2023, Month::April, 20)]
 fn julian_day_numbers(
     #[case] days: JulianDayT,
-    #[case] year: YearT,
+    #[case] year: i32,
     #[case] month: Month,
     #[case] day: u32,
 ) {
@@ -77,7 +77,7 @@ fn julian_day_numbers(
 #[apply(julian_day_numbers)]
 fn jdn_to_gregorian_reform(
     #[case] days: JulianDayT,
-    #[case] year: YearT,
+    #[case] year: i32,
     #[case] month: Month,
     #[case] day: u32,
 ) {
@@ -92,7 +92,7 @@ fn jdn_to_gregorian_reform(
 #[apply(julian_day_numbers)]
 fn gregorian_reform_to_jdn(
     #[case] days: JulianDayT,
-    #[case] year: YearT,
+    #[case] year: i32,
     #[case] month: Month,
     #[case] day: u32,
 ) {
