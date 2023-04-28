@@ -432,7 +432,6 @@ pub(crate) fn julian_yj_to_jd(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
 // TODO: PROBLEM: This doesn't work for dates with negative JDNs; address
 pub(crate) fn jd_to_gregorian_yj(jd: JulianDayT) -> Option<(i32, DaysT)> {
     const COMMON_CENTURY_DAYS: JulianDayT = COMMON_YEAR_LENGTH * 100 + 24;
-    const LEAP_CENTURY_DAYS: JulianDayT = COMMON_CENTURY_DAYS + 1;
     if jd < 0 {
         todo!()
     } else {
@@ -443,17 +442,12 @@ pub(crate) fn jd_to_gregorian_yj(jd: JulianDayT) -> Option<(i32, DaysT)> {
         // Zero-based day within current 400-year cycle:
         let mut quad_point = jd.rem_euclid(GREGORIAN_CYCLE_DAYS);
         // Add a "virtual leap day" to the end of each centennial year after
-        // the zeroth so that `quad_point` can be divided & modded by
-        // LEAP_CENTURY_DAYS evenly:
+        // the zeroth so that `decompose_julian()` can be applied.
         if let Some(after_first_year) = sub(quad_point, LEAP_YEAR_LENGTH) {
             quad_point += after_first_year / COMMON_CENTURY_DAYS;
         }
-        // Number of 100-year cycles elapsed within current 400-year cycle:
-        let centuries = quad_point / LEAP_CENTURY_DAYS;
-        // Zero-based day within current 100-year cycle:
-        let century_point = quad_point % LEAP_CENTURY_DAYS;
-        let (ys, ordinal) = decompose_julian(century_point)?;
-        let year = add(add(mul(quads, 400)?, mul(centuries, 100)?)?, ys - 4400)?;
+        let (ys, ordinal) = decompose_julian(quad_point)?;
+        let year = add(mul(quads, 400)?, ys - 4400)?;
         Some((year, ordinal))
     }
 }
