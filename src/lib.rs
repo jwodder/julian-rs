@@ -243,9 +243,9 @@ impl Calendar {
     /// overflow/underflow occurs while calculating the date's Julian day
     /// number.
     pub fn at_ymd(&self, year: YearT, month: Month, day: u32) -> Result<Date, DateError> {
-        let ordinal = self.ymd2ordinal(year, month, day)?;
+        let day_ordinal = self.get_day_ordinal(year, month, day)?;
+        let ordinal = self.ymdo2ordinal(year, month, day_ordinal);
         let jdn = self.get_julian_day_number(year, ordinal, month, day)?;
-        let day_ordinal = self.month_shape(year, month).get_day_ordinal(day).unwrap();
         Ok(Date {
             calendar: *self,
             year,
@@ -271,7 +271,7 @@ impl Calendar {
     pub fn at_ordinal_date(&self, year: YearT, ordinal: DaysT) -> Result<Date, DateError> {
         let (month, day) = self.ordinal2ymd(year, ordinal)?;
         let jdn = self.get_julian_day_number(year, ordinal, month, day)?;
-        let day_ordinal = self.month_shape(year, month).get_day_ordinal(day).unwrap();
+        let day_ordinal = self.get_day_ordinal(year, month, day).unwrap();
         Ok(Date {
             calendar: *self,
             year,
@@ -291,16 +291,17 @@ impl Calendar {
     /// while converting `jdn` to a calendar date.
     pub fn at_julian_day_number(&self, jdn: JulianDayT) -> Result<Date, ArithmeticOutOfBounds> {
         use inner::Calendar::*;
-        let (year, ordinal, month, day);
+        let (year, ordinal, month, day, day_ordinal);
         if self.0 == Julian || matches!(self.0, Reforming { reformation, .. } if jdn < reformation)
         {
             (year, ordinal) = inner::jd_to_julian_yj(jdn).ok_or(ArithmeticOutOfBounds)?;
             (month, day) = self.ordinal2ymd(year, ordinal).unwrap();
+            day_ordinal = self.get_day_ordinal(year, month, day).unwrap();
         } else {
             (year, month, day) = inner::jd_to_gregorian_ymd(jdn).ok_or(ArithmeticOutOfBounds)?;
-            ordinal = self.ymd2ordinal(year, month, day).unwrap();
+            day_ordinal = self.get_day_ordinal(year, month, day).unwrap();
+            ordinal = self.ymdo2ordinal(year, month, day_ordinal);
         }
-        let day_ordinal = self.month_shape(year, month).get_day_ordinal(day).unwrap();
         Ok(Date {
             calendar: *self,
             year,
@@ -582,25 +583,15 @@ impl Calendar {
         Err(DateError::OrdinalOutOfRange { year, ordinal })
     }
 
-    /// [Private] Calculate the day of year for a given year, month, and day of
-    /// month.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`DateError::DayOutOfRange`] if `day` is zero or greater than
-    /// the last day of the given month for the given year.
-    ///
-    /// Returns [`DateError::SkippedDate`] if the given date was skipped by a
-    /// calendar reformation.
-    fn ymd2ordinal(&self, year: YearT, month: Month, day: u32) -> Result<u32, DateError> {
-        // TODO: Pass this a day ordinal instead in order to cut down on
-        // redundant calculations?
-        let mord = self.get_day_ordinal(year, month, day)?;
-        Ok(MonthIter::new()
+    /// [Private] Calculate the day of year for a given year, month, and day
+    /// ordinal of month.  The day ordinal must be valid for the given month;
+    /// otherwise, the result will be garbage.
+    fn ymdo2ordinal(&self, year: YearT, month: Month, day_ordinal: u32) -> u32 {
+        MonthIter::new()
             .take_while(|&m| m < month)
             .map(|m| self.month_length(year, m))
             .sum::<u32>()
-            + mord)
+            + day_ordinal
     }
 
     /// [Private] Calculate the day ordinal for a given year, month, and day of
