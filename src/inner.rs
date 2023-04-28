@@ -333,7 +333,9 @@ impl MonthShape {
 
     // day_ordinal is one-based
     pub(crate) fn get_day_label(&self, day_ordinal: u32) -> Option<u32> {
-        if day_ordinal == 0 {
+        // Return early on impossibly large ordinals in order to avoid numeric
+        // overflow later
+        if day_ordinal == 0 || day_ordinal > 31 {
             return None;
         }
         match self {

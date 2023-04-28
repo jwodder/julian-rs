@@ -1107,12 +1107,15 @@ fn at_ordinal_date(
 #[case(2023, 0, 365)]
 #[case(2023, 366, 365)]
 #[case(2023, 1000, 365)]
+#[case(2023, 2147483647, 365)]
 #[case(2024, 0, 366)]
 #[case(2024, 367, 366)]
 #[case(2024, 1000, 366)]
+#[case(2024, 2147483647, 366)]
 #[case(1582, 0, 355)]
 #[case(1582, 356, 355)]
 #[case(1582, 1000, 355)]
+#[case(1582, 2147483647, 355)]
 fn at_ordinal_date_err(#[case] year: YearT, #[case] ordinal: DaysT, #[case] max_ordinal: DaysT) {
     let r = Calendar::gregorian_reform().at_ordinal_date(year, ordinal);
     assert_eq!(
