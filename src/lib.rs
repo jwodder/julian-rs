@@ -46,7 +46,10 @@ const SECONDS_IN_DAY: i64 = 24 * 60 * 60;
 const COMMON_YEAR_LENGTH: JulianDayT = 365;
 const LEAP_YEAR_LENGTH: JulianDayT = 366;
 
-// TODO: Docs
+/// A classification of calendar years.
+///
+/// A year can be common or leap, and a year in a "reforming" calendar can be
+/// shortened or skipped entirely.
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub enum YearKind {
     /// A full-length year not containing February 29
