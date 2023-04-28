@@ -1,4 +1,4 @@
-use crate::{Calendar, JulianDayT, Month};
+use crate::{Calendar, DateError, JulianDayT, Month};
 use rstest::rstest;
 use rstest_reuse::{apply, template};
 
@@ -66,6 +66,7 @@ use rstest_reuse::{apply, template};
 #[case(2453066, 2004, Month::March, 1)]
 #[case(2456746, 2014, Month::March, 29)]
 #[case(2460055, 2023, Month::April, 20)]
+#[case(2147483647, 5874898, Month::June, 3)]
 fn julian_day_numbers(
     #[case] days: JulianDayT,
     #[case] year: i32,
@@ -98,4 +99,10 @@ fn gregorian_reform_to_jdn(
 ) {
     let date = Calendar::GREGORIAN_REFORM.at_ymd(year, month, day).unwrap();
     assert_eq!(date.julian_day_number(), days);
+}
+
+#[test]
+fn ymd_to_past_max_jdn() {
+    let r = Calendar::gregorian().at_ymd(5874898, Month::June, 4);
+    assert_eq!(r, Err(DateError::Arithmetic));
 }

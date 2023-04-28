@@ -392,7 +392,6 @@ pub(crate) fn gregorian_yj_to_jd(year: i32, ordinal: DaysT) -> Option<JulianDayT
     } else if year == -4713 {
         Some(JulianDayT::try_from(ordinal).unwrap() - 328)
     } else {
-        let days = compose_julian(add(year, 4712)?, ordinal)?;
         // Number of centennials from -4713 through `year`
         //   = ceil((year + 4700) / 100)  [real division]
         //   = (year + 4700 + 99) / 100   [Euclidean division]
@@ -401,10 +400,22 @@ pub(crate) fn gregorian_yj_to_jd(year: i32, ordinal: DaysT) -> Option<JulianDayT
         let centennials = (year - 1).div_euclid(100) + 48;
         // Number of quadricentennials from -4713 through `year`
         let quads = centennials / 4;
+        let ydiff = add(year, 4712)?;
+        // Number of leap days from -4712 up to (but not including) `year`
         // Subtract one leap day for each non-leap centennial
         //   = subtract `centennials - quads`
+        let leap_days = sub(
+            // We can't use `compose_julian()` here, as that order of
+            // operations (specifically, not subtracting `centennials - quads`
+            // in the middle) would lead to overflow for some JDN less than
+            // JulianDayT::MAX.
+            add(ydiff, JULIAN_LEAP_CYCLE_YEARS - 1)? / JULIAN_LEAP_CYCLE_YEARS,
+            centennials - quads,
+        )?;
+        let year_start = add(mul(ydiff, COMMON_YEAR_LENGTH)?, leap_days)?;
+        let days = add(year_start, JulianDayT::try_from(ordinal - 1).unwrap())?;
         // Add 38 (JDN of -4712-01-01 N.S.)
-        add(sub(days, centennials - quads)?, 38)
+        add(days, 38)
     }
 }
 
@@ -496,11 +507,10 @@ fn decompose_julian(days: JulianDayT) -> Option<(i32, DaysT)> {
 fn compose_julian(years: i32, ordinal: DaysT) -> Option<JulianDayT> {
     debug_assert!(years >= 0);
     debug_assert!(ordinal > 0);
+    let common_days = mul(years, COMMON_YEAR_LENGTH)?;
+    let leap_days = add(years, JULIAN_LEAP_CYCLE_YEARS - 1)? / JULIAN_LEAP_CYCLE_YEARS;
     add(
-        add(
-            mul(years, COMMON_YEAR_LENGTH)?,
-            add(years, JULIAN_LEAP_CYCLE_YEARS - 1)? / JULIAN_LEAP_CYCLE_YEARS,
-        )?,
+        add(common_days, leap_days)?,
         JulianDayT::try_from(ordinal - 1).unwrap(),
     )
 }
@@ -631,6 +641,7 @@ mod tests {
     #[case(113993, -4400, 1)]
     #[case(114358, -4400, 366)]
     #[case(150518, -4300, 1)]
+    #[case(2147483647, 5874898, 154)]
     fn jd_gregorian_yj(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {}
 
     #[apply(jd_gregorian_yj)]
@@ -641,5 +652,10 @@ mod tests {
     #[apply(jd_gregorian_yj)]
     fn test_gregorian_yj_to_jd(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
         assert_eq!(gregorian_yj_to_jd(year, ordinal), Some(jd));
+    }
+
+    #[test]
+    fn test_gregorian_yj_to_past_max_jd() {
+        assert_eq!(gregorian_yj_to_jd(5874898, 155), None);
     }
 }
