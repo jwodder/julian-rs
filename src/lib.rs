@@ -2,7 +2,7 @@
 extern crate rstest_reuse;
 
 mod inner;
-pub mod reformations;
+pub mod ncal;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
@@ -16,6 +16,18 @@ use thiserror::Error;
 pub type YearT = i32;
 pub type DaysT = u32;
 pub type JulianDayT = i32;
+
+/// The Julian day number of the date at which the Gregorian Reformation was
+/// first put into effect (1582-10-15, following 1582-10-04 O.S.)
+pub const GREGORIAN: JulianDayT = 2299161;
+
+/// The smallest Julian day number that can be passed to
+/// [`Calendar::reforming()`][crate::Calendar::reforming] without getting a
+/// [`ReformingError`][crate::ReformingError] error.
+///
+/// This Julian day number corresponds to the date 0300-03-01 N.S. (0300-02-29
+/// O.S.).
+pub const MIN_REFORM_JDN: JulianDayT = 1830692;
 
 /// The Julian day number of the start of the Unix epoch (1970-01-01)
 pub const UNIX_EPOCH_JDN: JulianDayT = 2440588;
@@ -130,7 +142,7 @@ impl Calendar {
     /// Returns [`ReformingError::InvalidReformation`] if observing a
     /// reformation at the given date would not cause the calendar to skip
     /// forwards over any dates; this can only happen for Julian day numbers
-    /// less than [`reformations::MIN_REFORM_JDN`].
+    /// less than [`MIN_REFORM_JDN`].
     pub fn reforming(reformation: JulianDayT) -> Result<Calendar, ReformingError> {
         let pre_reform = Calendar::julian().at_julian_day_number(
             reformation
@@ -183,10 +195,9 @@ impl Calendar {
     /// at the date in history at which the Gregorian Reformation was first
     /// observed.
     ///
-    /// This is equal to
-    /// `Calendar::reforming(julian::reformations::GREGORIAN).unwrap()`.
+    /// This is equal to `Calendar::reforming(julian::GREGORIAN).unwrap()`.
     pub fn gregorian_reform() -> Calendar {
-        Self::reforming(reformations::GREGORIAN).unwrap()
+        Self::reforming(GREGORIAN).unwrap()
     }
 
     /// Returns the current date according to the calendar, along with a count
@@ -750,7 +761,7 @@ impl Date {
     /// # Example
     ///
     /// ```
-    /// use julian::{Calendar, reformations::GREGORIAN};
+    /// use julian::{Calendar, GREGORIAN};
     ///
     /// let cal = Calendar::gregorian_reform();
     ///
@@ -771,7 +782,7 @@ impl Date {
     /// # Example
     ///
     /// ```
-    /// use julian::{Calendar, reformations::GREGORIAN};
+    /// use julian::{Calendar, GREGORIAN};
     ///
     /// let cal = Calendar::gregorian_reform();
     ///

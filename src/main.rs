@@ -1,4 +1,4 @@
-use julian::{reformations, Calendar, Date, JulianDayT, ParseDateError};
+use julian::{ncal::UNITED_KINGDOM, Calendar, Date, JulianDayT, ParseDateError, GREGORIAN};
 use lexopt::{Arg, Error, Parser, ValueExt};
 use std::fmt::Write;
 use std::num::ParseIntError;
@@ -170,8 +170,8 @@ enum OldStylePolicy {
 impl OldStylePolicy {
     fn show_old_style(self, jdn: JulianDayT) -> bool {
         self != OldStylePolicy::Never
-            && reformations::GREGORIAN <= jdn
-            && (jdn < reformations::UNITED_KINGDOM || self == OldStylePolicy::PostReform)
+            && GREGORIAN <= jdn
+            && (jdn < UNITED_KINGDOM || self == OldStylePolicy::PostReform)
     }
 }
 
