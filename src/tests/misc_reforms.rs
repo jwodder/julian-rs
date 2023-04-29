@@ -63,6 +63,10 @@ fn german_reformation_year() {
 fn max_invalid_reformation() {
     let r = Calendar::reforming(1830691);
     assert_eq!(r, Err(ReformingError));
+    assert_eq!(
+        r.unwrap_err().to_string(),
+        "reformation date would not cause calendar to advance"
+    );
 }
 
 #[test]
