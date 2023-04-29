@@ -34,12 +34,14 @@ fn at_unix_time(
 fn cal_pre_min_unix_time() {
     let r = Calendar::GREGORIAN_REFORM.at_unix_time(-185753453990401);
     assert_eq!(r, Err(ArithmeticError));
+    assert_eq!(r.unwrap_err().to_string(), "arithmetic overflow/underflow");
 }
 
 #[test]
 fn cal_past_max_unix_time() {
     let r = Calendar::GREGORIAN_REFORM.at_unix_time(185331720384000);
     assert_eq!(r, Err(ArithmeticError));
+    assert_eq!(r.unwrap_err().to_string(), "arithmetic overflow/underflow");
 }
 
 #[rstest]
@@ -56,12 +58,14 @@ fn jdn_at_unix_time(#[case] ts: i64, #[case] jdn: Jdnum, #[case] seconds: u32) {
 fn jdn_pre_min_unix_time() {
     let r = unix2jdn(-185753453990401);
     assert_eq!(r, Err(ArithmeticError));
+    assert_eq!(r.unwrap_err().to_string(), "arithmetic overflow/underflow");
 }
 
 #[test]
 fn jdn_past_max_unix_time() {
     let r = unix2jdn(185331720384000);
     assert_eq!(r, Err(ArithmeticError));
+    assert_eq!(r.unwrap_err().to_string(), "arithmetic overflow/underflow");
 }
 
 #[rstest]
