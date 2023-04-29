@@ -1,4 +1,4 @@
-use crate::{Calendar, DateError, DaysT, Month, ParseDateError};
+use crate::{Calendar, DateError, Month, ParseDateError};
 use assert_matches::assert_matches;
 use rstest::rstest;
 
@@ -306,7 +306,7 @@ fn last_skipped_date() {
 #[case(1582, 0, 355)]
 #[case(1582, 356, 355)]
 #[case(1582, 1000, 355)]
-fn invalid_ordinal_date(#[case] year: i32, #[case] ordinal: DaysT, #[case] max_ordinal: DaysT) {
+fn invalid_ordinal_date(#[case] year: i32, #[case] ordinal: u32, #[case] max_ordinal: u32) {
     let r = Calendar::GREGORIAN_REFORM.parse_date(&format!("{year:04}-{ordinal:03}"));
     assert_eq!(
         r,

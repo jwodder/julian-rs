@@ -13,7 +13,6 @@ use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 
-pub type DaysT = u32;
 pub type Jdnum = i32;
 
 /// The Julian day number of the date at which the Gregorian Reformation was
@@ -304,7 +303,7 @@ impl Calendar {
     ///
     /// Returns [`DateError::Arithmetic`] if numeric overflow/underflow occurs
     /// while calculating the date's Julian day number.
-    pub fn at_ordinal_date(&self, year: i32, ordinal: DaysT) -> Result<Date, DateError> {
+    pub fn at_ordinal_date(&self, year: i32, ordinal: u32) -> Result<Date, DateError> {
         let (month, day, day_ordinal) = self.ordinal2ymddo(year, ordinal)?;
         let jdn = self.get_julian_day_number(year, ordinal)?;
         Ok(Date {
@@ -709,11 +708,7 @@ impl Calendar {
     /// # Errors
     ///
     /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs.
-    fn get_julian_day_number(
-        &self,
-        year: i32,
-        mut ordinal: DaysT,
-    ) -> Result<Jdnum, ArithmeticError> {
+    fn get_julian_day_number(&self, year: i32, mut ordinal: u32) -> Result<Jdnum, ArithmeticError> {
         use inner::Calendar::*;
         if let Reforming { gap, .. } = self.0 {
             if year == gap.post_reform.year && ordinal >= gap.post_reform.ordinal {
@@ -739,7 +734,7 @@ impl Calendar {
 pub struct Date {
     calendar: Calendar,
     year: i32,
-    ordinal: DaysT,
+    ordinal: u32,
     month: Month,
     day: u32,
     day_ordinal: u32,
@@ -814,14 +809,14 @@ impl Date {
 
     /// Returns the ordinal number of the day within the year.  Ordinal date 1
     /// is the first day of the year, ordinal 2 is the second, etc.
-    pub fn ordinal(&self) -> DaysT {
+    pub fn ordinal(&self) -> u32 {
         self.ordinal
     }
 
     /// Returns the zero-based ordinal number of the day within the year.  This
     /// is the same as [`Date::ordinal()`], except starting from 0 instead of
     /// 1.
-    pub fn ordinal0(&self) -> DaysT {
+    pub fn ordinal0(&self) -> u32 {
         self.ordinal - 1
     }
 
@@ -1187,9 +1182,9 @@ pub enum DateError {
         /// The year value supplied
         year: i32,
         /// The invalid day of year value supplied
-        ordinal: DaysT,
+        ordinal: u32,
         /// The maximum valid day of year value
-        max_ordinal: DaysT,
+        max_ordinal: u32,
     },
 
     /// Returned by [`Calendar::at_ymd()`] if the given date was skipped by a
