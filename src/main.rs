@@ -1,4 +1,4 @@
-use julian::{ncal::UNITED_KINGDOM, Calendar, Date, JulianDayT, ParseDateError, GREGORIAN};
+use julian::{ncal::UNITED_KINGDOM, Calendar, Date, Jdnum, ParseDateError, GREGORIAN};
 use lexopt::{Arg, Error, Parser, ValueExt};
 use std::fmt::Write;
 use std::num::ParseIntError;
@@ -122,7 +122,7 @@ impl Options {
         output
     }
 
-    fn show_cal_to_julian(&self, cal: Date, jdn: JulianDayT) -> String {
+    fn show_cal_to_julian(&self, cal: Date, jdn: Jdnum) -> String {
         let mut s = String::new();
         if self.verbose {
             self.fmt_styled(&mut s, cal, jdn);
@@ -132,7 +132,7 @@ impl Options {
         s
     }
 
-    fn show_julian_to_cal(&self, cal: Date, jdn: JulianDayT) -> String {
+    fn show_julian_to_cal(&self, cal: Date, jdn: Jdnum) -> String {
         let mut s = String::new();
         if self.verbose {
             write!(&mut s, "{jdn} = ").unwrap();
@@ -141,7 +141,7 @@ impl Options {
         s
     }
 
-    fn fmt_styled(&self, s: &mut String, when: Date, jdn: JulianDayT) {
+    fn fmt_styled(&self, s: &mut String, when: Date, jdn: Jdnum) {
         self.fmt_date(s, when);
         if self.ospolicy.show_old_style(jdn) {
             write!(s, " [O.S. ").unwrap();
@@ -168,7 +168,7 @@ enum OldStylePolicy {
 }
 
 impl OldStylePolicy {
-    fn show_old_style(self, jdn: JulianDayT) -> bool {
+    fn show_old_style(self, jdn: Jdnum) -> bool {
         self != OldStylePolicy::Never
             && GREGORIAN <= jdn
             && (jdn < UNITED_KINGDOM || self == OldStylePolicy::PostReform)
@@ -178,7 +178,7 @@ impl OldStylePolicy {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum Argument {
     CalendarDate(Date),
-    Jdn(JulianDayT),
+    Jdn(Jdnum),
 }
 
 impl FromStr for Argument {
@@ -190,7 +190,7 @@ impl FromStr for Argument {
                 Calendar::GREGORIAN_REFORM.parse_date(s)?,
             ))
         } else {
-            Ok(Argument::Jdn(s.parse::<JulianDayT>()?))
+            Ok(Argument::Jdn(s.parse::<Jdnum>()?))
         }
     }
 }

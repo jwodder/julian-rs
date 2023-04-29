@@ -1,6 +1,4 @@
-use super::{
-    DateError, DaysT, JulianDayT, Month, ParseDateError, COMMON_YEAR_LENGTH, LEAP_YEAR_LENGTH,
-};
+use super::{DateError, DaysT, Jdnum, Month, ParseDateError, COMMON_YEAR_LENGTH, LEAP_YEAR_LENGTH};
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::ops::{Range, RangeInclusive};
@@ -8,10 +6,10 @@ use std::ops::{Range, RangeInclusive};
 // Julian-calendar year in which Julian day number 0 occurs
 const JDN0_YEAR: i32 = -4712;
 
-const GREGORIAN_CYCLE_DAYS: JulianDayT = 146097;
+const GREGORIAN_CYCLE_DAYS: Jdnum = 146097;
 const GREGORIAN_CYCLE_YEARS: i32 = 400;
 
-const JULIAN_LEAP_CYCLE_DAYS: JulianDayT = 1461;
+const JULIAN_LEAP_CYCLE_DAYS: Jdnum = 1461;
 const JULIAN_LEAP_CYCLE_YEARS: i32 = 4;
 
 #[derive(Clone, Copy, Debug)]
@@ -19,7 +17,7 @@ pub(crate) enum Calendar {
     Julian,
     Gregorian,
     Reforming {
-        reformation: JulianDayT,
+        reformation: Jdnum,
         // Ignored by comparison traits and Hash, as it's a function of
         // `reformation`:
         gap: ReformGap,
@@ -384,8 +382,8 @@ pub(crate) fn is_gregorian_leap_year(year: i32) -> bool {
 /// Converts a Julian day number to the corresponding year and day of year in
 /// the proleptic Julian calendar.
 ///
-/// Valid for all `JulianDayT` values.
-pub(crate) fn jdn2julian(jd: JulianDayT) -> (i32, DaysT) {
+/// Valid for all `Jdnum` values.
+pub(crate) fn jdn2julian(jd: Jdnum) -> (i32, DaysT) {
     let (year, ordinal) = decompose_julian(jd);
     (year + JDN0_YEAR, ordinal)
 }
@@ -394,16 +392,16 @@ pub(crate) fn jdn2julian(jd: JulianDayT) -> (i32, DaysT) {
 /// corresponding Julian day number.
 ///
 /// Returns None on arithmetic underflow/overflow.
-pub(crate) fn julian2jdn(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
+pub(crate) fn julian2jdn(year: i32, ordinal: DaysT) -> Option<Jdnum> {
     compose_julian(sub(year, JDN0_YEAR)?, ordinal)
 }
 
 /// Converts a Julian day number to the corresponding year and day of year in
 /// the proleptic Gregorian calendar.
 ///
-/// Valid for all `JulianDayT` values.
-pub(crate) fn jdn2gregorian(jd: JulianDayT) -> (i32, DaysT) {
-    const COMMON_CENTURY_DAYS: JulianDayT = COMMON_YEAR_LENGTH * 100 + 24;
+/// Valid for all `Jdnum` values.
+pub(crate) fn jdn2gregorian(jd: Jdnum) -> (i32, DaysT) {
+    const COMMON_CENTURY_DAYS: Jdnum = COMMON_YEAR_LENGTH * 100 + 24;
     // Calculate relative to a nearby quadricentennial.  Shift towards zero in
     // order to avoid overflow/underflow.
     let (offset, year_offset) = if jd < 0 {
@@ -433,7 +431,7 @@ pub(crate) fn jdn2gregorian(jd: JulianDayT) -> (i32, DaysT) {
 /// corresponding Julian day number.
 ///
 /// Returns None on arithmetic underflow/overflow.
-pub(crate) fn gregorian2jdn(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
+pub(crate) fn gregorian2jdn(year: i32, ordinal: DaysT) -> Option<Jdnum> {
     // JDN 0 = day 328 of year -4713 in the proleptic Gregorian calendar
     // Number of centennials from -4713 through `year`
     //   = ceil((year + 4700) / 100)  [real division]
@@ -452,13 +450,13 @@ pub(crate) fn gregorian2jdn(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
         // We can't use `compose_julian()` here, as that order of
         // operations (specifically, not subtracting `centennials - quads`
         // in the middle) would lead to overflow for some JDN less than
-        // JulianDayT::MAX.
+        // Jdnum::MAX.
         add(ydiff, JULIAN_LEAP_CYCLE_YEARS - 1)?.div_euclid(JULIAN_LEAP_CYCLE_YEARS),
         centennials - quads,
     )?;
     let year_days = mul(ydiff, COMMON_YEAR_LENGTH)?;
     // Add 38 (JDN of -4712-01-01 N.S.)
-    let offset = JulianDayT::try_from(ordinal - 1).unwrap() + 38;
+    let offset = Jdnum::try_from(ordinal - 1).unwrap() + 38;
     add(add(year_days, offset)?, leap_days)
 }
 
@@ -469,10 +467,10 @@ pub(crate) fn gregorian2jdn(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
 /// If the number of days is negative, the year will be negative, and the day
 /// of the year will be positive.
 ///
-/// Valid for all `JulianDayT` values.
-fn decompose_julian(days: JulianDayT) -> (i32, DaysT) {
+/// Valid for all `Jdnum` values.
+fn decompose_julian(days: Jdnum) -> (i32, DaysT) {
     let mut year: i32 = days.div_euclid(JULIAN_LEAP_CYCLE_DAYS) * JULIAN_LEAP_CYCLE_YEARS;
-    let mut ordinal: JulianDayT = days.rem_euclid(JULIAN_LEAP_CYCLE_DAYS);
+    let mut ordinal: Jdnum = days.rem_euclid(JULIAN_LEAP_CYCLE_DAYS);
     // Add a "virtual leap day" to the end of each common year so that
     // `ordinal` can be divided & modded by LEAP_YEAR_LENGTH evenly:
     if ordinal > COMMON_YEAR_LENGTH {
@@ -488,28 +486,28 @@ fn decompose_julian(days: JulianDayT) -> (i32, DaysT) {
 /// the initial zero year, return the total number of days.
 ///
 /// Returns `None` on arithmetic underflow/overflow.
-fn compose_julian(years: i32, ordinal: DaysT) -> Option<JulianDayT> {
+fn compose_julian(years: i32, ordinal: DaysT) -> Option<Jdnum> {
     debug_assert!(ordinal > 0);
     let common_days = mul(years, COMMON_YEAR_LENGTH)?;
     let leap_days = add(years, JULIAN_LEAP_CYCLE_YEARS - 1)?.div_euclid(JULIAN_LEAP_CYCLE_YEARS);
     add(
         common_days,
-        add(leap_days, JulianDayT::try_from(ordinal - 1).unwrap())?,
+        add(leap_days, Jdnum::try_from(ordinal - 1).unwrap())?,
     )
 }
 
 #[inline]
-fn add(x: JulianDayT, y: JulianDayT) -> Option<JulianDayT> {
+fn add(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
     x.checked_add(y)
 }
 
 #[inline]
-fn sub(x: JulianDayT, y: JulianDayT) -> Option<JulianDayT> {
+fn sub(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
     x.checked_sub(y)
 }
 
 #[inline]
-fn mul(x: JulianDayT, y: JulianDayT) -> Option<JulianDayT> {
+fn mul(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
     x.checked_mul(y)
 }
 
@@ -571,15 +569,15 @@ mod tests {
     #[case(1826, 4, 366)]
     #[case(1827, 5, 1)]
     #[case(2147483647, 5879489, 290)]
-    fn year_days(#[case] days: JulianDayT, #[case] years: i32, #[case] ordinal: DaysT) {}
+    fn year_days(#[case] days: Jdnum, #[case] years: i32, #[case] ordinal: DaysT) {}
 
     #[apply(year_days)]
-    fn test_decompose_julian(#[case] days: JulianDayT, #[case] years: i32, #[case] ordinal: DaysT) {
+    fn test_decompose_julian(#[case] days: Jdnum, #[case] years: i32, #[case] ordinal: DaysT) {
         assert_eq!(decompose_julian(days), (years, ordinal));
     }
 
     #[apply(year_days)]
-    fn test_compose_julian(#[case] days: JulianDayT, #[case] years: i32, #[case] ordinal: DaysT) {
+    fn test_compose_julian(#[case] days: Jdnum, #[case] years: i32, #[case] ordinal: DaysT) {
         assert_eq!(compose_julian(years, ordinal), Some(days));
     }
 
@@ -600,15 +598,15 @@ mod tests {
     #[case(1826, -4708, 366)]
     #[case(1827, -4707, 1)]
     #[case(2147483647, 5874777, 290)]
-    fn jd_julian_yj(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {}
+    fn jd_julian_yj(#[case] jd: Jdnum, #[case] year: i32, #[case] ordinal: DaysT) {}
 
     #[apply(jd_julian_yj)]
-    fn test_jdn2julian(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
+    fn test_jdn2julian(#[case] jd: Jdnum, #[case] year: i32, #[case] ordinal: DaysT) {
         assert_eq!(jdn2julian(jd), (year, ordinal));
     }
 
     #[apply(jd_julian_yj)]
-    fn test_julian2jdn(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
+    fn test_julian2jdn(#[case] jd: Jdnum, #[case] year: i32, #[case] ordinal: DaysT) {
         assert_eq!(julian2jdn(year, ordinal), Some(jd));
     }
 
@@ -670,15 +668,15 @@ mod tests {
     #[case(114358, -4400, 366)]
     #[case(150518, -4300, 1)]
     #[case(2147483647, 5874898, 154)]
-    fn jd_gregorian_yj(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {}
+    fn jd_gregorian_yj(#[case] jd: Jdnum, #[case] year: i32, #[case] ordinal: DaysT) {}
 
     #[apply(jd_gregorian_yj)]
-    fn test_jdn2gregorian(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
+    fn test_jdn2gregorian(#[case] jd: Jdnum, #[case] year: i32, #[case] ordinal: DaysT) {
         assert_eq!(jdn2gregorian(jd), (year, ordinal));
     }
 
     #[apply(jd_gregorian_yj)]
-    fn test_gregorian2jdn(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
+    fn test_gregorian2jdn(#[case] jd: Jdnum, #[case] year: i32, #[case] ordinal: DaysT) {
         assert_eq!(gregorian2jdn(year, ordinal), Some(jd));
     }
 

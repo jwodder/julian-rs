@@ -1,6 +1,6 @@
 use crate::{
     julian_day_number_to_unix_time, unix_time_to_julian_day_number, ArithmeticError, Calendar,
-    JulianDayT, Month,
+    Jdnum, Month,
 };
 use rstest::rstest;
 
@@ -49,7 +49,7 @@ fn cal_past_max_unix_time() {
 #[case(-185753453990400, -2147483648, 0)]
 #[case(0, 2440588, 0)]
 #[case(185331720383999, 2147483647, 86399)]
-fn jdn_at_unix_time(#[case] ts: i64, #[case] jdn: JulianDayT, #[case] seconds: u32) {
+fn jdn_at_unix_time(#[case] ts: i64, #[case] jdn: Jdnum, #[case] seconds: u32) {
     let (j, s) = unix_time_to_julian_day_number(ts).unwrap();
     assert_eq!(j, jdn);
     assert_eq!(s, seconds);
@@ -71,7 +71,7 @@ fn jdn_past_max_unix_time() {
 #[case(-2147483648, -185753453990400)]
 #[case(2440588, 0)]
 #[case(2147483647, 185331720297600)]
-fn jdn_to_unix_time(#[case] jdn: JulianDayT, #[case] ts: i64) {
+fn jdn_to_unix_time(#[case] jdn: Jdnum, #[case] ts: i64) {
     let t = julian_day_number_to_unix_time(jdn);
     assert_eq!(t, ts);
 }
