@@ -690,4 +690,26 @@ mod tests {
     fn test_gregorian_to_past_max_jdn() {
         assert_eq!(gregorian2jdn(5874898, 155), None);
     }
+
+    #[test]
+    fn cmp_nontrivial_range() {
+        use RangeOrdering::*;
+        assert_eq!(cmp_range(1, 5, 10), Less);
+        assert_eq!(cmp_range(4, 5, 10), Less);
+        assert_eq!(cmp_range(5, 5, 10), EqLower);
+        assert_eq!(cmp_range(6, 5, 10), Between);
+        assert_eq!(cmp_range(10, 5, 10), EqUpper);
+        assert_eq!(cmp_range(11, 5, 10), Greater);
+        assert_eq!(cmp_range(15, 5, 10), Greater);
+    }
+
+    #[test]
+    fn cmp_trivial_range() {
+        use RangeOrdering::*;
+        assert_eq!(cmp_range(1, 7, 7), Less);
+        assert_eq!(cmp_range(6, 7, 7), Less);
+        assert_eq!(cmp_range(7, 7, 7), EqBoth);
+        assert_eq!(cmp_range(8, 7, 7), Greater);
+        assert_eq!(cmp_range(10, 7, 7), Greater);
+    }
 }
