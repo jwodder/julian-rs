@@ -1,7 +1,4 @@
-use crate::{
-    julian_day_number_to_unix_time, unix_time_to_julian_day_number, ArithmeticError, Calendar,
-    Jdnum, Month,
-};
+use crate::{jdn2unix, unix2jdn, ArithmeticError, Calendar, Jdnum, Month};
 use rstest::rstest;
 
 #[rstest]
@@ -50,20 +47,20 @@ fn cal_past_max_unix_time() {
 #[case(0, 2440588, 0)]
 #[case(185331720383999, 2147483647, 86399)]
 fn jdn_at_unix_time(#[case] ts: i64, #[case] jdn: Jdnum, #[case] seconds: u32) {
-    let (j, s) = unix_time_to_julian_day_number(ts).unwrap();
+    let (j, s) = unix2jdn(ts).unwrap();
     assert_eq!(j, jdn);
     assert_eq!(s, seconds);
 }
 
 #[test]
 fn jdn_pre_min_unix_time() {
-    let r = unix_time_to_julian_day_number(-185753453990401);
+    let r = unix2jdn(-185753453990401);
     assert_eq!(r, Err(ArithmeticError));
 }
 
 #[test]
 fn jdn_past_max_unix_time() {
-    let r = unix_time_to_julian_day_number(185331720384000);
+    let r = unix2jdn(185331720384000);
     assert_eq!(r, Err(ArithmeticError));
 }
 
@@ -72,6 +69,6 @@ fn jdn_past_max_unix_time() {
 #[case(2440588, 0)]
 #[case(2147483647, 185331720297600)]
 fn jdn_to_unix_time(#[case] jdn: Jdnum, #[case] ts: i64) {
-    let t = julian_day_number_to_unix_time(jdn);
+    let t = jdn2unix(jdn);
     assert_eq!(t, ts);
 }

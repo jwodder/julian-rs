@@ -171,9 +171,9 @@ impl Calendar {
     /// would not cause the calendar to skip forwards over any dates; this can
     /// only happen for Julian day numbers less than [`MIN_REFORM_JDN`].
     pub fn reforming(reformation: Jdnum) -> Result<Calendar, ReformingError> {
-        let pre_reform = Calendar::julian()
-            .at_julian_day_number(reformation.checked_sub(1).ok_or(ReformingError)?);
-        let post_reform = Calendar::gregorian().at_julian_day_number(reformation);
+        let pre_reform =
+            Calendar::julian().at_jdn(reformation.checked_sub(1).ok_or(ReformingError)?);
+        let post_reform = Calendar::gregorian().at_jdn(reformation);
         let post_reform_as_julian = Calendar::julian()
             .at_ymd(post_reform.year(), post_reform.month(), post_reform.day())
             .unwrap()
@@ -241,8 +241,8 @@ impl Calendar {
     /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs while
     /// converting the time.
     pub fn at_system_time(&self, t: SystemTime) -> Result<(Date, u32), ArithmeticError> {
-        let (jdn, secs) = system_time_to_julian_day_number(t)?;
-        Ok((self.at_julian_day_number(jdn), secs))
+        let (jdn, secs) = system2jdn(t)?;
+        Ok((self.at_jdn(jdn), secs))
     }
 
     /// Returns the date according to the calendar for the given [Unix time][],
@@ -256,8 +256,8 @@ impl Calendar {
     /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs while
     /// converting the time.
     pub fn at_unix_time(&self, unix_time: i64) -> Result<(Date, u32), ArithmeticError> {
-        let (jdn, secs) = unix_time_to_julian_day_number(unix_time)?;
-        Ok((self.at_julian_day_number(jdn), secs))
+        let (jdn, secs) = unix2jdn(unix_time)?;
+        Ok((self.at_jdn(jdn), secs))
     }
 
     /// Returns the date of the calendar with the given year, month, and day of
@@ -319,7 +319,7 @@ impl Calendar {
     }
 
     /// Returns the date of the calendar with the given Julian day number.
-    pub fn at_julian_day_number(&self, jdn: Jdnum) -> Date {
+    pub fn at_jdn(&self, jdn: Jdnum) -> Date {
         use inner::Calendar::*;
         let (year, mut ordinal) = if self.0 == Julian
             || matches!(self.0, Reforming { reformation, .. } if jdn < reformation)
@@ -729,8 +729,7 @@ impl Calendar {
 /// A date (year, month, and day of month) in a certain calendar.
 ///
 /// Instances of `Date` can be constructed through various methods of
-/// [`Calendar`], including [`Calendar::at_ymd()`] and
-/// [`Calendar::at_julian_day_number()`].
+/// [`Calendar`], including [`Calendar::at_ymd()`] and [`Calendar::at_jdn()`].
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct Date {
     calendar: Calendar,
@@ -770,10 +769,10 @@ impl Date {
     ///
     /// let cal = Calendar::GREGORIAN_REFORM;
     ///
-    /// let pre_reform = cal.at_julian_day_number(GREGORIAN - 1);
+    /// let pre_reform = cal.at_jdn(GREGORIAN - 1);
     /// assert_eq!(pre_reform.day(), 4);
     ///
-    /// let post_reform = cal.at_julian_day_number(GREGORIAN);
+    /// let post_reform = cal.at_jdn(GREGORIAN);
     /// assert_eq!(post_reform.day(), 15);
     /// ```
     pub fn day(&self) -> u32 {
@@ -791,10 +790,10 @@ impl Date {
     ///
     /// let cal = Calendar::GREGORIAN_REFORM;
     ///
-    /// let pre_reform = cal.at_julian_day_number(GREGORIAN - 1);
+    /// let pre_reform = cal.at_jdn(GREGORIAN - 1);
     /// assert_eq!(pre_reform.day_ordinal(), 4);
     ///
-    /// let post_reform = cal.at_julian_day_number(GREGORIAN);
+    /// let post_reform = cal.at_jdn(GREGORIAN);
     /// assert_eq!(post_reform.day_ordinal(), 5);
     /// ```
     pub fn day_ordinal(&self) -> u32 {
@@ -856,7 +855,7 @@ impl Date {
 
     /// Convert the date to a date in the given calendar.
     pub fn convert_to(&self, calendar: Calendar) -> Date {
-        calendar.at_julian_day_number(self.julian_day_number())
+        calendar.at_jdn(self.julian_day_number())
     }
 }
 
@@ -1278,13 +1277,13 @@ pub enum ParseDateError {
 ///
 /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs during
 /// conversion.
-pub fn system_time_to_julian_day_number(t: SystemTime) -> Result<(Jdnum, u32), ArithmeticError> {
+pub fn system2jdn(t: SystemTime) -> Result<(Jdnum, u32), ArithmeticError> {
     let ts = match t.duration_since(UNIX_EPOCH) {
         Ok(d) => i64::try_from(d.as_secs()),
         Err(e) => i64::try_from(e.duration().as_secs()).map(|i| -i),
     }
     .map_err(|_| ArithmeticError)?;
-    unix_time_to_julian_day_number(ts)
+    unix2jdn(ts)
 }
 
 /// Converts a [Unix time][] to the corresponding Julian day number, along with
@@ -1296,7 +1295,7 @@ pub fn system_time_to_julian_day_number(t: SystemTime) -> Result<(Jdnum, u32), A
 ///
 /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs during
 /// conversion.
-pub fn unix_time_to_julian_day_number(unix_time: i64) -> Result<(Jdnum, u32), ArithmeticError> {
+pub fn unix2jdn(unix_time: i64) -> Result<(Jdnum, u32), ArithmeticError> {
     let jd = Jdnum::try_from(unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JDN as i64))
         .map_err(|_| ArithmeticError)?;
     let secs = u32::try_from(unix_time.rem_euclid(SECONDS_IN_DAY)).unwrap();
@@ -1307,7 +1306,7 @@ pub fn unix_time_to_julian_day_number(unix_time: i64) -> Result<(Jdnum, u32), Ar
 /// day.
 ///
 /// [Unix time]: https://en.wikipedia.org/wiki/Unix_time
-pub fn julian_day_number_to_unix_time(jdn: Jdnum) -> i64 {
+pub fn jdn2unix(jdn: Jdnum) -> i64 {
     (i64::from(jdn) - (UNIX_EPOCH_JDN as i64)) * SECONDS_IN_DAY
 }
 
