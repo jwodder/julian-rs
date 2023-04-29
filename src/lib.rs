@@ -1303,6 +1303,14 @@ pub fn unix_time_to_julian_day_number(
     Ok((jd, secs))
 }
 
+/// Converts a Julian day number to the [Unix time][] for midnight UTC on that
+/// day.
+///
+/// [Unix time]: https://en.wikipedia.org/wiki/Unix_time
+pub fn julian_day_number_to_unix_time(jdn: JulianDayT) -> i64 {
+    (i64::from(jdn) - (UNIX_EPOCH_JDN as i64)) * SECONDS_IN_DAY
+}
+
 #[cfg(test)]
 mod tests {
     mod at_ordinal_date;
