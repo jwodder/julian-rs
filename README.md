@@ -9,6 +9,6 @@
 dates in the [Gregorian calendar][] (non-proleptic, with the Reformation at
 1582-10-05) and [Julian calendar][].
 
-[Julian days]: https://en.wikipedia.org/wiki/Julian_day
+[Julian day numbers]: https://en.wikipedia.org/wiki/Julian_day
 [Gregorian calendar]: https://en.wikipedia.org/wiki/Gregorian_calendar
 [Julian calendar]: https://en.wikipedia.org/wiki/Julian_calendar
