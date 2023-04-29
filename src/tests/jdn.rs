@@ -4,6 +4,7 @@ use rstest_reuse::{apply, template};
 
 #[template]
 #[rstest]
+#[case(-2147483648, -5884202, Month::March, 16)]
 #[case(-2298701, -11006, Month::July, 2)]
 #[case(-1403, -4716, Month::February, 28)]
 #[case(-1402, -4716, Month::February, 29)]
@@ -103,7 +104,7 @@ fn gregorian_reform_to_jdn(
 
 #[template]
 #[rstest]
-#[case(-2147483647, -5884202, Month::March, 17)]
+#[case(-2147483648, -5884202, Month::March, 16)]
 #[case(-2298701, -11006, Month::July, 2)]
 #[case(-1403, -4716, Month::February, 28)]
 #[case(-1402, -4716, Month::February, 29)]
@@ -276,8 +277,20 @@ fn gregorian_to_jdn(
 }
 
 #[test]
+fn gregorian_ymd_to_pre_min_jdn() {
+    let r = Calendar::gregorian().at_ymd(-5884323, Month::May, 14);
+    assert_eq!(r, Err(DateError::Arithmetic));
+}
+
+#[test]
 fn gregorian_ymd_to_past_max_jdn() {
     let r = Calendar::gregorian().at_ymd(5874898, Month::June, 4);
+    assert_eq!(r, Err(DateError::Arithmetic));
+}
+
+#[test]
+fn julian_ymd_to_pre_min_jdn() {
+    let r = Calendar::julian().at_ymd(-5884202, Month::March, 15);
     assert_eq!(r, Err(DateError::Arithmetic));
 }
 

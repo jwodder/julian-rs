@@ -433,12 +433,28 @@ pub(crate) fn jdn2gregorian(jd: JulianDayT) -> Option<(i32, DaysT)> {
 /// corresponding Julian day number.
 ///
 /// Returns None on arithmetic underflow/overflow.
-// TODO: PROBLEM: This doesn't work for dates with negative JDNs; address
 pub(crate) fn gregorian2jdn(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
     // JDN 0 = day 328 of year -4713 in the proleptic Gregorian calendar
-    if (year, ordinal) < (-4713, 328) {
-        // Negative JDN
-        todo!()
+    if (year, ordinal) < (-4714, 365) {
+        // Number of centennials from `year` through 4714:
+        //   = ceil((year + 4800) / 100)  [real division]
+        //   = (year + 4800 + 99) / 100   [Euclidean division]
+        //   = (year + 99) / 100 + 48
+        let centennials = (year + 99).div_euclid(100) + 48;
+        // Number of quadricentennials from `year` through -4713
+        let quads = (centennials + 3).div_euclid(4);
+        let ydiff = add(year, 4714)?;
+        // Number of leap days from `year` up to (but not including) -4714
+        // Subtract one leap day for each non-leap centennial
+        //   = subtract `centennials - quads`
+        let leap_days = sub(
+            add(ydiff, JULIAN_LEAP_CYCLE_YEARS - 3)?.div_euclid(JULIAN_LEAP_CYCLE_YEARS),
+            centennials - quads,
+        )?;
+        let year_start = add(mul(ydiff, COMMON_YEAR_LENGTH)?, leap_days)?;
+        let days = add(year_start, JulianDayT::try_from(ordinal - 1).unwrap())?;
+        // Add -692 (JDN of -4714-01-01 N.S.)
+        sub(days, 692)
     } else if year == -4713 {
         Some(JulianDayT::try_from(ordinal).unwrap() - 328)
     } else {
@@ -449,7 +465,7 @@ pub(crate) fn gregorian2jdn(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
         //   = (year - 1) / 100 + 48
         let centennials = (year - 1).div_euclid(100) + 48;
         // Number of quadricentennials from -4713 through `year`
-        let quads = centennials / 4;
+        let quads = centennials.div_euclid(4);
         let ydiff = add(year, 4712)?;
         // Number of leap days from -4712 up to (but not including) `year`
         // Subtract one leap day for each non-leap centennial
@@ -620,6 +636,11 @@ mod tests {
     }
 
     #[test]
+    fn test_julian_to_pre_min_jdn() {
+        assert_eq!(julian2jdn(-5884202, 74), None);
+    }
+
+    #[test]
     fn test_julian_to_past_max_jdn() {
         assert_eq!(julian2jdn(5874777, 291), None);
     }
@@ -682,6 +703,11 @@ mod tests {
     #[apply(jd_gregorian_yj)]
     fn test_gregorian2jdn(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
         assert_eq!(gregorian2jdn(year, ordinal), Some(jd));
+    }
+
+    #[test]
+    fn test_gregorian_to_pre_min_jdn() {
+        assert_eq!(gregorian2jdn(-5884323, 134), None);
     }
 
     #[test]
