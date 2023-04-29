@@ -404,38 +404,29 @@ pub(crate) fn julian2jdn(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
 /// Returns None on arithmetic underflow/overflow.
 pub(crate) fn jdn2gregorian(jd: JulianDayT) -> Option<(i32, DaysT)> {
     const COMMON_CENTURY_DAYS: JulianDayT = COMMON_YEAR_LENGTH * 100 + 24;
-    if jd < 0 {
-        // -32104 = JDN of -4800-01-01 N.S.
-        let jd = jd + 32104;
-        // Number of 400-year cycles until -4800-01-01:
-        let quads = jd.div_euclid(GREGORIAN_CYCLE_DAYS);
-        // Zero-based day within current 400-year cycle, counting from the
-        // beginning of time rather than from the direction of zero:
-        let mut quad_point = jd.rem_euclid(GREGORIAN_CYCLE_DAYS);
-        // Add a "virtual leap day" to the end of each centennial year except
-        // the last so that `decompose_julian()` can be applied.
-        if let Some(after_first_year) = sub(quad_point, LEAP_YEAR_LENGTH) {
-            quad_point += after_first_year / COMMON_CENTURY_DAYS;
-        }
-        let (ys, ordinal) = decompose_julian(quad_point)?;
-        let year = add(mul(quads, 400)?, ys - 4800)?;
-        Some((year, ordinal))
+    // Calculate relative to a nearby quadricentennial.  Shift towards zero in
+    // order to avoid overflow/underflow.
+    let (offset, year_offset) = if jd < 0 {
+        // JDN -32104 = -4800-01-01 N.S.
+        (-32104, -4800)
     } else {
-        // 113993 = JDN of -4400-01-01 N.S.
-        let jd = jd - 113993;
-        // Number of 400-year cycles elapsed since -4400-01-01:
-        let quads = jd.div_euclid(GREGORIAN_CYCLE_DAYS);
-        // Zero-based day within current 400-year cycle:
-        let mut quad_point = jd.rem_euclid(GREGORIAN_CYCLE_DAYS);
-        // Add a "virtual leap day" to the end of each centennial year after
-        // the zeroth so that `decompose_julian()` can be applied.
-        if let Some(after_first_year) = sub(quad_point, LEAP_YEAR_LENGTH) {
-            quad_point += after_first_year / COMMON_CENTURY_DAYS;
-        }
-        let (ys, ordinal) = decompose_julian(quad_point)?;
-        let year = add(mul(quads, 400)?, ys - 4400)?;
-        Some((year, ordinal))
+        // JDN 113993 = -4400-01-01 N.S.
+        (113993, -4400)
+    };
+    let jd = jd - offset;
+    // Number of 400-year cycles until Jan 1 of `year_offset`
+    let quads = jd.div_euclid(GREGORIAN_CYCLE_DAYS);
+    // Zero-based day within current 400-year cycle, counting from the
+    // beginning of time:
+    let mut quad_point = jd.rem_euclid(GREGORIAN_CYCLE_DAYS);
+    // Add a "virtual leap day" to the end of each centennial year after the
+    // zeroth so that `decompose_julian()` can be applied.
+    if let Some(after_first_year) = sub(quad_point, LEAP_YEAR_LENGTH) {
+        quad_point += after_first_year / COMMON_CENTURY_DAYS;
     }
+    let (ys, ordinal) = decompose_julian(quad_point)?;
+    let year = add(mul(quads, 400)?, add(ys, year_offset)?)?;
+    Some((year, ordinal))
 }
 
 /// Converts a year and day of year in the proleptic Gregorian calendar to the
