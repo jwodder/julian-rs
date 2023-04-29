@@ -1,4 +1,4 @@
-use crate::{inner, Calendar, Month, ReformingError, YearKind, MIN_REFORM_JDN};
+use crate::{inner, Calendar, Month, ReformingError, YearKind};
 use assert_matches::assert_matches;
 
 #[test]
@@ -61,13 +61,13 @@ fn german_reformation_year() {
 
 #[test]
 fn max_invalid_reformation() {
-    let r = Calendar::reforming(MIN_REFORM_JDN - 1);
+    let r = Calendar::reforming(1830691);
     assert_eq!(r, Err(ReformingError));
 }
 
 #[test]
 fn min_valid_reformation() {
-    let cal = Calendar::reforming(MIN_REFORM_JDN).unwrap();
+    let cal = Calendar::reforming(1830692).unwrap();
     // Use assert_matches! instead of assert_eq! because Calendar's Eq
     // implementation ignores `gap`
     assert_matches!(

@@ -20,14 +20,6 @@ pub type Jdnum = i32;
 /// first put into effect (1582-10-15, following 1582-10-04 O.S.)
 pub const GREGORIAN: Jdnum = 2299161;
 
-/// The smallest Julian day number that can be passed to
-/// [`Calendar::reforming()`][crate::Calendar::reforming] without getting a
-/// [`ReformingError`][crate::ReformingError] error.
-///
-/// This Julian day number corresponds to the date 0300-03-01 N.S. (0300-02-29
-/// O.S.).
-pub const MIN_REFORM_JDN: Jdnum = 1830692;
-
 /// The Julian day number of the start of the Unix epoch (1970-01-01)
 pub const UNIX_EPOCH_JDN: Jdnum = 2440588;
 
@@ -168,8 +160,9 @@ impl Calendar {
     /// # Errors
     ///
     /// Returns [`ReformingError`] if observing a reformation at the given date
-    /// would not cause the calendar to skip forwards over any dates; this can
-    /// only happen for Julian day numbers less than [`MIN_REFORM_JDN`].
+    /// would not cause the calendar to skip forwards over any dates.  This can
+    /// only happen for Julian day numbers less than 1830692 (corresponding to
+    /// the date 0300-03-01 N.S. or 0300-02-29 O.S.).
     pub fn reforming(reformation: Jdnum) -> Result<Calendar, ReformingError> {
         let pre_reform =
             Calendar::julian().at_jdn(reformation.checked_sub(1).ok_or(ReformingError)?);
