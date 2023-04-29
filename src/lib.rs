@@ -1110,6 +1110,7 @@ pub struct TryIntoMonthError;
 /// assert_eq!(iter.next(), Some(Month::December));
 /// assert_eq!(iter.next(), None);
 /// ```
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct MonthIter(RangeInclusive<u16>);
 
 impl MonthIter {
