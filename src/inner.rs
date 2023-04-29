@@ -386,23 +386,8 @@ pub(crate) fn is_gregorian_leap_year(year: i32) -> bool {
 ///
 /// Returns None on arithmetic underflow/overflow.
 pub(crate) fn jdn2julian(jd: JulianDayT) -> Option<(i32, DaysT)> {
-    if jd < 0 {
-        // TODO: Support years less than `365 - i32::MAX` (which currently
-        // overflows on the below line)
-        let alt = sub(COMMON_YEAR_LENGTH, jd)?;
-        let (alt_year, alt_ordinal) = jdn2julian(alt)?;
-        let year = sub(JDN0_YEAR, sub(alt_year, JDN0_YEAR)?)?;
-        let year_length = if is_julian_leap_year(year) {
-            LEAP_YEAR_LENGTH as DaysT
-        } else {
-            COMMON_YEAR_LENGTH as DaysT
-        };
-        let ordinal = year_length - alt_ordinal + 1;
-        Some((year, ordinal))
-    } else {
-        let (year, ordinal) = decompose_julian(jd)?;
-        Some((add(year, JDN0_YEAR)?, ordinal))
-    }
+    let (year, ordinal) = decompose_julian(jd)?;
+    Some((add(year, JDN0_YEAR)?, ordinal))
 }
 
 /// Converts a year and day of year in the proleptic Julian calendar to the
@@ -410,18 +395,7 @@ pub(crate) fn jdn2julian(jd: JulianDayT) -> Option<(i32, DaysT)> {
 ///
 /// Returns None on arithmetic underflow/overflow.
 pub(crate) fn julian2jdn(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
-    if year < JDN0_YEAR {
-        let rev_year = sub(JDN0_YEAR, year)?;
-        sub(
-            JulianDayT::try_from(ordinal - 1).unwrap(),
-            add(
-                mul(rev_year, COMMON_YEAR_LENGTH)?,
-                rev_year / JULIAN_LEAP_CYCLE_YEARS,
-            )?,
-        )
-    } else {
-        compose_julian(sub(year, JDN0_YEAR)?, ordinal)
-    }
+    compose_julian(sub(year, JDN0_YEAR)?, ordinal)
 }
 
 /// Converts a Julian day number to the corresponding year and day of year in
@@ -491,16 +465,17 @@ pub(crate) fn gregorian2jdn(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
     }
 }
 
-/// Given a nonnegative number of days from the start of a period in which
-/// every fourth year is a leap year, beginning with the initial zero year,
-/// return the number of completed years and the one-based day of the last
-/// year.
+/// Given a number of days from the start of a period in which every fourth
+/// year is a leap year, beginning with the initial zero year, return the
+/// number of completed years and the one-based day of the last year.
+///
+/// If the number of days is negative, the year will be negative, and the day
+/// of the year will be positive.
 ///
 /// Returns `None` on arithmetic underflow/overflow.
 fn decompose_julian(days: JulianDayT) -> Option<(i32, DaysT)> {
-    debug_assert!(days >= 0);
-    let mut year: i32 = days / JULIAN_LEAP_CYCLE_DAYS * JULIAN_LEAP_CYCLE_YEARS;
-    let mut ordinal: JulianDayT = days % JULIAN_LEAP_CYCLE_DAYS;
+    let mut year: i32 = days.div_euclid(JULIAN_LEAP_CYCLE_DAYS) * JULIAN_LEAP_CYCLE_YEARS;
+    let mut ordinal: JulianDayT = days.rem_euclid(JULIAN_LEAP_CYCLE_DAYS);
     // Add a "virtual leap day" to the end of each common year so that
     // `ordinal` can be divided & modded by LEAP_YEAR_LENGTH evenly:
     if ordinal > COMMON_YEAR_LENGTH {
@@ -511,19 +486,18 @@ fn decompose_julian(days: JulianDayT) -> Option<(i32, DaysT)> {
     Some((year, DaysT::try_from(ordinal + 1).unwrap()))
 }
 
-/// Given a nonnegative number of years and a one-based day of year in a period
-/// in which every fourth year is a leap year, beginning with the initial zero
-/// year, return the total number of days.
+/// Given a (possibly negative) number of years and a one-based positive day of
+/// year in a period in which every fourth year is a leap year, beginning with
+/// the initial zero year, return the total number of days.
 ///
 /// Returns `None` on arithmetic underflow/overflow.
 fn compose_julian(years: i32, ordinal: DaysT) -> Option<JulianDayT> {
-    debug_assert!(years >= 0);
     debug_assert!(ordinal > 0);
     let common_days = mul(years, COMMON_YEAR_LENGTH)?;
-    let leap_days = add(years, JULIAN_LEAP_CYCLE_YEARS - 1)? / JULIAN_LEAP_CYCLE_YEARS;
+    let leap_days = add(years, JULIAN_LEAP_CYCLE_YEARS - 1)?.div_euclid(JULIAN_LEAP_CYCLE_YEARS);
     add(
-        add(common_days, leap_days)?,
-        JulianDayT::try_from(ordinal - 1).unwrap(),
+        common_days,
+        add(leap_days, JulianDayT::try_from(ordinal - 1).unwrap())?,
     )
 }
 
@@ -576,6 +550,17 @@ mod tests {
 
     #[template]
     #[rstest]
+    #[case(-2147483647, -5879490, 76)]
+    #[case(-1462, -5, 365)]
+    #[case(-1461, -4, 1)]
+    #[case(-1096, -4, 366)]
+    #[case(-1095, -3, 1)]
+    #[case(-731, -3, 365)]
+    #[case(-730, -2, 1)]
+    #[case(-366, -2, 365)]
+    #[case(-365, -1, 1)]
+    #[case(-2, -1, 364)]
+    #[case(-1, -1, 365)]
     #[case(0, 0, 1)]
     #[case(1, 0, 2)]
     #[case(365, 0, 366)]
@@ -588,6 +573,7 @@ mod tests {
     #[case(1461, 4, 1)]
     #[case(1826, 4, 366)]
     #[case(1827, 5, 1)]
+    #[case(2147483647, 5879489, 290)]
     fn year_days(#[case] days: JulianDayT, #[case] years: i32, #[case] ordinal: DaysT) {}
 
     #[apply(year_days)]
@@ -602,6 +588,7 @@ mod tests {
 
     #[template]
     #[rstest]
+    #[case(-2147483647, -5884202, 76)]
     #[case(-1, -4713, 365)]
     #[case(0, -4712, 1)]
     #[case(1, -4712, 2)]
