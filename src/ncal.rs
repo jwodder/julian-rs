@@ -34,8 +34,8 @@ pub const CANADA: Jdnum = 2361222;
 /// calendar (1912-01-01, following 1911-12-18 O.S.)
 pub const CHINA: Jdnum = 2419403;
 
-/// The Julian day number of the date at which Czech Republic first used the
-/// Gregorian calendar (1584-01-17, following 1584-01-06 O.S.)
+/// The Julian day number of the date at which the Czech Republic first used
+/// the Gregorian calendar (1584-01-17, following 1584-01-06 O.S.)
 pub const CZECH_REPUBLIC: Jdnum = 2299620;
 
 /// The Julian day number of the date at which Denmark first used the Gregorian
@@ -86,7 +86,7 @@ pub const LITHUANIA: Jdnum = 2421640;
 /// Gregorian calendar (1582-12-25, following 1582-12-14 O.S.)
 pub const LUXEMBOURG: Jdnum = 2299232;
 
-/// The Julian day number of the date at which Netherlands first used the
+/// The Julian day number of the date at which the Netherlands first used the
 /// Gregorian calendar (1582-12-25, following 1582-12-14 O.S.)
 pub const NETHERLANDS: Jdnum = 2299232;
 
@@ -130,11 +130,11 @@ pub const SWITZERLAND: Jdnum = 2325606;
 /// calendar (1927-01-01, following 1926-12-18 O.S.)
 pub const TURKEY: Jdnum = 2424882;
 
-/// The Julian day number of the date at which United Kingdom first used the
-/// Gregorian calendar (1752-09-14, following 1752-09-02 O.S.)
+/// The Julian day number of the date at which the United Kingdom first used
+/// the Gregorian calendar (1752-09-14, following 1752-09-02 O.S.)
 pub const UNITED_KINGDOM: Jdnum = 2361222;
 
-/// The Julian day number of the date at which United States first used the
+/// The Julian day number of the date at which the United States first used the
 /// Gregorian calendar (1752-09-14, following 1752-09-02 O.S.)
 pub const UNITED_STATES: Jdnum = 2361222;
 

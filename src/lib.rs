@@ -13,6 +13,7 @@ use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 
+/// Type used for Julian day numbers in this crate
 pub type Jdnum = i32;
 
 /// The Julian day number of the date at which the Gregorian Reformation was
@@ -109,13 +110,13 @@ impl YearKind {
 /// exactly every four years), a proleptic Gregorian calendar (in which leap
 /// years happen every four years, excepting centennial years not divisible by
 /// 400), or a "reforming" calendar that starts out as Julian and changes to
-/// Gregorian at some point, with the reformation involving skipping a number
-/// of calendar days in order to align with the proleptic Gregorian calendar.
+/// Gregorian at some date, with the reformation involving skipping a number of
+/// calendar days in order to align with the proleptic Gregorian calendar.
 ///
 /// The `Ord` implementation is such that the proleptic Julian calendar is
-/// smaller than all other calendars, and it is followed by "reforming"
-/// calendars in ascending order of reformation date, and then the proleptic
-/// Gregorian calendar is larger than all other calendars.
+/// smaller than all other calendars; it is followed by "reforming" calendars
+/// in ascending order of reformation date, and then the proleptic Gregorian
+/// calendar is larger than all other calendars.
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Calendar(inner::Calendar);
 
