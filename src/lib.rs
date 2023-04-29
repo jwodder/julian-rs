@@ -527,7 +527,10 @@ impl Calendar {
         }
     }
 
-    /// Returns the number of days in the given year in the calendar
+    /// Returns the number of days in the given year in the calendar.
+    ///
+    /// If the year was skipped in its entirety due to a calendar reformation,
+    /// this method will return 0.
     pub fn year_length(&self, year: i32) -> u32 {
         match self.0 {
             inner::Calendar::Julian | inner::Calendar::Gregorian => match self.year_kind(year) {
