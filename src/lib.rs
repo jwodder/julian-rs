@@ -183,7 +183,7 @@ impl Calendar {
         {
             ordinal += 1;
         }
-        let post_reform_as_jj = julian.get_julian_day_number(post_reform.year(), ordinal)?;
+        let post_reform_as_jj = julian.get_jdn(post_reform.year(), ordinal)?;
         if post_reform_as_jj <= reformation {
             return Err(ReformingError::InvalidReformation);
         }
@@ -295,7 +295,7 @@ impl Calendar {
     pub fn at_ymd(&self, year: i32, month: Month, day: u32) -> Result<Date, DateError> {
         let day_ordinal = self.get_day_ordinal(year, month, day)?;
         let ordinal = self.ymdo2ordinal(year, month, day_ordinal);
-        let jdn = self.get_julian_day_number(year, ordinal)?;
+        let jdn = self.get_jdn(year, ordinal)?;
         Ok(Date {
             calendar: *self,
             year,
@@ -321,7 +321,7 @@ impl Calendar {
     /// (5874777-290 O.S.).
     pub fn at_ordinal_date(&self, year: i32, ordinal: u32) -> Result<Date, DateError> {
         let (month, day, day_ordinal) = self.ordinal2ymddo(year, ordinal)?;
-        let jdn = self.get_julian_day_number(year, ordinal)?;
+        let jdn = self.get_jdn(year, ordinal)?;
         Ok(Date {
             calendar: *self,
             year,
@@ -724,7 +724,7 @@ impl Calendar {
     /// # Errors
     ///
     /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs.
-    fn get_julian_day_number(&self, year: i32, mut ordinal: u32) -> Result<Jdnum, ArithmeticError> {
+    fn get_jdn(&self, year: i32, mut ordinal: u32) -> Result<Jdnum, ArithmeticError> {
         use inner::Calendar::*;
         if let Reforming { gap, .. } = self.0 {
             if year == gap.post_reform.year && ordinal >= gap.post_reform.ordinal {
