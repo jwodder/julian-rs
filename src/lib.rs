@@ -227,7 +227,9 @@ impl Calendar {
     /// # Errors
     ///
     /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs while
-    /// converting the time.
+    /// converting the time.  This can only happen if the system time in UTC is
+    /// before -5884323-05-15 (-5884202-03-16 O.S.) or after 5874898-06-03
+    /// (5874777-10-17 O.S.).
     pub fn now(&self) -> Result<(Date, u32), ArithmeticError> {
         self.at_system_time(SystemTime::now())
     }
@@ -239,7 +241,9 @@ impl Calendar {
     /// # Errors
     ///
     /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs while
-    /// converting the time.
+    /// converting the time.  This can only happen if the system time in UTC is
+    /// before -5884323-05-15 (-5884202-03-16 O.S.) or after 5874898-06-03
+    /// (5874777-10-17 O.S.).
     pub fn at_system_time(&self, t: SystemTime) -> Result<(Date, u32), ArithmeticError> {
         let (jdn, secs) = system2jdn(t)?;
         Ok((self.at_jdn(jdn), secs))
@@ -254,7 +258,8 @@ impl Calendar {
     /// # Errors
     ///
     /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs while
-    /// converting the time.
+    /// converting the time.  This can only happen if the timestamp is less
+    /// than -185753453990400 or greater than 185331720383999.
     pub fn at_unix_time(&self, unix_time: i64) -> Result<(Date, u32), ArithmeticError> {
         let (jdn, secs) = unix2jdn(unix_time)?;
         Ok((self.at_jdn(jdn), secs))
@@ -278,7 +283,9 @@ impl Calendar {
     /// of the month.
     ///
     /// Returns [`DateError::Arithmetic`] if numeric overflow/underflow occurs
-    /// while calculating the date's Julian day number.
+    /// while calculating the date's Julian day number.  This can only happen
+    /// for dates before -5884323-05-15 (-5884202-03-16 O.S.) or after
+    /// 5874898-06-03 (5874777-10-17 O.S.).
     pub fn at_ymd(&self, year: i32, month: Month, day: u32) -> Result<Date, DateError> {
         let day_ordinal = self.get_day_ordinal(year, month, day)?;
         let ordinal = self.ymdo2ordinal(year, month, day_ordinal);
@@ -303,7 +310,9 @@ impl Calendar {
     /// greater than the length of the year.
     ///
     /// Returns [`DateError::Arithmetic`] if numeric overflow/underflow occurs
-    /// while calculating the date's Julian day number.
+    /// while calculating the date's Julian day number.  This can only happen
+    /// for dates before -5884323-135 (-5884202-075 O.S.) or after 5874898-154
+    /// (5874777-290 O.S.).
     pub fn at_ordinal_date(&self, year: i32, ordinal: u32) -> Result<Date, DateError> {
         let (month, day, day_ordinal) = self.ordinal2ymddo(year, ordinal)?;
         let jdn = self.get_julian_day_number(year, ordinal)?;
@@ -1276,7 +1285,9 @@ pub enum ParseDateError {
 /// # Errors
 ///
 /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs during
-/// conversion.
+/// conversion.  This can only happen if the system time in UTC is before
+/// -5884323-05-15 (-5884202-03-16 O.S.) or after 5874898-06-03 (5874777-10-17
+/// O.S.).
 pub fn system2jdn(t: SystemTime) -> Result<(Jdnum, u32), ArithmeticError> {
     let ts = match t.duration_since(UNIX_EPOCH) {
         Ok(d) => i64::try_from(d.as_secs()),
@@ -1294,7 +1305,8 @@ pub fn system2jdn(t: SystemTime) -> Result<(Jdnum, u32), ArithmeticError> {
 /// # Errors
 ///
 /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs during
-/// conversion.
+/// conversion.  This can only happen if the timestamp is less than
+/// -185753453990400 or greater than 185331720383999.
 pub fn unix2jdn(unix_time: i64) -> Result<(Jdnum, u32), ArithmeticError> {
     let jd = Jdnum::try_from(unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JDN as i64))
         .map_err(|_| ArithmeticError)?;
