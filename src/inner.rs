@@ -435,54 +435,31 @@ pub(crate) fn jdn2gregorian(jd: JulianDayT) -> Option<(i32, DaysT)> {
 /// Returns None on arithmetic underflow/overflow.
 pub(crate) fn gregorian2jdn(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
     // JDN 0 = day 328 of year -4713 in the proleptic Gregorian calendar
-    if (year, ordinal) < (-4714, 365) {
-        // Number of centennials from `year` through 4714:
-        //   = ceil((year + 4800) / 100)  [real division]
-        //   = (year + 4800 + 99) / 100   [Euclidean division]
-        //   = (year + 99) / 100 + 48
-        let centennials = (year + 99).div_euclid(100) + 48;
-        // Number of quadricentennials from `year` through -4713
-        let quads = (centennials + 3).div_euclid(4);
-        let ydiff = add(year, 4714)?;
-        // Number of leap days from `year` up to (but not including) -4714
-        // Subtract one leap day for each non-leap centennial
-        //   = subtract `centennials - quads`
-        let leap_days = sub(
-            add(ydiff, JULIAN_LEAP_CYCLE_YEARS - 3)?.div_euclid(JULIAN_LEAP_CYCLE_YEARS),
-            centennials - quads,
-        )?;
-        let year_start = add(mul(ydiff, COMMON_YEAR_LENGTH)?, leap_days)?;
-        let days = add(year_start, JulianDayT::try_from(ordinal - 1).unwrap())?;
-        // Add -692 (JDN of -4714-01-01 N.S.)
-        sub(days, 692)
-    } else if year == -4713 {
-        Some(JulianDayT::try_from(ordinal).unwrap() - 328)
-    } else {
-        // Number of centennials from -4713 through `year`
-        //   = ceil((year + 4700) / 100)  [real division]
-        //   = (year + 4700 + 99) / 100   [Euclidean division]
-        //   = (year + 4800 - 1) / 100
-        //   = (year - 1) / 100 + 48
-        let centennials = (year - 1).div_euclid(100) + 48;
-        // Number of quadricentennials from -4713 through `year`
-        let quads = centennials.div_euclid(4);
-        let ydiff = add(year, 4712)?;
-        // Number of leap days from -4712 up to (but not including) `year`
-        // Subtract one leap day for each non-leap centennial
-        //   = subtract `centennials - quads`
-        let leap_days = sub(
-            // We can't use `compose_julian()` here, as that order of
-            // operations (specifically, not subtracting `centennials - quads`
-            // in the middle) would lead to overflow for some JDN less than
-            // JulianDayT::MAX.
-            add(ydiff, JULIAN_LEAP_CYCLE_YEARS - 1)? / JULIAN_LEAP_CYCLE_YEARS,
-            centennials - quads,
-        )?;
-        let year_start = add(mul(ydiff, COMMON_YEAR_LENGTH)?, leap_days)?;
-        let days = add(year_start, JulianDayT::try_from(ordinal - 1).unwrap())?;
-        // Add 38 (JDN of -4712-01-01 N.S.)
-        add(days, 38)
-    }
+    // Number of centennials from -4713 through `year`
+    //   = ceil((year + 4700) / 100)  [real division]
+    //   = (year + 4700 + 99) / 100   [Euclidean division]
+    //   = (year + 4800 - 1) / 100
+    //   = (year - 1) / 100 + 48
+    let centennials = sub(year, 1)?.div_euclid(100) + 48;
+    // Number of quadricentennials from -4713 through `year`
+    let quads = centennials.div_euclid(4);
+    let ydiff = add(year, 4712)?;
+    // Number of leap days from the start of -4712 up to (but not
+    // including) the start of `year`
+    // Subtract one leap day for each non-leap centennial
+    //   = subtract `centennials - quads`
+    let leap_days = sub(
+        // We can't use `compose_julian()` here, as that order of
+        // operations (specifically, not subtracting `centennials - quads`
+        // in the middle) would lead to overflow for some JDN less than
+        // JulianDayT::MAX.
+        add(ydiff, JULIAN_LEAP_CYCLE_YEARS - 1)?.div_euclid(JULIAN_LEAP_CYCLE_YEARS),
+        centennials - quads,
+    )?;
+    let year_days = mul(ydiff, COMMON_YEAR_LENGTH)?;
+    // Add 38 (JDN of -4712-01-01 N.S.)
+    let offset = JulianDayT::try_from(ordinal - 1).unwrap() + 38;
+    add(add(year_days, offset)?, leap_days)
 }
 
 /// Given a number of days from the start of a period in which every fourth
