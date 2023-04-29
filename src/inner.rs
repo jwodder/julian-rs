@@ -381,10 +381,82 @@ pub(crate) fn is_gregorian_leap_year(year: i32) -> bool {
     year % JULIAN_LEAP_CYCLE_YEARS == 0 && (year % 100 != 0 || year % GREGORIAN_CYCLE_YEARS == 0)
 }
 
-// Convert a date in the proleptic Gregorian calendar to a Julian day number
-// Returns None on arithmetic underflow/overflow
+/// Converts a Julian day number to the corresponding year and day of year in
+/// the proleptic Julian calendar.
+///
+/// Returns None on arithmetic underflow/overflow.
+pub(crate) fn jdn2julian(jd: JulianDayT) -> Option<(i32, DaysT)> {
+    if jd < 0 {
+        // TODO: Support years less than `365 - i32::MAX` (which currently
+        // overflows on the below line)
+        let alt = sub(COMMON_YEAR_LENGTH, jd)?;
+        let (alt_year, alt_ordinal) = jdn2julian(alt)?;
+        let year = sub(JDN0_YEAR, sub(alt_year, JDN0_YEAR)?)?;
+        let year_length = if is_julian_leap_year(year) {
+            LEAP_YEAR_LENGTH as DaysT
+        } else {
+            COMMON_YEAR_LENGTH as DaysT
+        };
+        let ordinal = year_length - alt_ordinal + 1;
+        Some((year, ordinal))
+    } else {
+        let (year, ordinal) = decompose_julian(jd)?;
+        Some((add(year, JDN0_YEAR)?, ordinal))
+    }
+}
+
+/// Converts a year and day of year in the proleptic Julian calendar to the
+/// corresponding Julian day number.
+///
+/// Returns None on arithmetic underflow/overflow.
+pub(crate) fn julian2jdn(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
+    if year < JDN0_YEAR {
+        let rev_year = sub(JDN0_YEAR, year)?;
+        sub(
+            JulianDayT::try_from(ordinal - 1).unwrap(),
+            add(
+                mul(rev_year, COMMON_YEAR_LENGTH)?,
+                rev_year / JULIAN_LEAP_CYCLE_YEARS,
+            )?,
+        )
+    } else {
+        compose_julian(sub(year, JDN0_YEAR)?, ordinal)
+    }
+}
+
+/// Converts a Julian day number to the corresponding year and day of year in
+/// the proleptic Gregorian calendar.
+///
+/// Returns None on arithmetic underflow/overflow.
 // TODO: PROBLEM: This doesn't work for dates with negative JDNs; address
-pub(crate) fn gregorian_yj_to_jd(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
+pub(crate) fn jdn2gregorian(jd: JulianDayT) -> Option<(i32, DaysT)> {
+    const COMMON_CENTURY_DAYS: JulianDayT = COMMON_YEAR_LENGTH * 100 + 24;
+    if jd < 0 {
+        todo!()
+    } else {
+        // 113993 = JDN of -4400-01-01 N.S.
+        let jd = jd - 113993;
+        // Number of 400-year cycles elapsed since -4400-01-01:
+        let quads = jd.div_euclid(GREGORIAN_CYCLE_DAYS);
+        // Zero-based day within current 400-year cycle:
+        let mut quad_point = jd.rem_euclid(GREGORIAN_CYCLE_DAYS);
+        // Add a "virtual leap day" to the end of each centennial year after
+        // the zeroth so that `decompose_julian()` can be applied.
+        if let Some(after_first_year) = sub(quad_point, LEAP_YEAR_LENGTH) {
+            quad_point += after_first_year / COMMON_CENTURY_DAYS;
+        }
+        let (ys, ordinal) = decompose_julian(quad_point)?;
+        let year = add(mul(quads, 400)?, ys - 4400)?;
+        Some((year, ordinal))
+    }
+}
+
+/// Converts a year and day of year in the proleptic Gregorian calendar to the
+/// corresponding Julian day number.
+///
+/// Returns None on arithmetic underflow/overflow.
+// TODO: PROBLEM: This doesn't work for dates with negative JDNs; address
+pub(crate) fn gregorian2jdn(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
     // JDN 0 = day 328 of year -4713 in the proleptic Gregorian calendar
     if (year, ordinal) < (-4713, 328) {
         // Negative JDN
@@ -416,66 +488,6 @@ pub(crate) fn gregorian_yj_to_jd(year: i32, ordinal: DaysT) -> Option<JulianDayT
         let days = add(year_start, JulianDayT::try_from(ordinal - 1).unwrap())?;
         // Add 38 (JDN of -4712-01-01 N.S.)
         add(days, 38)
-    }
-}
-
-// Convert a date in the proleptic Julian calendar to a Julian day number
-// Returns None on arithmetic underflow/overflow
-pub(crate) fn julian_yj_to_jd(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
-    if year < JDN0_YEAR {
-        let rev_year = sub(JDN0_YEAR, year)?;
-        sub(
-            JulianDayT::try_from(ordinal - 1).unwrap(),
-            add(
-                mul(rev_year, COMMON_YEAR_LENGTH)?,
-                rev_year / JULIAN_LEAP_CYCLE_YEARS,
-            )?,
-        )
-    } else {
-        compose_julian(sub(year, JDN0_YEAR)?, ordinal)
-    }
-}
-
-// Returns None on arithmetic underflow/overflow
-// TODO: PROBLEM: This doesn't work for dates with negative JDNs; address
-pub(crate) fn jd_to_gregorian_yj(jd: JulianDayT) -> Option<(i32, DaysT)> {
-    const COMMON_CENTURY_DAYS: JulianDayT = COMMON_YEAR_LENGTH * 100 + 24;
-    if jd < 0 {
-        todo!()
-    } else {
-        // 113993 = JDN of -4400-01-01 N.S.
-        let jd = jd - 113993;
-        // Number of 400-year cycles elapsed since -4400-01-01:
-        let quads = jd.div_euclid(GREGORIAN_CYCLE_DAYS);
-        // Zero-based day within current 400-year cycle:
-        let mut quad_point = jd.rem_euclid(GREGORIAN_CYCLE_DAYS);
-        // Add a "virtual leap day" to the end of each centennial year after
-        // the zeroth so that `decompose_julian()` can be applied.
-        if let Some(after_first_year) = sub(quad_point, LEAP_YEAR_LENGTH) {
-            quad_point += after_first_year / COMMON_CENTURY_DAYS;
-        }
-        let (ys, ordinal) = decompose_julian(quad_point)?;
-        let year = add(mul(quads, 400)?, ys - 4400)?;
-        Some((year, ordinal))
-    }
-}
-
-// Returns None on arithmetic underflow/overflow
-pub(crate) fn jd_to_julian_yj(jd: JulianDayT) -> Option<(i32, DaysT)> {
-    if jd < 0 {
-        let alt = sub(COMMON_YEAR_LENGTH, jd)?;
-        let (alt_year, alt_ordinal) = jd_to_julian_yj(alt)?;
-        let year = sub(JDN0_YEAR, sub(alt_year, JDN0_YEAR)?)?;
-        let year_length = if is_julian_leap_year(year) {
-            LEAP_YEAR_LENGTH as DaysT
-        } else {
-            COMMON_YEAR_LENGTH as DaysT
-        };
-        let ordinal = year_length - alt_ordinal + 1;
-        Some((year, ordinal))
-    } else {
-        let (year, ordinal) = decompose_julian(jd)?;
-        Some((add(year, JDN0_YEAR)?, ordinal))
     }
 }
 
@@ -607,13 +619,18 @@ mod tests {
     fn jd_julian_yj(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {}
 
     #[apply(jd_julian_yj)]
-    fn test_jd_to_julian_yj(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
-        assert_eq!(jd_to_julian_yj(jd), Some((year, ordinal)));
+    fn test_jdn2julian(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
+        assert_eq!(jdn2julian(jd), Some((year, ordinal)));
     }
 
     #[apply(jd_julian_yj)]
-    fn test_julian_yj_to_jd(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
-        assert_eq!(julian_yj_to_jd(year, ordinal), Some(jd));
+    fn test_julian2jdn(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
+        assert_eq!(julian2jdn(year, ordinal), Some(jd));
+    }
+
+    #[test]
+    fn test_julian_to_past_max_jdn() {
+        assert_eq!(julian2jdn(5874777, 291), None);
     }
 
     #[template]
@@ -655,17 +672,17 @@ mod tests {
     fn jd_gregorian_yj(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {}
 
     #[apply(jd_gregorian_yj)]
-    fn test_jd_to_gregorian_yj(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
-        assert_eq!(jd_to_gregorian_yj(jd), Some((year, ordinal)));
+    fn test_jdn2gregorian(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
+        assert_eq!(jdn2gregorian(jd), Some((year, ordinal)));
     }
 
     #[apply(jd_gregorian_yj)]
-    fn test_gregorian_yj_to_jd(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
-        assert_eq!(gregorian_yj_to_jd(year, ordinal), Some(jd));
+    fn test_gregorian2jdn(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
+        assert_eq!(gregorian2jdn(year, ordinal), Some(jd));
     }
 
     #[test]
-    fn test_gregorian_yj_to_past_max_jd() {
-        assert_eq!(gregorian_yj_to_jd(5874898, 155), None);
+    fn test_gregorian_to_past_max_jdn() {
+        assert_eq!(gregorian2jdn(5874898, 155), None);
     }
 }

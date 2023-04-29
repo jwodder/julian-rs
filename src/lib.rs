@@ -336,9 +336,9 @@ impl Calendar {
         let (year, mut ordinal) = if self.0 == Julian
             || matches!(self.0, Reforming { reformation, .. } if jdn < reformation)
         {
-            inner::jd_to_julian_yj(jdn)
+            inner::jdn2julian(jdn)
         } else {
-            inner::jd_to_gregorian_yj(jdn)
+            inner::jdn2gregorian(jdn)
         }
         .ok_or(ArithmeticError)?;
         if let Reforming { gap, .. } = self.0 {
@@ -736,9 +736,9 @@ impl Calendar {
         if self.0 == Julian
             || matches!(self.0, Reforming {gap, ..} if (year, ordinal) < (gap.post_reform.year, gap.post_reform.ordinal))
         {
-            inner::julian_yj_to_jd(year, ordinal)
+            inner::julian2jdn(year, ordinal)
         } else {
-            inner::gregorian_yj_to_jd(year, ordinal)
+            inner::gregorian2jdn(year, ordinal)
         }.ok_or(ArithmeticError)
     }
 }
