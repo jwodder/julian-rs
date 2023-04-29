@@ -176,12 +176,14 @@ impl Calendar {
                 .ok_or(ReformingError::InvalidReformation)?,
         );
         let post_reform = Calendar::gregorian().at_jdn(reformation);
-        let post_reform_as_jj =
-            match julian.at_ymd(post_reform.year(), post_reform.month(), post_reform.day()) {
-                Ok(date) => date.julian_day_number(),
-                Err(DateError::Arithmetic) => return Err(ReformingError::Arithmetic),
-                _ => unreachable!(),
-            };
+        let mut ordinal = post_reform.ordinal();
+        if post_reform.year % 100 == 0
+            && post_reform.year % 400 != 0
+            && post_reform.month > Month::February
+        {
+            ordinal += 1;
+        }
+        let post_reform_as_jj = julian.get_julian_day_number(post_reform.year(), ordinal)?;
         if post_reform_as_jj <= reformation {
             return Err(ReformingError::InvalidReformation);
         }
