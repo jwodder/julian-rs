@@ -402,11 +402,24 @@ pub(crate) fn julian2jdn(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
 /// the proleptic Gregorian calendar.
 ///
 /// Returns None on arithmetic underflow/overflow.
-// TODO: PROBLEM: This doesn't work for dates with negative JDNs; address
 pub(crate) fn jdn2gregorian(jd: JulianDayT) -> Option<(i32, DaysT)> {
     const COMMON_CENTURY_DAYS: JulianDayT = COMMON_YEAR_LENGTH * 100 + 24;
     if jd < 0 {
-        todo!()
+        // -32104 = JDN of -4800-01-01 N.S.
+        let jd = jd + 32104;
+        // Number of 400-year cycles until -4800-01-01:
+        let quads = jd.div_euclid(GREGORIAN_CYCLE_DAYS);
+        // Zero-based day within current 400-year cycle, counting from the
+        // beginning of time rather than from the direction of zero:
+        let mut quad_point = jd.rem_euclid(GREGORIAN_CYCLE_DAYS);
+        // Add a "virtual leap day" to the end of each centennial year except
+        // the last so that `decompose_julian()` can be applied.
+        if let Some(after_first_year) = sub(quad_point, LEAP_YEAR_LENGTH) {
+            quad_point += after_first_year / COMMON_CENTURY_DAYS;
+        }
+        let (ys, ordinal) = decompose_julian(quad_point)?;
+        let year = add(mul(quads, 400)?, ys - 4800)?;
+        Some((year, ordinal))
     } else {
         // 113993 = JDN of -4400-01-01 N.S.
         let jd = jd - 113993;
@@ -550,7 +563,7 @@ mod tests {
 
     #[template]
     #[rstest]
-    #[case(-2147483647, -5879490, 76)]
+    #[case(-2147483648, -5879490, 75)]
     #[case(-1462, -5, 365)]
     #[case(-1461, -4, 1)]
     #[case(-1096, -4, 366)]
@@ -588,7 +601,7 @@ mod tests {
 
     #[template]
     #[rstest]
-    #[case(-2147483647, -5884202, 76)]
+    #[case(-2147483648, -5884202, 75)]
     #[case(-1, -4713, 365)]
     #[case(0, -4712, 1)]
     #[case(1, -4712, 2)]
@@ -622,6 +635,18 @@ mod tests {
 
     #[template]
     #[rstest]
+    #[case(-2147483648, -5884323, 135)]
+    #[case(-214725, -5300, 1)]
+    #[case(-178201, -5200, 1)]
+    #[case(-141676, -5100, 1)]
+    #[case(-105152, -5000, 1)]
+    #[case(-68628, -4900, 1)]
+    #[case(-32469, -4801, 1)]
+    #[case(-32142, -4801, 328)]
+    #[case(-32104, -4800, 1)]
+    #[case(-31738, -4799, 1)]
+    #[case(-327, -4713, 1)]
+    #[case(-1, -4713, 327)]
     #[case(0, -4713, 328)]
     #[case(1, -4713, 329)]
     #[case(37, -4713, 365)]
