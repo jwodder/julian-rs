@@ -1049,34 +1049,42 @@ impl FromStr for Month {
 #[error("invalid month name")]
 pub struct ParseMonthError;
 
-impl TryFrom<u32> for Month {
-    type Error = TryIntoMonthError;
+macro_rules! impl_try_from {
+    ($($t:ty),* $(,)?) => {
+      $(
+        impl TryFrom<$t> for Month {
+            type Error = TryIntoMonthError;
 
-    /// Convert a month number to the corresponding month.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`TryIntoMonthError`] if the given number is zero or greater
-    /// than twelve.
-    fn try_from(value: u32) -> Result<Month, TryIntoMonthError> {
-        use Month::*;
-        match value {
-            1 => Ok(January),
-            2 => Ok(February),
-            3 => Ok(March),
-            4 => Ok(April),
-            5 => Ok(May),
-            6 => Ok(June),
-            7 => Ok(July),
-            8 => Ok(August),
-            9 => Ok(September),
-            10 => Ok(October),
-            11 => Ok(November),
-            12 => Ok(December),
-            _ => Err(TryIntoMonthError),
+            /// Convert a month number to the corresponding month.
+            ///
+            /// # Errors
+            ///
+            /// Returns [`TryIntoMonthError`] if the given number is zero or
+            /// greater than twelve.
+            fn try_from(value: $t) -> Result<Month, TryIntoMonthError> {
+                use Month::*;
+                match value {
+                    1 => Ok(January),
+                    2 => Ok(February),
+                    3 => Ok(March),
+                    4 => Ok(April),
+                    5 => Ok(May),
+                    6 => Ok(June),
+                    7 => Ok(July),
+                    8 => Ok(August),
+                    9 => Ok(September),
+                    10 => Ok(October),
+                    11 => Ok(November),
+                    12 => Ok(December),
+                    _ => Err(TryIntoMonthError),
+                }
+            }
         }
+      )*
     }
 }
+
+impl_try_from!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
 
 /// Error returned when converting a number to a month fails
 #[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
