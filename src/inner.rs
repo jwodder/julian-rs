@@ -612,12 +612,12 @@ mod tests {
     }
 
     #[test]
-    fn test_julian_to_pre_min_jdn() {
+    fn julian_to_pre_min_jdn() {
         assert_eq!(julian2jdn(-5884202, 74), None);
     }
 
     #[test]
-    fn test_julian_to_past_max_jdn() {
+    fn julian_to_past_max_jdn() {
         assert_eq!(julian2jdn(5874777, 291), None);
     }
 

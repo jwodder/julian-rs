@@ -101,7 +101,7 @@ fn min_valid_reformation() {
 }
 
 #[test]
-fn test_first_skipped_year() {
+fn first_skipped_year() {
     let cal = Calendar::reforming(19582149).unwrap();
     // Use assert_matches! instead of assert_eq! because Calendar's Eq
     // implementation ignores `gap`

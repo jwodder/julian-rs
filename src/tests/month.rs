@@ -273,7 +273,7 @@ fn try_from_thirteen() {
 }
 
 #[test]
-fn test_month_iter() {
+fn month_iter() {
     let mut iter = MonthIter::new();
     assert_eq!(iter.size_hint(), (12, Some(12)));
     assert_eq!(iter.next(), Some(Month::January));
@@ -306,7 +306,7 @@ fn test_month_iter() {
 }
 
 #[test]
-fn test_month_iter_rev() {
+fn month_iter_rev() {
     let mut iter = MonthIter::new().rev();
     assert_eq!(iter.size_hint(), (12, Some(12)));
     assert_eq!(iter.next(), Some(Month::December));

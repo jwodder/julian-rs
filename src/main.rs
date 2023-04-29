@@ -347,13 +347,13 @@ mod tests {
             Vec::new(),
         )
     )]
-    fn test_cli_parser(#[case] argv: Vec<&str>, #[case] cmd: Command) {
+    fn cli_parser(#[case] argv: Vec<&str>, #[case] cmd: Command) {
         let parser = Parser::from_iter(argv);
         assert_eq!(Command::from_parser(parser).unwrap(), cmd);
     }
 
     #[test]
-    fn test_run_default_options() {
+    fn run_default_options() {
         let opts = Options::default();
         let cal = Calendar::GREGORIAN_REFORM;
         let dates = vec![
@@ -378,7 +378,7 @@ mod tests {
     }
 
     #[test]
-    fn test_run_verbose() {
+    fn run_verbose() {
         let opts = Options {
             verbose: true,
             ..Options::default()
@@ -406,7 +406,7 @@ mod tests {
     }
 
     #[test]
-    fn test_run_old_style() {
+    fn run_old_style() {
         let opts = Options {
             ospolicy: PostReform,
             ..Options::default()
@@ -434,7 +434,7 @@ mod tests {
     }
 
     #[test]
-    fn test_run_old_style_uk() {
+    fn run_old_style_uk() {
         let opts = Options {
             ospolicy: UkDelay,
             ..Options::default()
@@ -462,7 +462,7 @@ mod tests {
     }
 
     #[test]
-    fn test_run_old_style_verbose() {
+    fn run_old_style_verbose() {
         let opts = Options {
             ospolicy: PostReform,
             verbose: true,
@@ -491,7 +491,7 @@ mod tests {
     }
 
     #[test]
-    fn test_run_old_style_uk_verbose() {
+    fn run_old_style_uk_verbose() {
         let opts = Options {
             ospolicy: UkDelay,
             verbose: true,
@@ -520,7 +520,7 @@ mod tests {
     }
 
     #[test]
-    fn test_run_ordinal() {
+    fn run_ordinal() {
         let opts = Options {
             ordinal: true,
             ..Options::default()
@@ -537,7 +537,7 @@ mod tests {
     }
 
     #[test]
-    fn test_run_ordinal_verbose() {
+    fn run_ordinal_verbose() {
         let opts = Options {
             ordinal: true,
             verbose: true,
@@ -558,7 +558,7 @@ mod tests {
     }
 
     #[test]
-    fn test_run_old_style_verbose_ordinal() {
+    fn run_old_style_verbose_ordinal() {
         let opts = Options {
             ospolicy: PostReform,
             verbose: true,
