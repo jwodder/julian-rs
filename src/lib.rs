@@ -1349,6 +1349,7 @@ mod tests {
     mod at_ordinal_date;
     mod at_ymd;
     mod autogen;
+    mod calendar;
     mod date;
     mod gregorian_reform;
     mod jdn;
