@@ -712,4 +712,40 @@ mod tests {
         assert_eq!(cmp_range(8, 7, 7), Greater);
         assert_eq!(cmp_range(10, 7, 7), Greater);
     }
+
+    #[test]
+    fn julian_leap_year() {
+        assert!(is_julian_leap_year(-400));
+        assert!(is_julian_leap_year(-100));
+        assert!(is_julian_leap_year(-4));
+        assert!(!is_julian_leap_year(-2));
+        assert!(!is_julian_leap_year(-1));
+        assert!(is_julian_leap_year(0));
+        assert!(!is_julian_leap_year(1));
+        assert!(!is_julian_leap_year(2));
+        assert!(is_julian_leap_year(4));
+        assert!(!is_julian_leap_year(6));
+        assert!(is_julian_leap_year(100));
+        assert!(is_julian_leap_year(400));
+        assert!(is_julian_leap_year(1000));
+        assert!(is_julian_leap_year(2000));
+    }
+
+    #[test]
+    fn gregorian_leap_year() {
+        assert!(is_gregorian_leap_year(-400));
+        assert!(!is_gregorian_leap_year(-100));
+        assert!(is_gregorian_leap_year(-4));
+        assert!(!is_gregorian_leap_year(-2));
+        assert!(!is_gregorian_leap_year(-1));
+        assert!(is_gregorian_leap_year(0));
+        assert!(!is_gregorian_leap_year(1));
+        assert!(!is_gregorian_leap_year(2));
+        assert!(is_gregorian_leap_year(4));
+        assert!(!is_gregorian_leap_year(6));
+        assert!(!is_gregorian_leap_year(100));
+        assert!(is_gregorian_leap_year(400));
+        assert!(!is_gregorian_leap_year(1000));
+        assert!(is_gregorian_leap_year(2000));
+    }
 }
