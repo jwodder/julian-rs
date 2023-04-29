@@ -167,26 +167,19 @@ impl Calendar {
     ///
     /// # Errors
     ///
-    /// Returns [`ReformingError::Arithmetic`] if numeric overflow/underflow
-    /// occurs while converting `reformation` to a calendar date.
-    ///
-    /// Returns [`ReformingError::InvalidReformation`] if observing a
-    /// reformation at the given date would not cause the calendar to skip
-    /// forwards over any dates; this can only happen for Julian day numbers
-    /// less than [`MIN_REFORM_JDN`].
+    /// Returns [`ReformingError`] if observing a reformation at the given date
+    /// would not cause the calendar to skip forwards over any dates; this can
+    /// only happen for Julian day numbers less than [`MIN_REFORM_JDN`].
     pub fn reforming(reformation: JulianDayT) -> Result<Calendar, ReformingError> {
-        let pre_reform = Calendar::julian().at_julian_day_number(
-            reformation
-                .checked_sub(1)
-                .ok_or(ReformingError::Arithmetic)?,
-        )?;
-        let post_reform = Calendar::gregorian().at_julian_day_number(reformation)?;
+        let pre_reform = Calendar::julian()
+            .at_julian_day_number(reformation.checked_sub(1).ok_or(ReformingError)?);
+        let post_reform = Calendar::gregorian().at_julian_day_number(reformation);
         let post_reform_as_julian = Calendar::julian()
             .at_ymd(post_reform.year(), post_reform.month(), post_reform.day())
             .unwrap()
             .julian_day_number();
         if post_reform_as_julian <= reformation {
-            return Err(ReformingError::InvalidReformation);
+            return Err(ReformingError);
         }
         let gap_length = post_reform_as_julian.abs_diff(reformation);
         let kind = inner::GapKind::for_dates(
@@ -249,7 +242,7 @@ impl Calendar {
     /// converting the time.
     pub fn at_system_time(&self, t: SystemTime) -> Result<(Date, u32), ArithmeticError> {
         let (jdn, secs) = system_time_to_julian_day_number(t)?;
-        Ok((self.at_julian_day_number(jdn)?, secs))
+        Ok((self.at_julian_day_number(jdn), secs))
     }
 
     /// Returns the date according to the calendar for the given [Unix time][],
@@ -264,7 +257,7 @@ impl Calendar {
     /// converting the time.
     pub fn at_unix_time(&self, unix_time: i64) -> Result<(Date, u32), ArithmeticError> {
         let (jdn, secs) = unix_time_to_julian_day_number(unix_time)?;
-        Ok((self.at_julian_day_number(jdn)?, secs))
+        Ok((self.at_julian_day_number(jdn), secs))
     }
 
     /// Returns the date of the calendar with the given year, month, and day of
@@ -326,12 +319,7 @@ impl Calendar {
     }
 
     /// Returns the date of the calendar with the given Julian day number.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs while
-    /// converting `jdn` to a calendar date.
-    pub fn at_julian_day_number(&self, jdn: JulianDayT) -> Result<Date, ArithmeticError> {
+    pub fn at_julian_day_number(&self, jdn: JulianDayT) -> Date {
         use inner::Calendar::*;
         let (year, mut ordinal) = if self.0 == Julian
             || matches!(self.0, Reforming { reformation, .. } if jdn < reformation)
@@ -339,15 +327,14 @@ impl Calendar {
             inner::jdn2julian(jdn)
         } else {
             inner::jdn2gregorian(jdn)
-        }
-        .ok_or(ArithmeticError)?;
+        };
         if let Reforming { gap, .. } = self.0 {
             if year == gap.post_reform.year && ordinal > gap.ordinal_gap_start {
                 ordinal -= gap.ordinal_gap;
             }
         }
         let (month, day, day_ordinal) = self.ordinal2ymddo(year, ordinal).unwrap();
-        Ok(Date {
+        Date {
             calendar: *self,
             year,
             ordinal,
@@ -355,7 +342,7 @@ impl Calendar {
             day,
             day_ordinal,
             jdn,
-        })
+        }
     }
 
     /// Parse a calendar date from a string.
@@ -787,10 +774,10 @@ impl Date {
     ///
     /// let cal = Calendar::GREGORIAN_REFORM;
     ///
-    /// let pre_reform = cal.at_julian_day_number(GREGORIAN - 1).unwrap();
+    /// let pre_reform = cal.at_julian_day_number(GREGORIAN - 1);
     /// assert_eq!(pre_reform.day(), 4);
     ///
-    /// let post_reform = cal.at_julian_day_number(GREGORIAN).unwrap();
+    /// let post_reform = cal.at_julian_day_number(GREGORIAN);
     /// assert_eq!(post_reform.day(), 15);
     /// ```
     pub fn day(&self) -> u32 {
@@ -808,10 +795,10 @@ impl Date {
     ///
     /// let cal = Calendar::GREGORIAN_REFORM;
     ///
-    /// let pre_reform = cal.at_julian_day_number(GREGORIAN - 1).unwrap();
+    /// let pre_reform = cal.at_julian_day_number(GREGORIAN - 1);
     /// assert_eq!(pre_reform.day_ordinal(), 4);
     ///
-    /// let post_reform = cal.at_julian_day_number(GREGORIAN).unwrap();
+    /// let post_reform = cal.at_julian_day_number(GREGORIAN);
     /// assert_eq!(post_reform.day_ordinal(), 5);
     /// ```
     pub fn day_ordinal(&self) -> u32 {
@@ -872,11 +859,7 @@ impl Date {
     }
 
     /// Convert the date to a date in the given calendar.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs.
-    pub fn convert_to(&self, calendar: Calendar) -> Result<Date, ArithmeticError> {
+    pub fn convert_to(&self, calendar: Calendar) -> Date {
         calendar.at_julian_day_number(self.julian_day_number())
     }
 }
@@ -1159,20 +1142,11 @@ impl DoubleEndedIterator for MonthIter {
     }
 }
 
-/// Error returned by [`Calendar::reforming()`] when given an invalid
-/// reformation date
-#[derive(Copy, Clone, Debug, Eq, Error, Hash, PartialEq)]
-pub enum ReformingError {
-    /// Returned if the reformation date would not cause the calendar to skip
-    /// forwards over any dates
-    #[error("reformation date would not cause calendar to advance")]
-    InvalidReformation,
-
-    /// Returned if an internal arithmetic operation encounters numeric
-    /// overflow or underflow
-    #[error("arithmetic overflow/underflow")]
-    Arithmetic,
-}
+/// Error returned by [`Calendar::reforming()`] when given a reformation date
+/// that would not cause the calendar to skip forwards over any dates
+#[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
+#[error("reformation date would not cause calendar to advance")]
+pub struct ReformingError;
 
 /// Error returned by various date-construction methods on invalid input
 #[derive(Copy, Clone, Debug, Eq, Error, Hash, PartialEq)]
@@ -1221,12 +1195,6 @@ pub enum DateError {
 #[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
 #[error("arithmetic overflow/underflow")]
 pub struct ArithmeticError;
-
-impl From<ArithmeticError> for ReformingError {
-    fn from(_: ArithmeticError) -> ReformingError {
-        ReformingError::Arithmetic
-    }
-}
 
 impl From<ArithmeticError> for DateError {
     fn from(_: ArithmeticError) -> DateError {

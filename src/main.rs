@@ -113,7 +113,7 @@ impl Options {
                         output.push(self.show_cal_to_julian(when, jdn));
                     }
                     Argument::Jdn(jdn) => {
-                        let when = cal.at_julian_day_number(jdn).unwrap();
+                        let when = cal.at_julian_day_number(jdn);
                         output.push(self.show_julian_to_cal(when, jdn));
                     }
                 }
@@ -145,7 +145,7 @@ impl Options {
         self.fmt_date(s, when);
         if self.ospolicy.show_old_style(jdn) {
             write!(s, " [O.S. ").unwrap();
-            self.fmt_date(s, Calendar::julian().at_julian_day_number(jdn).unwrap());
+            self.fmt_date(s, Calendar::julian().at_julian_day_number(jdn));
             write!(s, "]").unwrap();
         }
     }

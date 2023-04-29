@@ -384,10 +384,10 @@ pub(crate) fn is_gregorian_leap_year(year: i32) -> bool {
 /// Converts a Julian day number to the corresponding year and day of year in
 /// the proleptic Julian calendar.
 ///
-/// Returns None on arithmetic underflow/overflow.
-pub(crate) fn jdn2julian(jd: JulianDayT) -> Option<(i32, DaysT)> {
-    let (year, ordinal) = decompose_julian(jd)?;
-    Some((add(year, JDN0_YEAR)?, ordinal))
+/// Valid for all `JulianDayT` values.
+pub(crate) fn jdn2julian(jd: JulianDayT) -> (i32, DaysT) {
+    let (year, ordinal) = decompose_julian(jd);
+    (year + JDN0_YEAR, ordinal)
 }
 
 /// Converts a year and day of year in the proleptic Julian calendar to the
@@ -401,8 +401,8 @@ pub(crate) fn julian2jdn(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
 /// Converts a Julian day number to the corresponding year and day of year in
 /// the proleptic Gregorian calendar.
 ///
-/// Returns None on arithmetic underflow/overflow.
-pub(crate) fn jdn2gregorian(jd: JulianDayT) -> Option<(i32, DaysT)> {
+/// Valid for all `JulianDayT` values.
+pub(crate) fn jdn2gregorian(jd: JulianDayT) -> (i32, DaysT) {
     const COMMON_CENTURY_DAYS: JulianDayT = COMMON_YEAR_LENGTH * 100 + 24;
     // Calculate relative to a nearby quadricentennial.  Shift towards zero in
     // order to avoid overflow/underflow.
@@ -424,9 +424,9 @@ pub(crate) fn jdn2gregorian(jd: JulianDayT) -> Option<(i32, DaysT)> {
     if let Some(after_first_year) = sub(quad_point, LEAP_YEAR_LENGTH) {
         quad_point += after_first_year / COMMON_CENTURY_DAYS;
     }
-    let (ys, ordinal) = decompose_julian(quad_point)?;
-    let year = add(mul(quads, 400)?, add(ys, year_offset)?)?;
-    Some((year, ordinal))
+    let (ys, ordinal) = decompose_julian(quad_point);
+    let year = quads * 400 + ys + year_offset;
+    (year, ordinal)
 }
 
 /// Converts a year and day of year in the proleptic Gregorian calendar to the
@@ -469,8 +469,8 @@ pub(crate) fn gregorian2jdn(year: i32, ordinal: DaysT) -> Option<JulianDayT> {
 /// If the number of days is negative, the year will be negative, and the day
 /// of the year will be positive.
 ///
-/// Returns `None` on arithmetic underflow/overflow.
-fn decompose_julian(days: JulianDayT) -> Option<(i32, DaysT)> {
+/// Valid for all `JulianDayT` values.
+fn decompose_julian(days: JulianDayT) -> (i32, DaysT) {
     let mut year: i32 = days.div_euclid(JULIAN_LEAP_CYCLE_DAYS) * JULIAN_LEAP_CYCLE_YEARS;
     let mut ordinal: JulianDayT = days.rem_euclid(JULIAN_LEAP_CYCLE_DAYS);
     // Add a "virtual leap day" to the end of each common year so that
@@ -478,9 +478,9 @@ fn decompose_julian(days: JulianDayT) -> Option<(i32, DaysT)> {
     if ordinal > COMMON_YEAR_LENGTH {
         ordinal += (ordinal - LEAP_YEAR_LENGTH) / COMMON_YEAR_LENGTH;
     }
-    year = add(year, ordinal / LEAP_YEAR_LENGTH)?;
+    year += ordinal / LEAP_YEAR_LENGTH;
     ordinal %= LEAP_YEAR_LENGTH;
-    Some((year, DaysT::try_from(ordinal + 1).unwrap()))
+    (year, DaysT::try_from(ordinal + 1).unwrap())
 }
 
 /// Given a (possibly negative) number of years and a one-based positive day of
@@ -575,7 +575,7 @@ mod tests {
 
     #[apply(year_days)]
     fn test_decompose_julian(#[case] days: JulianDayT, #[case] years: i32, #[case] ordinal: DaysT) {
-        assert_eq!(decompose_julian(days), Some((years, ordinal)));
+        assert_eq!(decompose_julian(days), (years, ordinal));
     }
 
     #[apply(year_days)]
@@ -604,7 +604,7 @@ mod tests {
 
     #[apply(jd_julian_yj)]
     fn test_jdn2julian(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
-        assert_eq!(jdn2julian(jd), Some((year, ordinal)));
+        assert_eq!(jdn2julian(jd), (year, ordinal));
     }
 
     #[apply(jd_julian_yj)]
@@ -674,7 +674,7 @@ mod tests {
 
     #[apply(jd_gregorian_yj)]
     fn test_jdn2gregorian(#[case] jd: JulianDayT, #[case] year: i32, #[case] ordinal: DaysT) {
-        assert_eq!(jdn2gregorian(jd), Some((year, ordinal)));
+        assert_eq!(jdn2gregorian(jd), (year, ordinal));
     }
 
     #[apply(jd_gregorian_yj)]

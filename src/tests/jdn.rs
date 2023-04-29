@@ -83,9 +83,7 @@ fn jdn_to_gregorian_reform(
     #[case] month: Month,
     #[case] day: u32,
 ) {
-    let date = Calendar::GREGORIAN_REFORM
-        .at_julian_day_number(days)
-        .unwrap();
+    let date = Calendar::GREGORIAN_REFORM.at_julian_day_number(days);
     assert_eq!(date.year(), year);
     assert_eq!(date.month(), month);
     assert_eq!(date.day(), day);
@@ -161,7 +159,7 @@ fn jdn_to_julian(
     #[case] month: Month,
     #[case] day: u32,
 ) {
-    let date = Calendar::julian().at_julian_day_number(days).unwrap();
+    let date = Calendar::julian().at_julian_day_number(days);
     assert_eq!(date.year(), year);
     assert_eq!(date.month(), month);
     assert_eq!(date.day(), day);
@@ -259,7 +257,7 @@ fn jdn_to_gregorian(
     #[case] month: Month,
     #[case] day: u32,
 ) {
-    let date = Calendar::gregorian().at_julian_day_number(days).unwrap();
+    let date = Calendar::gregorian().at_julian_day_number(days);
     assert_eq!(date.year(), year);
     assert_eq!(date.month(), month);
     assert_eq!(date.day(), day);

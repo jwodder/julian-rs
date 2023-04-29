@@ -62,7 +62,7 @@ fn german_reformation_year() {
 #[test]
 fn max_invalid_reformation() {
     let r = Calendar::reforming(MIN_REFORM_JDN - 1);
-    assert_eq!(r, Err(ReformingError::InvalidReformation));
+    assert_eq!(r, Err(ReformingError));
 }
 
 #[test]
