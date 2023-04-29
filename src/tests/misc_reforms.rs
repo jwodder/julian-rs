@@ -60,9 +60,9 @@ fn german_reformation_year() {
 }
 
 #[test]
-fn max_invalid_reformation() {
+fn pre_min_invalid_reformation() {
     let r = Calendar::reforming(1830691);
-    assert_eq!(r, Err(ReformingError));
+    assert_eq!(r, Err(ReformingError::InvalidReformation));
     assert_eq!(
         r.unwrap_err().to_string(),
         "reformation date would not cause calendar to advance"
@@ -132,4 +132,16 @@ fn test_first_skipped_year() {
     assert_eq!(cal.year_kind(48900), YearKind::Leap);
     assert_eq!(cal.year_kind(48901), YearKind::Skipped);
     assert_eq!(cal.year_kind(48902), YearKind::Common);
+}
+
+#[test]
+fn max_reformation() {
+    assert!(Calendar::reforming(2147439588).is_ok());
+}
+
+#[test]
+fn past_max_reformation() {
+    let r = Calendar::reforming(2147439589);
+    assert_eq!(r, Err(ReformingError::Arithmetic));
+    assert_eq!(r.unwrap_err().to_string(), "arithmetic overflow/underflow");
 }
