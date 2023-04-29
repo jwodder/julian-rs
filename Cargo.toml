@@ -19,3 +19,7 @@ thiserror = "1.0.40"
 assert_matches = "1.5.0"
 rstest = { version = "0.17.0", default-features = false }
 rstest_reuse = "0.5.0"
+
+[build-dependencies]
+csv = "1.2.1"
+serde = { version = "1.0.160", features = ["derive"] }

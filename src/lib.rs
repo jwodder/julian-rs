@@ -1320,6 +1320,7 @@ pub fn jdn2unix(jdn: Jdnum) -> i64 {
 mod tests {
     mod at_ordinal_date;
     mod at_ymd;
+    mod autogen;
     mod date;
     mod gregorian_reform;
     mod jdn;
