@@ -225,6 +225,94 @@ mod germany {
     }
 }
 
+mod russia {
+    // A reformation with a headless month
+    use super::*;
+
+    #[test]
+    fn init() {
+        let cal = Calendar::reforming(ncal::RUSSIA).unwrap();
+        assert_eq!(cal.reformation(), Some(ncal::RUSSIA));
+        let gap = cal.gap().unwrap();
+        assert_eq!(
+            gap,
+            inner::ReformGap {
+                pre_reform: inner::Date {
+                    year: 1918,
+                    ordinal: 31,
+                    month: Month::January,
+                    day: 31
+                },
+                post_reform: inner::Date {
+                    year: 1918,
+                    ordinal: 32,
+                    month: Month::February,
+                    day: 14
+                },
+                gap_length: 13,
+                kind: inner::GapKind::CrossMonth,
+                ordinal_gap_start: 44,
+                ordinal_gap: 13,
+            }
+        );
+        assert_eq!(cal.year_kind(1918), YearKind::ReformCommon);
+    }
+
+    #[test]
+    fn pre_reform_month() {
+        let cal = Calendar::reforming(ncal::RUSSIA).unwrap();
+        let shape = cal.month_shape(1918, Month::January).unwrap();
+        assert_eq!(shape.year(), 1918);
+        assert_eq!(shape.month(), Month::January);
+        assert_eq!(shape.len(), 31);
+        assert!(!shape.contains(0));
+        assert!(shape.contains(1));
+        assert!(shape.contains(31));
+        assert!(!shape.contains(32));
+        assert_eq!(shape.first_day(), 1);
+        assert_eq!(shape.last_day(), 31);
+        assert_eq!(shape.day_ordinal(0), None);
+        assert_eq!(shape.day_ordinal(1), Some(1));
+        assert_eq!(shape.day_ordinal(31), Some(31));
+        assert_eq!(shape.day_ordinal(32), None);
+        assert_eq!(shape.nth_day(0), None);
+        assert_eq!(shape.nth_day(1), Some(1));
+        assert_eq!(shape.nth_day(31), Some(31));
+        assert_eq!(shape.nth_day(32), None);
+        assert_eq!(shape.gap(), None);
+        assert_eq!(shape.kind(), MonthKind::Normal);
+    }
+
+    #[test]
+    fn post_reform_month() {
+        let cal = Calendar::reforming(ncal::RUSSIA).unwrap();
+        let shape = cal.month_shape(1918, Month::February).unwrap();
+        assert_eq!(shape.year(), 1918);
+        assert_eq!(shape.month(), Month::February);
+        assert_eq!(shape.len(), 15);
+        assert!(!shape.contains(0));
+        assert!(!shape.contains(1));
+        assert!(!shape.contains(13));
+        assert!(shape.contains(14));
+        assert!(shape.contains(28));
+        assert!(!shape.contains(29));
+        assert_eq!(shape.first_day(), 14);
+        assert_eq!(shape.last_day(), 28);
+        assert_eq!(shape.day_ordinal(0), None);
+        assert_eq!(shape.day_ordinal(1), None);
+        assert_eq!(shape.day_ordinal(13), None);
+        assert_eq!(shape.day_ordinal(14), Some(1));
+        assert_eq!(shape.day_ordinal(28), Some(15));
+        assert_eq!(shape.day_ordinal(29), None);
+        assert_eq!(shape.nth_day(0), None);
+        assert_eq!(shape.nth_day(1), Some(14));
+        assert_eq!(shape.nth_day(15), Some(28));
+        assert_eq!(shape.nth_day(16), None);
+        assert_eq!(shape.gap(), Some(1..=13));
+        assert_eq!(shape.kind(), MonthKind::Headless);
+    }
+}
+
 #[test]
 fn skipped_month() {
     let cal = Calendar::reforming(3145930).unwrap();

@@ -956,7 +956,7 @@ impl MonthShape {
         use inner::MonthShape::*;
         match self.inner {
             Normal { max_day } => (1..=max_day).contains(&day_ordinal).then_some(day_ordinal),
-            Headless { min_day, max_day } => (min_day..=max_day)
+            Headless { min_day, max_day } => (1..=(max_day - min_day + 1))
                 .contains(&day_ordinal)
                 .then_some(day_ordinal + min_day - 1),
             Tailless { max_day, .. } => (1..=max_day).contains(&day_ordinal).then_some(day_ordinal),
@@ -985,7 +985,7 @@ impl MonthShape {
         use inner::MonthShape::*;
         match self.inner {
             Normal { .. } => None,
-            Headless { min_day, .. } => Some(1..=min_day),
+            Headless { min_day, .. } => Some(1..=(min_day - 1)),
             Tailless {
                 max_day,
                 natural_max_day,
