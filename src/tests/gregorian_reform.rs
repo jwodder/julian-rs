@@ -1,4 +1,4 @@
-use crate::{inner, Calendar, DateError, Month, MonthShape, GREGORIAN};
+use crate::{inner, Calendar, DateError, Month, MonthKind, MonthShape, GREGORIAN};
 use rstest::rstest;
 
 #[test]
@@ -52,6 +52,8 @@ fn reformation_month_shape() {
             },
         }
     );
+    assert_eq!(shape.year(), 1582);
+    assert_eq!(shape.month(), Month::October);
     assert_eq!(shape.len(), 21);
     assert!(!shape.contains(0));
     assert!(shape.contains(1));
@@ -61,6 +63,8 @@ fn reformation_month_shape() {
     assert!(shape.contains(15));
     assert!(shape.contains(31));
     assert!(!shape.contains(32));
+    assert_eq!(shape.first_day(), 1);
+    assert_eq!(shape.last_day(), 31);
     assert_eq!(
         shape.day_ordinal_err(0),
         Err(DateError::DayOutOfRange {
@@ -101,12 +105,15 @@ fn reformation_month_shape() {
             max_day: 31,
         })
     );
+    assert_eq!(shape.nth_day(0), None);
     assert_eq!(shape.nth_day(1), Some(1));
     assert_eq!(shape.nth_day(2), Some(2));
     assert_eq!(shape.nth_day(4), Some(4));
     assert_eq!(shape.nth_day(5), Some(15));
     assert_eq!(shape.nth_day(21), Some(31));
     assert_eq!(shape.nth_day(22), None);
+    assert_eq!(shape.gap(), Some(5..=14));
+    assert_eq!(shape.kind(), MonthKind::Gapped);
 }
 
 #[rstest]
