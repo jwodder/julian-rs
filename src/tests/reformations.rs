@@ -1185,6 +1185,128 @@ mod jdn2344540 {
     }
 }
 
+mod jdn2344534 {
+    // "Tailless year" followed by "headless year"
+    use super::*;
+    const REFORM: Jdnum = 2344534;
+
+    #[test]
+    fn init() {
+        let cal = Calendar::reforming(REFORM).unwrap();
+        assert_eq!(cal.reformation(), Some(REFORM));
+        let gap = cal.gap().unwrap();
+        assert_eq!(
+            gap,
+            inner::ReformGap {
+                pre_reform: inner::Date {
+                    year: 1706,
+                    ordinal: 359,
+                    month: Month::December,
+                    day: 25
+                },
+                post_reform: inner::Date {
+                    year: 1707,
+                    ordinal: 1,
+                    month: Month::January,
+                    day: 6
+                },
+                kind: inner::GapKind::CrossYear,
+                ordinal_gap_start: 0,
+                ordinal_gap: 5,
+            }
+        );
+        assert_eq!(cal.year_kind(1706), YearKind::ReformCommon);
+        assert_eq!(cal.year_length(1706), 359);
+        assert_eq!(cal.year_kind(1707), YearKind::ReformCommon);
+        assert_eq!(cal.year_length(1707), 360);
+    }
+
+    #[test]
+    fn pre_reform_month() {
+        let cal = Calendar::reforming(REFORM).unwrap();
+        let shape = cal.month_shape(1706, Month::December).unwrap();
+        assert_eq!(
+            shape,
+            MonthShape {
+                year: 1706,
+                month: Month::December,
+                inner: inner::MonthShape::Tailless {
+                    max_day: 25,
+                    natural_max_day: 31,
+                },
+            }
+        );
+        assert_eq!(shape.year(), 1706);
+        assert_eq!(shape.month(), Month::December);
+        assert_eq!(shape.len(), 25);
+        assert!(!shape.contains(0));
+        assert!(shape.contains(1));
+        assert!(shape.contains(25));
+        assert!(!shape.contains(26));
+        assert!(!shape.contains(31));
+        assert_eq!(shape.first_day(), 1);
+        assert_eq!(shape.last_day(), 25);
+        assert_eq!(shape.day_ordinal(0), None);
+        assert_eq!(shape.day_ordinal(1), Some(1));
+        assert_eq!(shape.day_ordinal(25), Some(25));
+        assert_eq!(shape.day_ordinal(26), None);
+        assert_eq!(shape.nth_day(0), None);
+        assert_eq!(shape.nth_day(1), Some(1));
+        assert_eq!(shape.nth_day(25), Some(25));
+        assert_eq!(shape.nth_day(26), None);
+        assert_eq!(shape.gap(), Some(26..=31));
+        assert_eq!(shape.kind(), MonthKind::Tailless);
+        assert_eq!(
+            cal.at_ymd(1706, Month::December, 31),
+            Err(DateError::SkippedDate {
+                year: 1706,
+                month: Month::December,
+                day: 31
+            })
+        );
+    }
+
+    #[test]
+    fn post_reform_month() {
+        let cal = Calendar::reforming(REFORM).unwrap();
+        let shape = cal.month_shape(1707, Month::January).unwrap();
+        assert_eq!(
+            shape,
+            MonthShape {
+                year: 1707,
+                month: Month::January,
+                inner: inner::MonthShape::Headless {
+                    min_day: 6,
+                    max_day: 31,
+                },
+            }
+        );
+        assert_eq!(shape.year(), 1707);
+        assert_eq!(shape.month(), Month::January);
+        assert_eq!(shape.len(), 26);
+        assert!(!shape.contains(0));
+        assert!(!shape.contains(1));
+        assert!(!shape.contains(5));
+        assert!(shape.contains(6));
+        assert!(shape.contains(31));
+        assert!(!shape.contains(32));
+        assert_eq!(shape.first_day(), 6);
+        assert_eq!(shape.last_day(), 31);
+        assert_eq!(shape.day_ordinal(0), None);
+        assert_eq!(shape.day_ordinal(1), None);
+        assert_eq!(shape.day_ordinal(5), None);
+        assert_eq!(shape.day_ordinal(6), Some(1));
+        assert_eq!(shape.day_ordinal(31), Some(26));
+        assert_eq!(shape.day_ordinal(32), None);
+        assert_eq!(shape.nth_day(0), None);
+        assert_eq!(shape.nth_day(1), Some(6));
+        assert_eq!(shape.nth_day(26), Some(31));
+        assert_eq!(shape.nth_day(27), None);
+        assert_eq!(shape.gap(), Some(1..=5));
+        assert_eq!(shape.kind(), MonthKind::Headless);
+    }
+}
+
 #[test]
 fn iceland() {
     // Reformation year contains a pre-reformation Julian-only leap day
