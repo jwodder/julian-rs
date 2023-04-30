@@ -1677,4 +1677,5 @@ mod tests {
     mod parse_date;
     mod reformations;
     mod unix;
+    mod year_kind;
 }
