@@ -18,7 +18,18 @@ fn january() {
     assert_eq!("jan".parse::<Month>().unwrap(), m);
     assert_eq!("JANUARY".parse::<Month>().unwrap(), m);
     assert_eq!("JAN".parse::<Month>().unwrap(), m);
-    assert_eq!(Month::try_from(1).unwrap(), m);
+    assert_eq!(Month::try_from(1i8).unwrap(), m);
+    assert_eq!(Month::try_from(1u8).unwrap(), m);
+    assert_eq!(Month::try_from(1i16).unwrap(), m);
+    assert_eq!(Month::try_from(1u16).unwrap(), m);
+    assert_eq!(Month::try_from(1i32).unwrap(), m);
+    assert_eq!(Month::try_from(1u32).unwrap(), m);
+    assert_eq!(Month::try_from(1i64).unwrap(), m);
+    assert_eq!(Month::try_from(1u64).unwrap(), m);
+    assert_eq!(Month::try_from(1i128).unwrap(), m);
+    assert_eq!(Month::try_from(1u128).unwrap(), m);
+    assert_eq!(Month::try_from(1isize).unwrap(), m);
+    assert_eq!(Month::try_from(1usize).unwrap(), m);
 }
 
 #[test]
@@ -38,7 +49,18 @@ fn february() {
     assert_eq!("feb".parse::<Month>().unwrap(), m);
     assert_eq!("FEBRUARY".parse::<Month>().unwrap(), m);
     assert_eq!("FEB".parse::<Month>().unwrap(), m);
-    assert_eq!(Month::try_from(2).unwrap(), m);
+    assert_eq!(Month::try_from(2i8).unwrap(), m);
+    assert_eq!(Month::try_from(2u8).unwrap(), m);
+    assert_eq!(Month::try_from(2i16).unwrap(), m);
+    assert_eq!(Month::try_from(2u16).unwrap(), m);
+    assert_eq!(Month::try_from(2i32).unwrap(), m);
+    assert_eq!(Month::try_from(2u32).unwrap(), m);
+    assert_eq!(Month::try_from(2i64).unwrap(), m);
+    assert_eq!(Month::try_from(2u64).unwrap(), m);
+    assert_eq!(Month::try_from(2i128).unwrap(), m);
+    assert_eq!(Month::try_from(2u128).unwrap(), m);
+    assert_eq!(Month::try_from(2isize).unwrap(), m);
+    assert_eq!(Month::try_from(2usize).unwrap(), m);
 }
 
 #[test]
@@ -58,7 +80,18 @@ fn march() {
     assert_eq!("mar".parse::<Month>().unwrap(), m);
     assert_eq!("MARCH".parse::<Month>().unwrap(), m);
     assert_eq!("MAR".parse::<Month>().unwrap(), m);
-    assert_eq!(Month::try_from(3).unwrap(), m);
+    assert_eq!(Month::try_from(3i8).unwrap(), m);
+    assert_eq!(Month::try_from(3u8).unwrap(), m);
+    assert_eq!(Month::try_from(3i16).unwrap(), m);
+    assert_eq!(Month::try_from(3u16).unwrap(), m);
+    assert_eq!(Month::try_from(3i32).unwrap(), m);
+    assert_eq!(Month::try_from(3u32).unwrap(), m);
+    assert_eq!(Month::try_from(3i64).unwrap(), m);
+    assert_eq!(Month::try_from(3u64).unwrap(), m);
+    assert_eq!(Month::try_from(3i128).unwrap(), m);
+    assert_eq!(Month::try_from(3u128).unwrap(), m);
+    assert_eq!(Month::try_from(3isize).unwrap(), m);
+    assert_eq!(Month::try_from(3usize).unwrap(), m);
 }
 
 #[test]
@@ -78,7 +111,18 @@ fn april() {
     assert_eq!("apr".parse::<Month>().unwrap(), m);
     assert_eq!("APRIL".parse::<Month>().unwrap(), m);
     assert_eq!("APR".parse::<Month>().unwrap(), m);
-    assert_eq!(Month::try_from(4).unwrap(), m);
+    assert_eq!(Month::try_from(4i8).unwrap(), m);
+    assert_eq!(Month::try_from(4u8).unwrap(), m);
+    assert_eq!(Month::try_from(4i16).unwrap(), m);
+    assert_eq!(Month::try_from(4u16).unwrap(), m);
+    assert_eq!(Month::try_from(4i32).unwrap(), m);
+    assert_eq!(Month::try_from(4u32).unwrap(), m);
+    assert_eq!(Month::try_from(4i64).unwrap(), m);
+    assert_eq!(Month::try_from(4u64).unwrap(), m);
+    assert_eq!(Month::try_from(4i128).unwrap(), m);
+    assert_eq!(Month::try_from(4u128).unwrap(), m);
+    assert_eq!(Month::try_from(4isize).unwrap(), m);
+    assert_eq!(Month::try_from(4usize).unwrap(), m);
 }
 
 #[test]
@@ -95,7 +139,18 @@ fn may() {
     assert_eq!("May".parse::<Month>().unwrap(), m);
     assert_eq!("may".parse::<Month>().unwrap(), m);
     assert_eq!("MAY".parse::<Month>().unwrap(), m);
-    assert_eq!(Month::try_from(5).unwrap(), m);
+    assert_eq!(Month::try_from(5i8).unwrap(), m);
+    assert_eq!(Month::try_from(5u8).unwrap(), m);
+    assert_eq!(Month::try_from(5i16).unwrap(), m);
+    assert_eq!(Month::try_from(5u16).unwrap(), m);
+    assert_eq!(Month::try_from(5i32).unwrap(), m);
+    assert_eq!(Month::try_from(5u32).unwrap(), m);
+    assert_eq!(Month::try_from(5i64).unwrap(), m);
+    assert_eq!(Month::try_from(5u64).unwrap(), m);
+    assert_eq!(Month::try_from(5i128).unwrap(), m);
+    assert_eq!(Month::try_from(5u128).unwrap(), m);
+    assert_eq!(Month::try_from(5isize).unwrap(), m);
+    assert_eq!(Month::try_from(5usize).unwrap(), m);
 }
 
 #[test]
@@ -115,7 +170,18 @@ fn june() {
     assert_eq!("jun".parse::<Month>().unwrap(), m);
     assert_eq!("JUNE".parse::<Month>().unwrap(), m);
     assert_eq!("JUN".parse::<Month>().unwrap(), m);
-    assert_eq!(Month::try_from(6).unwrap(), m);
+    assert_eq!(Month::try_from(6i8).unwrap(), m);
+    assert_eq!(Month::try_from(6u8).unwrap(), m);
+    assert_eq!(Month::try_from(6i16).unwrap(), m);
+    assert_eq!(Month::try_from(6u16).unwrap(), m);
+    assert_eq!(Month::try_from(6i32).unwrap(), m);
+    assert_eq!(Month::try_from(6u32).unwrap(), m);
+    assert_eq!(Month::try_from(6i64).unwrap(), m);
+    assert_eq!(Month::try_from(6u64).unwrap(), m);
+    assert_eq!(Month::try_from(6i128).unwrap(), m);
+    assert_eq!(Month::try_from(6u128).unwrap(), m);
+    assert_eq!(Month::try_from(6isize).unwrap(), m);
+    assert_eq!(Month::try_from(6usize).unwrap(), m);
 }
 
 #[test]
@@ -135,7 +201,18 @@ fn july() {
     assert_eq!("jul".parse::<Month>().unwrap(), m);
     assert_eq!("JULY".parse::<Month>().unwrap(), m);
     assert_eq!("JUL".parse::<Month>().unwrap(), m);
-    assert_eq!(Month::try_from(7).unwrap(), m);
+    assert_eq!(Month::try_from(7i8).unwrap(), m);
+    assert_eq!(Month::try_from(7u8).unwrap(), m);
+    assert_eq!(Month::try_from(7i16).unwrap(), m);
+    assert_eq!(Month::try_from(7u16).unwrap(), m);
+    assert_eq!(Month::try_from(7i32).unwrap(), m);
+    assert_eq!(Month::try_from(7u32).unwrap(), m);
+    assert_eq!(Month::try_from(7i64).unwrap(), m);
+    assert_eq!(Month::try_from(7u64).unwrap(), m);
+    assert_eq!(Month::try_from(7i128).unwrap(), m);
+    assert_eq!(Month::try_from(7u128).unwrap(), m);
+    assert_eq!(Month::try_from(7isize).unwrap(), m);
+    assert_eq!(Month::try_from(7usize).unwrap(), m);
 }
 
 #[test]
@@ -155,7 +232,18 @@ fn august() {
     assert_eq!("aug".parse::<Month>().unwrap(), m);
     assert_eq!("AUGUST".parse::<Month>().unwrap(), m);
     assert_eq!("AUG".parse::<Month>().unwrap(), m);
-    assert_eq!(Month::try_from(8).unwrap(), m);
+    assert_eq!(Month::try_from(8i8).unwrap(), m);
+    assert_eq!(Month::try_from(8u8).unwrap(), m);
+    assert_eq!(Month::try_from(8i16).unwrap(), m);
+    assert_eq!(Month::try_from(8u16).unwrap(), m);
+    assert_eq!(Month::try_from(8i32).unwrap(), m);
+    assert_eq!(Month::try_from(8u32).unwrap(), m);
+    assert_eq!(Month::try_from(8i64).unwrap(), m);
+    assert_eq!(Month::try_from(8u64).unwrap(), m);
+    assert_eq!(Month::try_from(8i128).unwrap(), m);
+    assert_eq!(Month::try_from(8u128).unwrap(), m);
+    assert_eq!(Month::try_from(8isize).unwrap(), m);
+    assert_eq!(Month::try_from(8usize).unwrap(), m);
 }
 
 #[test]
@@ -175,7 +263,18 @@ fn september() {
     assert_eq!("sep".parse::<Month>().unwrap(), m);
     assert_eq!("SEPTEMBER".parse::<Month>().unwrap(), m);
     assert_eq!("SEP".parse::<Month>().unwrap(), m);
-    assert_eq!(Month::try_from(9).unwrap(), m);
+    assert_eq!(Month::try_from(9i8).unwrap(), m);
+    assert_eq!(Month::try_from(9u8).unwrap(), m);
+    assert_eq!(Month::try_from(9i16).unwrap(), m);
+    assert_eq!(Month::try_from(9u16).unwrap(), m);
+    assert_eq!(Month::try_from(9i32).unwrap(), m);
+    assert_eq!(Month::try_from(9u32).unwrap(), m);
+    assert_eq!(Month::try_from(9i64).unwrap(), m);
+    assert_eq!(Month::try_from(9u64).unwrap(), m);
+    assert_eq!(Month::try_from(9i128).unwrap(), m);
+    assert_eq!(Month::try_from(9u128).unwrap(), m);
+    assert_eq!(Month::try_from(9isize).unwrap(), m);
+    assert_eq!(Month::try_from(9usize).unwrap(), m);
 }
 
 #[test]
@@ -195,7 +294,18 @@ fn october() {
     assert_eq!("oct".parse::<Month>().unwrap(), m);
     assert_eq!("OCTOBER".parse::<Month>().unwrap(), m);
     assert_eq!("OCT".parse::<Month>().unwrap(), m);
-    assert_eq!(Month::try_from(10).unwrap(), m);
+    assert_eq!(Month::try_from(10i8).unwrap(), m);
+    assert_eq!(Month::try_from(10u8).unwrap(), m);
+    assert_eq!(Month::try_from(10i16).unwrap(), m);
+    assert_eq!(Month::try_from(10u16).unwrap(), m);
+    assert_eq!(Month::try_from(10i32).unwrap(), m);
+    assert_eq!(Month::try_from(10u32).unwrap(), m);
+    assert_eq!(Month::try_from(10i64).unwrap(), m);
+    assert_eq!(Month::try_from(10u64).unwrap(), m);
+    assert_eq!(Month::try_from(10i128).unwrap(), m);
+    assert_eq!(Month::try_from(10u128).unwrap(), m);
+    assert_eq!(Month::try_from(10isize).unwrap(), m);
+    assert_eq!(Month::try_from(10usize).unwrap(), m);
 }
 
 #[test]
@@ -216,6 +326,18 @@ fn november() {
     assert_eq!("NOVEMBER".parse::<Month>().unwrap(), m);
     assert_eq!("NOV".parse::<Month>().unwrap(), m);
     assert_eq!(Month::try_from(11).unwrap(), m);
+    assert_eq!(Month::try_from(11i8).unwrap(), m);
+    assert_eq!(Month::try_from(11u8).unwrap(), m);
+    assert_eq!(Month::try_from(11i16).unwrap(), m);
+    assert_eq!(Month::try_from(11u16).unwrap(), m);
+    assert_eq!(Month::try_from(11i32).unwrap(), m);
+    assert_eq!(Month::try_from(11u32).unwrap(), m);
+    assert_eq!(Month::try_from(11i64).unwrap(), m);
+    assert_eq!(Month::try_from(11u64).unwrap(), m);
+    assert_eq!(Month::try_from(11i128).unwrap(), m);
+    assert_eq!(Month::try_from(11u128).unwrap(), m);
+    assert_eq!(Month::try_from(11isize).unwrap(), m);
+    assert_eq!(Month::try_from(11usize).unwrap(), m);
 }
 
 #[test]
@@ -235,7 +357,18 @@ fn december() {
     assert_eq!("dec".parse::<Month>().unwrap(), m);
     assert_eq!("DECEMBER".parse::<Month>().unwrap(), m);
     assert_eq!("DEC".parse::<Month>().unwrap(), m);
-    assert_eq!(Month::try_from(12).unwrap(), m);
+    assert_eq!(Month::try_from(12i8).unwrap(), m);
+    assert_eq!(Month::try_from(12u8).unwrap(), m);
+    assert_eq!(Month::try_from(12i16).unwrap(), m);
+    assert_eq!(Month::try_from(12u16).unwrap(), m);
+    assert_eq!(Month::try_from(12i32).unwrap(), m);
+    assert_eq!(Month::try_from(12u32).unwrap(), m);
+    assert_eq!(Month::try_from(12i64).unwrap(), m);
+    assert_eq!(Month::try_from(12u64).unwrap(), m);
+    assert_eq!(Month::try_from(12i128).unwrap(), m);
+    assert_eq!(Month::try_from(12u128).unwrap(), m);
+    assert_eq!(Month::try_from(12isize).unwrap(), m);
+    assert_eq!(Month::try_from(12usize).unwrap(), m);
 }
 
 #[rstest]
