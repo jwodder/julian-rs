@@ -1487,6 +1487,70 @@ fn skipped_year() {
 }
 
 #[test]
+fn jdn2460316() {
+    // Headless leap year in a cross-year reformation
+    let cal = Calendar::reforming(2460316).unwrap();
+    assert_eq!(cal.reformation(), Some(2460316));
+    let gap = cal.gap().unwrap();
+    assert_eq!(
+        gap,
+        inner::ReformGap {
+            pre_reform: inner::Date {
+                year: 2023,
+                ordinal: 357,
+                month: Month::December,
+                day: 23
+            },
+            post_reform: inner::Date {
+                year: 2024,
+                ordinal: 1,
+                month: Month::January,
+                day: 6
+            },
+            kind: inner::GapKind::CrossYear,
+            ordinal_gap_start: 0,
+            ordinal_gap: 5,
+        }
+    );
+    assert_eq!(cal.year_kind(2023), YearKind::ReformCommon);
+    assert_eq!(cal.year_length(2023), 357);
+    assert_eq!(cal.year_kind(2024), YearKind::ReformLeap);
+    assert_eq!(cal.year_length(2024), 361);
+}
+
+#[test]
+fn jdn2460682() {
+    // Tailless leap year in a cross-year reformation
+    let cal = Calendar::reforming(2460682).unwrap();
+    assert_eq!(cal.reformation(), Some(2460682));
+    let gap = cal.gap().unwrap();
+    assert_eq!(
+        gap,
+        inner::ReformGap {
+            pre_reform: inner::Date {
+                year: 2024,
+                ordinal: 358,
+                month: Month::December,
+                day: 23
+            },
+            post_reform: inner::Date {
+                year: 2025,
+                ordinal: 1,
+                month: Month::January,
+                day: 6
+            },
+            kind: inner::GapKind::CrossYear,
+            ordinal_gap_start: 0,
+            ordinal_gap: 5,
+        }
+    );
+    assert_eq!(cal.year_kind(2024), YearKind::ReformLeap);
+    assert_eq!(cal.year_length(2024), 358);
+    assert_eq!(cal.year_kind(2025), YearKind::ReformCommon);
+    assert_eq!(cal.year_length(2025), 360);
+}
+
+#[test]
 fn jdnum_min_reformation() {
     let r = Calendar::reforming(Jdnum::MIN);
     assert_eq!(r, Err(ReformingError::InvalidReformation));
