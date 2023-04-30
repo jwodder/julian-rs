@@ -992,6 +992,11 @@ impl MonthShape {
             Gapped { .. } => MonthKind::Gapped,
         }
     }
+
+    /// Returns an iterator over all the valid days of the month
+    pub fn days(&self) -> Days<'_> {
+        Days::new(self)
+    }
 }
 
 /// A description of how a calendar month was affected by a calendar
@@ -1019,6 +1024,45 @@ pub enum MonthKind {
     /// The month had one or more days in the middle skipped by a calendar
     /// reformation
     Gapped,
+}
+
+/// An iterator over the days of a month.
+///
+/// A `Days` instance can be acquired by calling [`MonthShape::days()`].
+pub struct Days<'a> {
+    month_shape: &'a MonthShape,
+    inner: RangeInclusive<u32>,
+}
+
+impl<'a> Days<'a> {
+    fn new(month_shape: &'a MonthShape) -> Self {
+        Days {
+            month_shape,
+            inner: 1..=(month_shape.len()),
+        }
+    }
+}
+
+impl<'a> Iterator for Days<'a> {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<u32> {
+        self.month_shape.nth_day(self.inner.next()?)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+impl<'a> FusedIterator for Days<'a> {}
+
+impl<'a> ExactSizeIterator for Days<'a> {}
+
+impl<'a> DoubleEndedIterator for Days<'a> {
+    fn next_back(&mut self) -> Option<u32> {
+        self.month_shape.nth_day(self.inner.next_back()?)
+    }
 }
 
 /// A date (year, month, and day of month) in a certain calendar.

@@ -123,6 +123,112 @@ mod gregorian_reform {
         assert_eq!(shape.kind(), MonthKind::Gapped);
     }
 
+    #[test]
+    fn gapped_month_days() {
+        let cal = Calendar::GREGORIAN_REFORM;
+        let shape = cal.month_shape(1582, Month::October).unwrap();
+        let mut iter = shape.days();
+        assert_eq!(iter.size_hint(), (21, Some(21)));
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.size_hint(), (20, Some(20)));
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.size_hint(), (19, Some(19)));
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.size_hint(), (18, Some(18)));
+        assert_eq!(iter.next(), Some(4));
+        assert_eq!(iter.size_hint(), (17, Some(17)));
+        assert_eq!(iter.next(), Some(15));
+        assert_eq!(iter.size_hint(), (16, Some(16)));
+        assert_eq!(iter.next(), Some(16));
+        assert_eq!(iter.size_hint(), (15, Some(15)));
+        assert_eq!(iter.next(), Some(17));
+        assert_eq!(iter.size_hint(), (14, Some(14)));
+        assert_eq!(iter.next(), Some(18));
+        assert_eq!(iter.size_hint(), (13, Some(13)));
+        assert_eq!(iter.next(), Some(19));
+        assert_eq!(iter.size_hint(), (12, Some(12)));
+        assert_eq!(iter.next(), Some(20));
+        assert_eq!(iter.size_hint(), (11, Some(11)));
+        assert_eq!(iter.next(), Some(21));
+        assert_eq!(iter.size_hint(), (10, Some(10)));
+        assert_eq!(iter.next(), Some(22));
+        assert_eq!(iter.size_hint(), (9, Some(9)));
+        assert_eq!(iter.next(), Some(23));
+        assert_eq!(iter.size_hint(), (8, Some(8)));
+        assert_eq!(iter.next(), Some(24));
+        assert_eq!(iter.size_hint(), (7, Some(7)));
+        assert_eq!(iter.next(), Some(25));
+        assert_eq!(iter.size_hint(), (6, Some(6)));
+        assert_eq!(iter.next(), Some(26));
+        assert_eq!(iter.size_hint(), (5, Some(5)));
+        assert_eq!(iter.next(), Some(27));
+        assert_eq!(iter.size_hint(), (4, Some(4)));
+        assert_eq!(iter.next(), Some(28));
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+        assert_eq!(iter.next(), Some(29));
+        assert_eq!(iter.size_hint(), (2, Some(2)));
+        assert_eq!(iter.next(), Some(30));
+        assert_eq!(iter.size_hint(), (1, Some(1)));
+        assert_eq!(iter.next(), Some(31));
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn gapped_month_days_rev() {
+        let cal = Calendar::GREGORIAN_REFORM;
+        let shape = cal.month_shape(1582, Month::October).unwrap();
+        let mut iter = shape.days().rev();
+        assert_eq!(iter.size_hint(), (21, Some(21)));
+        assert_eq!(iter.next(), Some(31));
+        assert_eq!(iter.size_hint(), (20, Some(20)));
+        assert_eq!(iter.next(), Some(30));
+        assert_eq!(iter.size_hint(), (19, Some(19)));
+        assert_eq!(iter.next(), Some(29));
+        assert_eq!(iter.size_hint(), (18, Some(18)));
+        assert_eq!(iter.next(), Some(28));
+        assert_eq!(iter.size_hint(), (17, Some(17)));
+        assert_eq!(iter.next(), Some(27));
+        assert_eq!(iter.size_hint(), (16, Some(16)));
+        assert_eq!(iter.next(), Some(26));
+        assert_eq!(iter.size_hint(), (15, Some(15)));
+        assert_eq!(iter.next(), Some(25));
+        assert_eq!(iter.size_hint(), (14, Some(14)));
+        assert_eq!(iter.next(), Some(24));
+        assert_eq!(iter.size_hint(), (13, Some(13)));
+        assert_eq!(iter.next(), Some(23));
+        assert_eq!(iter.size_hint(), (12, Some(12)));
+        assert_eq!(iter.next(), Some(22));
+        assert_eq!(iter.size_hint(), (11, Some(11)));
+        assert_eq!(iter.next(), Some(21));
+        assert_eq!(iter.size_hint(), (10, Some(10)));
+        assert_eq!(iter.next(), Some(20));
+        assert_eq!(iter.size_hint(), (9, Some(9)));
+        assert_eq!(iter.next(), Some(19));
+        assert_eq!(iter.size_hint(), (8, Some(8)));
+        assert_eq!(iter.next(), Some(18));
+        assert_eq!(iter.size_hint(), (7, Some(7)));
+        assert_eq!(iter.next(), Some(17));
+        assert_eq!(iter.size_hint(), (6, Some(6)));
+        assert_eq!(iter.next(), Some(16));
+        assert_eq!(iter.size_hint(), (5, Some(5)));
+        assert_eq!(iter.next(), Some(15));
+        assert_eq!(iter.size_hint(), (4, Some(4)));
+        assert_eq!(iter.next(), Some(4));
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.size_hint(), (2, Some(2)));
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.size_hint(), (1, Some(1)));
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+    }
+
     #[rstest]
     #[case(2023, Month::January, 31)]
     #[case(2023, Month::February, 28)]
@@ -246,6 +352,100 @@ mod germany {
     }
 
     #[test]
+    fn tailless_month_days() {
+        let cal = Calendar::reforming(ncal::GERMANY).unwrap();
+        let shape = cal.month_shape(1700, Month::February).unwrap();
+        let mut iter = shape.days();
+        assert_eq!(iter.size_hint(), (18, Some(18)));
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.size_hint(), (17, Some(17)));
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.size_hint(), (16, Some(16)));
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.size_hint(), (15, Some(15)));
+        assert_eq!(iter.next(), Some(4));
+        assert_eq!(iter.size_hint(), (14, Some(14)));
+        assert_eq!(iter.next(), Some(5));
+        assert_eq!(iter.size_hint(), (13, Some(13)));
+        assert_eq!(iter.next(), Some(6));
+        assert_eq!(iter.size_hint(), (12, Some(12)));
+        assert_eq!(iter.next(), Some(7));
+        assert_eq!(iter.size_hint(), (11, Some(11)));
+        assert_eq!(iter.next(), Some(8));
+        assert_eq!(iter.size_hint(), (10, Some(10)));
+        assert_eq!(iter.next(), Some(9));
+        assert_eq!(iter.size_hint(), (9, Some(9)));
+        assert_eq!(iter.next(), Some(10));
+        assert_eq!(iter.size_hint(), (8, Some(8)));
+        assert_eq!(iter.next(), Some(11));
+        assert_eq!(iter.size_hint(), (7, Some(7)));
+        assert_eq!(iter.next(), Some(12));
+        assert_eq!(iter.size_hint(), (6, Some(6)));
+        assert_eq!(iter.next(), Some(13));
+        assert_eq!(iter.size_hint(), (5, Some(5)));
+        assert_eq!(iter.next(), Some(14));
+        assert_eq!(iter.size_hint(), (4, Some(4)));
+        assert_eq!(iter.next(), Some(15));
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+        assert_eq!(iter.next(), Some(16));
+        assert_eq!(iter.size_hint(), (2, Some(2)));
+        assert_eq!(iter.next(), Some(17));
+        assert_eq!(iter.size_hint(), (1, Some(1)));
+        assert_eq!(iter.next(), Some(18));
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn tailless_month_days_rev() {
+        let cal = Calendar::reforming(ncal::GERMANY).unwrap();
+        let shape = cal.month_shape(1700, Month::February).unwrap();
+        let mut iter = shape.days().rev();
+        assert_eq!(iter.size_hint(), (18, Some(18)));
+        assert_eq!(iter.next(), Some(18));
+        assert_eq!(iter.size_hint(), (17, Some(17)));
+        assert_eq!(iter.next(), Some(17));
+        assert_eq!(iter.size_hint(), (16, Some(16)));
+        assert_eq!(iter.next(), Some(16));
+        assert_eq!(iter.size_hint(), (15, Some(15)));
+        assert_eq!(iter.next(), Some(15));
+        assert_eq!(iter.size_hint(), (14, Some(14)));
+        assert_eq!(iter.next(), Some(14));
+        assert_eq!(iter.size_hint(), (13, Some(13)));
+        assert_eq!(iter.next(), Some(13));
+        assert_eq!(iter.size_hint(), (12, Some(12)));
+        assert_eq!(iter.next(), Some(12));
+        assert_eq!(iter.size_hint(), (11, Some(11)));
+        assert_eq!(iter.next(), Some(11));
+        assert_eq!(iter.size_hint(), (10, Some(10)));
+        assert_eq!(iter.next(), Some(10));
+        assert_eq!(iter.size_hint(), (9, Some(9)));
+        assert_eq!(iter.next(), Some(9));
+        assert_eq!(iter.size_hint(), (8, Some(8)));
+        assert_eq!(iter.next(), Some(8));
+        assert_eq!(iter.size_hint(), (7, Some(7)));
+        assert_eq!(iter.next(), Some(7));
+        assert_eq!(iter.size_hint(), (6, Some(6)));
+        assert_eq!(iter.next(), Some(6));
+        assert_eq!(iter.size_hint(), (5, Some(5)));
+        assert_eq!(iter.next(), Some(5));
+        assert_eq!(iter.size_hint(), (4, Some(4)));
+        assert_eq!(iter.next(), Some(4));
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.size_hint(), (2, Some(2)));
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.size_hint(), (1, Some(1)));
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
     fn post_reform_month() {
         let cal = Calendar::reforming(ncal::GERMANY).unwrap();
         let shape = cal.month_shape(1700, Month::March).unwrap();
@@ -276,6 +476,38 @@ mod germany {
         assert_eq!(shape.nth_day(32), None);
         assert_eq!(shape.gap(), None);
         assert_eq!(shape.kind(), MonthKind::Normal);
+    }
+
+    #[test]
+    fn normal_month_days() {
+        let cal = Calendar::reforming(ncal::GERMANY).unwrap();
+        let shape = cal.month_shape(1700, Month::March).unwrap();
+        let mut iter = shape.days();
+        for i in 1..=31 {
+            let sz = usize::try_from(i).unwrap();
+            assert_eq!(iter.size_hint(), (32 - sz, Some(32 - sz)));
+            assert_eq!(iter.next(), Some(i));
+        }
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn normal_month_days_rev() {
+        let cal = Calendar::reforming(ncal::GERMANY).unwrap();
+        let shape = cal.month_shape(1700, Month::March).unwrap();
+        let mut iter = shape.days().rev();
+        for i in 1..=31 {
+            let sz = usize::try_from(i).unwrap();
+            assert_eq!(iter.size_hint(), (32 - sz, Some(32 - sz)));
+            assert_eq!(iter.next(), Some(32 - i));
+        }
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
     }
 }
 
@@ -384,6 +616,88 @@ mod russia {
         assert_eq!(shape.nth_day(16), None);
         assert_eq!(shape.gap(), Some(1..=13));
         assert_eq!(shape.kind(), MonthKind::Headless);
+    }
+
+    #[test]
+    fn headless_month_days() {
+        let cal = Calendar::reforming(ncal::RUSSIA).unwrap();
+        let shape = cal.month_shape(1918, Month::February).unwrap();
+        let mut iter = shape.days();
+        assert_eq!(iter.size_hint(), (15, Some(15)));
+        assert_eq!(iter.next(), Some(14));
+        assert_eq!(iter.size_hint(), (14, Some(14)));
+        assert_eq!(iter.next(), Some(15));
+        assert_eq!(iter.size_hint(), (13, Some(13)));
+        assert_eq!(iter.next(), Some(16));
+        assert_eq!(iter.size_hint(), (12, Some(12)));
+        assert_eq!(iter.next(), Some(17));
+        assert_eq!(iter.size_hint(), (11, Some(11)));
+        assert_eq!(iter.next(), Some(18));
+        assert_eq!(iter.size_hint(), (10, Some(10)));
+        assert_eq!(iter.next(), Some(19));
+        assert_eq!(iter.size_hint(), (9, Some(9)));
+        assert_eq!(iter.next(), Some(20));
+        assert_eq!(iter.size_hint(), (8, Some(8)));
+        assert_eq!(iter.next(), Some(21));
+        assert_eq!(iter.size_hint(), (7, Some(7)));
+        assert_eq!(iter.next(), Some(22));
+        assert_eq!(iter.size_hint(), (6, Some(6)));
+        assert_eq!(iter.next(), Some(23));
+        assert_eq!(iter.size_hint(), (5, Some(5)));
+        assert_eq!(iter.next(), Some(24));
+        assert_eq!(iter.size_hint(), (4, Some(4)));
+        assert_eq!(iter.next(), Some(25));
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+        assert_eq!(iter.next(), Some(26));
+        assert_eq!(iter.size_hint(), (2, Some(2)));
+        assert_eq!(iter.next(), Some(27));
+        assert_eq!(iter.size_hint(), (1, Some(1)));
+        assert_eq!(iter.next(), Some(28));
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn headless_month_days_rev() {
+        let cal = Calendar::reforming(ncal::RUSSIA).unwrap();
+        let shape = cal.month_shape(1918, Month::February).unwrap();
+        let mut iter = shape.days().rev();
+        assert_eq!(iter.size_hint(), (15, Some(15)));
+        assert_eq!(iter.next(), Some(28));
+        assert_eq!(iter.size_hint(), (14, Some(14)));
+        assert_eq!(iter.next(), Some(27));
+        assert_eq!(iter.size_hint(), (13, Some(13)));
+        assert_eq!(iter.next(), Some(26));
+        assert_eq!(iter.size_hint(), (12, Some(12)));
+        assert_eq!(iter.next(), Some(25));
+        assert_eq!(iter.size_hint(), (11, Some(11)));
+        assert_eq!(iter.next(), Some(24));
+        assert_eq!(iter.size_hint(), (10, Some(10)));
+        assert_eq!(iter.next(), Some(23));
+        assert_eq!(iter.size_hint(), (9, Some(9)));
+        assert_eq!(iter.next(), Some(22));
+        assert_eq!(iter.size_hint(), (8, Some(8)));
+        assert_eq!(iter.next(), Some(21));
+        assert_eq!(iter.size_hint(), (7, Some(7)));
+        assert_eq!(iter.next(), Some(20));
+        assert_eq!(iter.size_hint(), (6, Some(6)));
+        assert_eq!(iter.next(), Some(19));
+        assert_eq!(iter.size_hint(), (5, Some(5)));
+        assert_eq!(iter.next(), Some(18));
+        assert_eq!(iter.size_hint(), (4, Some(4)));
+        assert_eq!(iter.next(), Some(17));
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+        assert_eq!(iter.next(), Some(16));
+        assert_eq!(iter.size_hint(), (2, Some(2)));
+        assert_eq!(iter.next(), Some(15));
+        assert_eq!(iter.size_hint(), (1, Some(1)));
+        assert_eq!(iter.next(), Some(14));
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
     }
 }
 
