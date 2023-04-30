@@ -554,45 +554,31 @@ impl Calendar {
                 YearKind::Leap => LEAP_YEAR_LENGTH as u32,
                 _ => unreachable!(),
             },
-            inner::Calendar::Reforming { gap, .. } => {
-                match self.year_kind(year) {
-                    YearKind::Common => COMMON_YEAR_LENGTH as u32,
-                    YearKind::Leap => LEAP_YEAR_LENGTH as u32,
-                    k @ (YearKind::ReformCommon | YearKind::ReformLeap) => {
-                        let mut length = if k == YearKind::ReformCommon {
-                            COMMON_YEAR_LENGTH as u32
-                        } else {
-                            LEAP_YEAR_LENGTH as u32
-                        };
-                        use inner::GapKind::*;
-                        // TODO: Simplify to use gap.ordinal_gap:
-                        match gap.kind {
-                            IntraMonth | CrossMonth => {
-                                length -= gap.gap_length;
-                                // If the gap crossed a leap day, the year kind
-                                // will be ReformCommon, but an extra day will
-                                // be included in gap_length, so we need to
-                                // add back 1.
-                                if gap.cmp_ymd(year, Month::February, 29)
-                                    == inner::RangeOrdering::Between
-                                {
-                                    length += 1;
-                                }
-                            }
-                            CrossYear | MultiYear => {
-                                if year == gap.pre_reform.year {
-                                    length = gap.pre_reform.ordinal;
-                                } else {
-                                    debug_assert!(year == gap.post_reform.year);
-                                    length -= gap.ordinal_gap;
-                                }
-                            }
-                        }
-                        length
+            inner::Calendar::Reforming { gap, .. } => match self.year_kind(year) {
+                YearKind::Common => COMMON_YEAR_LENGTH as u32,
+                YearKind::Leap => LEAP_YEAR_LENGTH as u32,
+                k @ (YearKind::ReformCommon | YearKind::ReformLeap) => {
+                    let length = if k == YearKind::ReformCommon {
+                        COMMON_YEAR_LENGTH as u32
+                    } else {
+                        LEAP_YEAR_LENGTH as u32
+                    };
+                    if year == gap.post_reform.year {
+                        // If this is a Julian-only leap year and the year kind
+                        // is ReformLeap, then the year contains a Julian-only
+                        // leap day and we need to add 1 to `ordinal_gap`
+                        // (which is a difference of ordinals in the Gregorian
+                        // calendar).
+                        let correction =
+                            u32::from(year % 100 == 0 && year % 400 != 0 && k.is_leap());
+                        length - gap.ordinal_gap - correction
+                    } else {
+                        debug_assert!(year == gap.pre_reform.year);
+                        gap.pre_reform.ordinal
                     }
-                    YearKind::Skipped => 0,
                 }
-            }
+                YearKind::Skipped => 0,
+            },
         }
     }
 

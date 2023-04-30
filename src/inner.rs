@@ -111,6 +111,7 @@ impl ReformGap {
         )
     }
 
+    /*
     pub(crate) fn cmp_ymd(&self, year: i32, month: Month, day: u32) -> RangeOrdering {
         cmp_range(
             (year, month, day),
@@ -126,6 +127,7 @@ impl ReformGap {
             ),
         )
     }
+    */
 }
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
