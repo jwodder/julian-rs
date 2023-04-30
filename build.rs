@@ -84,7 +84,9 @@ impl<'a> Date<'a> {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=data/jdn.csv");
-    let records = csv::Reader::from_path("data/jdn.csv")?
+    let records = csv::ReaderBuilder::new()
+        .comment(Some(b'#'))
+        .from_path("data/jdn.csv")?
         .deserialize()
         .collect::<Result<Vec<Record>, _>>()?;
     let out_dir = env::var("OUT_DIR").expect("OUT_DIR envvar not set");
