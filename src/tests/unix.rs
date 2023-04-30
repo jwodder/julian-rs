@@ -46,7 +46,15 @@ fn cal_past_max_unix_time() {
 
 #[rstest]
 #[case(-185753453990400, -2147483648, 0)]
+#[case(-86401, 2440586, 86399)]
+#[case(-86400, 2440587, 0)]
+#[case(-86399, 2440587, 1)]
+#[case(-1, 2440587, 86399)]
 #[case(0, 2440588, 0)]
+#[case(1, 2440588, 1)]
+#[case(86399, 2440588, 86399)]
+#[case(86400, 2440589, 0)]
+#[case(86401, 2440589, 1)]
 #[case(185331720383999, 2147483647, 86399)]
 fn jdn_at_unix_time(#[case] ts: i64, #[case] jdn: Jdnum, #[case] seconds: u32) {
     let (j, s) = unix2jdn(ts).unwrap();
@@ -70,7 +78,11 @@ fn jdn_past_max_unix_time() {
 
 #[rstest]
 #[case(-2147483648, -185753453990400)]
+#[case(2440586, -172800)]
+#[case(2440587, -86400)]
 #[case(2440588, 0)]
+#[case(2440589, 86400)]
+#[case(2440590, 172800)]
 #[case(2147483647, 185331720297600)]
 fn jdn_to_unix_time(#[case] jdn: Jdnum, #[case] ts: i64) {
     let t = jdn2unix(jdn);
