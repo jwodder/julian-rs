@@ -345,7 +345,7 @@ impl Calendar {
         } else {
             inner::jdn2gregorian(jdn)
         };
-        if let Reforming { gap, .. } = self.0 {
+        if let Some(gap) = self.gap() {
             if year == gap.post_reform.year && ordinal > gap.ordinal_gap_start {
                 ordinal -= gap.ordinal_gap;
             }
@@ -597,18 +597,27 @@ impl Calendar {
     }
 
     /// Returns information on the "shape" of the given month of the given
-    /// year.  Returns `None` if the month was completely skipped by a calendar
-    /// reformation.
-    // TODO: Give the smallest JDN at which a month can be skipped
+    /// year.
+    ///
+    /// Returns `None` if the month was completely skipped by a calendar
+    /// reformation.  This can only happen for reformations of at least JDN
+    /// 3145930 (3901-03-01 in the Gregorian calendar).
     pub fn month_shape(&self, year: i32, month: Month) -> Option<MonthShape> {
+        use inner::RangeOrdering::*;
         use Month::*;
         let length = match month {
             January => 31,
             February => {
-                if self.year_kind(year).is_common() {
-                    28
-                } else {
+                if self.year_kind(year).is_leap() {
                     29
+                } else if let Some(gap) = self.gap() {
+                    if gap.cmp_year_month(year, February) == EqLower {
+                        29
+                    } else {
+                        28
+                    }
+                } else {
+                    28
                 }
             }
             March => 31,
@@ -622,8 +631,7 @@ impl Calendar {
             November => 30,
             December => 31,
         };
-        let inshape = if let inner::Calendar::Reforming { gap, .. } = self.0 {
-            use inner::RangeOrdering::*;
+        let inshape = if let Some(gap) = self.gap() {
             match gap.cmp_year_month(year, month) {
                 EqLower | EqBoth => {
                     if gap.kind == inner::GapKind::IntraMonth {
@@ -632,6 +640,8 @@ impl Calendar {
                             gap_end: gap.post_reform.day - 1,
                             max_day: length,
                         }
+                    } else if gap.pre_reform.day == length {
+                        inner::MonthShape::Normal { max_day: length }
                     } else {
                         inner::MonthShape::Tailless {
                             max_day: gap.pre_reform.day,
@@ -721,7 +731,7 @@ impl Calendar {
     /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs.
     fn get_jdn(&self, year: i32, mut ordinal: u32) -> Result<Jdnum, ArithmeticError> {
         use inner::Calendar::*;
-        if let Reforming { gap, .. } = self.0 {
+        if let Some(gap) = self.gap() {
             if year == gap.post_reform.year && ordinal >= gap.post_reform.ordinal {
                 ordinal += gap.ordinal_gap;
             }
@@ -733,6 +743,15 @@ impl Calendar {
         } else {
             inner::gregorian2jdn(year, ordinal)
         }.ok_or(ArithmeticError)
+    }
+
+    /// [Private] If this is a "reforming" calendar, returns the inner
+    /// `ReformGap` field.
+    fn gap(&self) -> Option<inner::ReformGap> {
+        match self.0 {
+            inner::Calendar::Reforming { gap, .. } => Some(gap),
+            _ => None,
+        }
     }
 }
 
@@ -1626,10 +1645,9 @@ mod tests {
     mod autogen;
     mod calendar;
     mod date;
-    mod gregorian_reform;
     mod jdn;
-    mod misc_reforms;
     mod month;
     mod parse_date;
+    mod reformations;
     mod unix;
 }

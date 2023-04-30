@@ -1,5 +1,4 @@
-use crate::ncal;
-use crate::{Calendar, DateError, Month};
+use crate::{ncal, Calendar, DateError, Month};
 
 #[test]
 fn day_0() {
@@ -139,7 +138,7 @@ fn last_skipped_date() {
 }
 
 #[test]
-fn skipped_month_start() {
+fn headless_month_start() {
     let cal = Calendar::reforming(ncal::RUSSIA).unwrap();
     let r = cal.at_ymd(1918, Month::February, 1);
     assert_eq!(
@@ -208,7 +207,7 @@ fn headless_month_day_ordinal_1() {
 }
 
 #[test]
-fn skipped_month_end() {
+fn tailless_month_end() {
     let cal = Calendar::reforming(ncal::DENMARK).unwrap();
     let r = cal.at_ymd(1700, Month::February, 19);
     assert_eq!(
