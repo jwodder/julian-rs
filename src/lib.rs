@@ -379,7 +379,7 @@ impl Calendar {
         parser.scan_char('-')?;
         let diny = parser.parse_day_in_year()?;
         if !parser.is_empty() {
-            return Err(ParseDateError::HasTrailing);
+            return Err(ParseDateError::Trailing);
         }
         match diny {
             inner::DayInYear::Ordinal(ordinal) => Ok(self.at_ordinal_date(year, ordinal)?),
@@ -1577,7 +1577,7 @@ pub enum ParseDateError {
 
     /// Returned if the date string had extra trailing characters
     #[error("trailing characters after date")]
-    HasTrailing,
+    Trailing,
 
     /// Returned if a non-digit, non-sign character was encountered in the date
     /// string while expecting a signed integer

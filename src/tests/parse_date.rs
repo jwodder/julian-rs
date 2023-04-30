@@ -442,3 +442,10 @@ fn too_large_ordinal() {
     let r = Calendar::GREGORIAN_REFORM.parse_date("2023-999999999999");
     assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &PosOverflow);
 }
+
+#[test]
+fn trailing() {
+    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-04-20.");
+    assert_eq!(r, Err(ParseDateError::Trailing));
+    assert_eq!(r.unwrap_err().to_string(), "trailing characters after date");
+}
