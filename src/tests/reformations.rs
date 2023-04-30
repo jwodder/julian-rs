@@ -498,6 +498,113 @@ mod prussia {
     }
 }
 
+mod china {
+    // A cross-year reformation
+    // Also, a "tailless year"
+    use super::*;
+
+    #[test]
+    fn init() {
+        let cal = Calendar::reforming(ncal::CHINA).unwrap();
+        assert_eq!(cal.reformation(), Some(ncal::CHINA));
+        let gap = cal.gap().unwrap();
+        assert_eq!(
+            gap,
+            inner::ReformGap {
+                pre_reform: inner::Date {
+                    year: 1911,
+                    ordinal: 352,
+                    month: Month::December,
+                    day: 18
+                },
+                post_reform: inner::Date {
+                    year: 1912,
+                    ordinal: 1,
+                    month: Month::January,
+                    day: 1
+                },
+                gap_length: 13,
+                kind: inner::GapKind::CrossYear,
+                ordinal_gap_start: 0,
+                ordinal_gap: 0,
+            }
+        );
+        assert_eq!(cal.year_kind(1911), YearKind::ReformCommon);
+        assert_eq!(cal.year_length(1911), 352);
+        assert_eq!(cal.year_kind(1912), YearKind::Leap);
+        assert_eq!(cal.year_length(1912), 366);
+    }
+
+    #[test]
+    fn pre_reform_month() {
+        let cal = Calendar::reforming(ncal::CHINA).unwrap();
+        let shape = cal.month_shape(1911, Month::December).unwrap();
+        assert_eq!(
+            shape,
+            MonthShape {
+                year: 1911,
+                month: Month::December,
+                inner: inner::MonthShape::Tailless {
+                    max_day: 18,
+                    natural_max_day: 31
+                },
+            }
+        );
+        assert_eq!(shape.year(), 1911);
+        assert_eq!(shape.month(), Month::December);
+        assert_eq!(shape.len(), 18);
+        assert!(!shape.contains(0));
+        assert!(shape.contains(1));
+        assert!(shape.contains(18));
+        assert!(!shape.contains(19));
+        assert_eq!(shape.first_day(), 1);
+        assert_eq!(shape.last_day(), 18);
+        assert_eq!(shape.day_ordinal(0), None);
+        assert_eq!(shape.day_ordinal(1), Some(1));
+        assert_eq!(shape.day_ordinal(18), Some(18));
+        assert_eq!(shape.day_ordinal(19), None);
+        assert_eq!(shape.nth_day(0), None);
+        assert_eq!(shape.nth_day(1), Some(1));
+        assert_eq!(shape.nth_day(18), Some(18));
+        assert_eq!(shape.nth_day(19), None);
+        assert_eq!(shape.gap(), Some(19..=31));
+        assert_eq!(shape.kind(), MonthKind::Tailless);
+    }
+
+    #[test]
+    fn post_reform_month() {
+        let cal = Calendar::reforming(ncal::CHINA).unwrap();
+        let shape = cal.month_shape(1912, Month::January).unwrap();
+        assert_eq!(
+            shape,
+            MonthShape {
+                year: 1912,
+                month: Month::January,
+                inner: inner::MonthShape::Normal { max_day: 31 },
+            }
+        );
+        assert_eq!(shape.year(), 1912);
+        assert_eq!(shape.month(), Month::January);
+        assert_eq!(shape.len(), 31);
+        assert!(!shape.contains(0));
+        assert!(shape.contains(1));
+        assert!(shape.contains(31));
+        assert!(!shape.contains(32));
+        assert_eq!(shape.first_day(), 1);
+        assert_eq!(shape.last_day(), 31);
+        assert_eq!(shape.day_ordinal(0), None);
+        assert_eq!(shape.day_ordinal(1), Some(1));
+        assert_eq!(shape.day_ordinal(31), Some(31));
+        assert_eq!(shape.day_ordinal(32), None);
+        assert_eq!(shape.nth_day(0), None);
+        assert_eq!(shape.nth_day(1), Some(1));
+        assert_eq!(shape.nth_day(31), Some(31));
+        assert_eq!(shape.nth_day(32), None);
+        assert_eq!(shape.gap(), None);
+        assert_eq!(shape.kind(), MonthKind::Normal);
+    }
+}
+
 #[test]
 fn iceland() {
     // Reformation year contains a pre-reformation Julian-only leap day

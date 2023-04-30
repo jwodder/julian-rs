@@ -580,7 +580,7 @@ impl Calendar {
                             }
                             CrossYear | MultiYear => {
                                 if year == gap.pre_reform.year {
-                                    length = gap.pre_reform.ordinal + 1;
+                                    length = gap.pre_reform.ordinal;
                                 } else {
                                     debug_assert!(year == gap.post_reform.year);
                                     length -= gap.gap_length
