@@ -38,10 +38,12 @@ mod gregorian_reform {
                 ordinal_gap: 10,
             }
         );
+        assert_eq!(cal.year_kind(1582), YearKind::ReformCommon);
+        assert_eq!(cal.year_length(1582), 355);
     }
 
     #[test]
-    fn reformation_month_shape() {
+    fn reformation_month() {
         use Month::October;
         let cal = Calendar::GREGORIAN_REFORM;
         let shape = cal.month_shape(1582, October).unwrap();
@@ -58,7 +60,7 @@ mod gregorian_reform {
             }
         );
         assert_eq!(shape.year(), 1582);
-        assert_eq!(shape.month(), Month::October);
+        assert_eq!(shape.month(), October);
         assert_eq!(shape.len(), 21);
         assert!(!shape.contains(0));
         assert!(shape.contains(1));
@@ -194,34 +196,77 @@ mod germany {
                 ordinal_gap: 10,
             }
         );
+        assert_eq!(cal.year_kind(1700), YearKind::ReformCommon);
+        assert_eq!(cal.year_length(1700), 355);
     }
 
     #[test]
-    fn reformation_year() {
+    fn pre_reform_month() {
         let cal = Calendar::reforming(ncal::GERMANY).unwrap();
-        assert_eq!(cal.year_kind(1700), YearKind::ReformCommon);
-        assert_eq!(cal.year_length(1700), 355);
-        let shape_feb = cal.month_shape(1700, Month::February).unwrap();
+        let shape = cal.month_shape(1700, Month::February).unwrap();
         assert_eq!(
-            shape_feb,
+            shape,
             MonthShape {
                 year: 1700,
                 month: Month::February,
                 inner: inner::MonthShape::Tailless {
                     max_day: 18,
-                    natural_max_day: 29
+                    natural_max_day: 29,
                 },
             }
         );
-        let shape_mar = cal.month_shape(1700, Month::March).unwrap();
+        assert_eq!(shape.year(), 1700);
+        assert_eq!(shape.month(), Month::February);
+        assert_eq!(shape.len(), 18);
+        assert!(!shape.contains(0));
+        assert!(shape.contains(1));
+        assert!(shape.contains(18));
+        assert!(!shape.contains(19));
+        assert_eq!(shape.first_day(), 1);
+        assert_eq!(shape.last_day(), 18);
+        assert_eq!(shape.day_ordinal(0), None);
+        assert_eq!(shape.day_ordinal(1), Some(1));
+        assert_eq!(shape.day_ordinal(18), Some(18));
+        assert_eq!(shape.day_ordinal(19), None);
+        assert_eq!(shape.nth_day(0), None);
+        assert_eq!(shape.nth_day(1), Some(1));
+        assert_eq!(shape.nth_day(18), Some(18));
+        assert_eq!(shape.nth_day(19), None);
+        assert_eq!(shape.gap(), Some(19..=29));
+        assert_eq!(shape.kind(), MonthKind::Tailless);
+    }
+
+    #[test]
+    fn post_reform_month() {
+        let cal = Calendar::reforming(ncal::GERMANY).unwrap();
+        let shape = cal.month_shape(1700, Month::March).unwrap();
         assert_eq!(
-            shape_mar,
+            shape,
             MonthShape {
                 year: 1700,
                 month: Month::March,
                 inner: inner::MonthShape::Normal { max_day: 31 },
             }
         );
+        assert_eq!(shape.year(), 1700);
+        assert_eq!(shape.month(), Month::March);
+        assert_eq!(shape.len(), 31);
+        assert!(!shape.contains(0));
+        assert!(shape.contains(1));
+        assert!(shape.contains(31));
+        assert!(!shape.contains(32));
+        assert_eq!(shape.first_day(), 1);
+        assert_eq!(shape.last_day(), 31);
+        assert_eq!(shape.day_ordinal(0), None);
+        assert_eq!(shape.day_ordinal(1), Some(1));
+        assert_eq!(shape.day_ordinal(31), Some(31));
+        assert_eq!(shape.day_ordinal(32), None);
+        assert_eq!(shape.nth_day(0), None);
+        assert_eq!(shape.nth_day(1), Some(1));
+        assert_eq!(shape.nth_day(31), Some(31));
+        assert_eq!(shape.nth_day(32), None);
+        assert_eq!(shape.gap(), None);
+        assert_eq!(shape.kind(), MonthKind::Normal);
     }
 }
 
@@ -256,12 +301,21 @@ mod russia {
             }
         );
         assert_eq!(cal.year_kind(1918), YearKind::ReformCommon);
+        assert_eq!(cal.year_length(1918), 352);
     }
 
     #[test]
     fn pre_reform_month() {
         let cal = Calendar::reforming(ncal::RUSSIA).unwrap();
         let shape = cal.month_shape(1918, Month::January).unwrap();
+        assert_eq!(
+            shape,
+            MonthShape {
+                year: 1918,
+                month: Month::January,
+                inner: inner::MonthShape::Normal { max_day: 31 },
+            }
+        );
         assert_eq!(shape.year(), 1918);
         assert_eq!(shape.month(), Month::January);
         assert_eq!(shape.len(), 31);
@@ -287,6 +341,17 @@ mod russia {
     fn post_reform_month() {
         let cal = Calendar::reforming(ncal::RUSSIA).unwrap();
         let shape = cal.month_shape(1918, Month::February).unwrap();
+        assert_eq!(
+            shape,
+            MonthShape {
+                year: 1918,
+                month: Month::February,
+                inner: inner::MonthShape::Headless {
+                    min_day: 14,
+                    max_day: 28,
+                },
+            }
+        );
         assert_eq!(shape.year(), 1918);
         assert_eq!(shape.month(), Month::February);
         assert_eq!(shape.len(), 15);
@@ -340,11 +405,11 @@ fn skipped_month() {
         }
     );
     assert_eq!(cal.year_kind(3901), YearKind::ReformCommon);
-    assert_eq!(cal.month_shape(3901, Month::February), None);
     assert_eq!(
         cal.month_shape(3901, Month::January).unwrap().kind(),
         MonthKind::Normal
     );
+    assert_eq!(cal.month_shape(3901, Month::February), None);
     assert_eq!(
         cal.month_shape(3901, Month::March).unwrap().kind(),
         MonthKind::Normal
@@ -439,6 +504,7 @@ fn min_valid_reformation() {
             ordinal_gap: 0,
         }
     );
+    // TODO: Expand tests:
     assert_eq!(
         cal.month_shape(300, Month::February).unwrap().kind(),
         MonthKind::Tailless
