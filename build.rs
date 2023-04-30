@@ -61,7 +61,18 @@ impl<'a> Date<'a> {
             self.month
         )?;
         writeln!(out, "        assert_eq!(date.day(), {});", self.day)?;
+        writeln!(out, "        assert_eq!(date.day_ordinal(), {});", self.day)?;
+        writeln!(
+            out,
+            "        assert_eq!(date.day_ordinal0(), {});",
+            self.day - 1
+        )?;
         writeln!(out, "        assert_eq!(date.ordinal(), {});", self.ordinal)?;
+        writeln!(
+            out,
+            "        assert_eq!(date.ordinal0(), {});",
+            self.ordinal - 1
+        )?;
         writeln!(
             out,
             "        assert_eq!(date.julian_day_number(), {});",
