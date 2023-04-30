@@ -135,7 +135,6 @@ impl Calendar {
                 month: Month::October,
                 day: 15,
             },
-            gap_length: 10,
             kind: inner::GapKind::IntraMonth,
             ordinal_gap_start: 287,
             ordinal_gap: 10,
@@ -185,11 +184,9 @@ impl Calendar {
         {
             ordinal += 1;
         }
-        let post_reform_as_jj = julian.get_jdn(post_reform.year(), ordinal)?;
-        if post_reform_as_jj <= reformation {
+        if julian.get_jdn(post_reform.year(), ordinal)? <= reformation {
             return Err(ReformingError::InvalidReformation);
         }
-        let gap_length = post_reform_as_jj.abs_diff(reformation);
         let kind = inner::GapKind::for_dates(
             pre_reform.year,
             pre_reform.month,
@@ -221,7 +218,6 @@ impl Calendar {
             gap: inner::ReformGap {
                 pre_reform,
                 post_reform,
-                gap_length,
                 kind,
                 ordinal_gap_start,
                 ordinal_gap,

@@ -32,7 +32,6 @@ mod gregorian_reform {
                     month: Month::October,
                     day: 15
                 },
-                gap_length: 10,
                 kind: inner::GapKind::IntraMonth,
                 ordinal_gap_start: 287,
                 ordinal_gap: 10,
@@ -297,7 +296,6 @@ mod germany {
                     month: Month::March,
                     day: 1
                 },
-                gap_length: 11,
                 kind: inner::GapKind::CrossMonth,
                 ordinal_gap_start: 59,
                 ordinal_gap: 10,
@@ -535,7 +533,6 @@ mod russia {
                     month: Month::February,
                     day: 14
                 },
-                gap_length: 13,
                 kind: inner::GapKind::CrossMonth,
                 ordinal_gap_start: 44,
                 ordinal_gap: 13,
@@ -727,7 +724,6 @@ mod prussia {
                     month: Month::September,
                     day: 2
                 },
-                gap_length: 10,
                 kind: inner::GapKind::CrossMonth,
                 ordinal_gap_start: 245,
                 ordinal_gap: 10,
@@ -837,7 +833,6 @@ mod china {
                     month: Month::January,
                     day: 1
                 },
-                gap_length: 13,
                 kind: inner::GapKind::CrossYear,
                 ordinal_gap_start: 0,
                 ordinal_gap: 0,
@@ -943,7 +938,6 @@ mod minreform {
                     month: Month::March,
                     day: 1
                 },
-                gap_length: 1,
                 kind: inner::GapKind::CrossMonth,
                 ordinal_gap_start: 59,
                 ordinal_gap: 0,
@@ -1056,7 +1050,6 @@ mod jdn2342018 {
                     month: Month::February,
                     day: 15
                 },
-                gap_length: 10,
                 kind: inner::GapKind::IntraMonth,
                 ordinal_gap_start: 45,
                 ordinal_gap: 10,
@@ -1140,7 +1133,6 @@ mod jdn2344540 {
                     month: Month::January,
                     day: 12
                 },
-                gap_length: 11,
                 kind: inner::GapKind::CrossYear,
                 ordinal_gap_start: 0,
                 ordinal_gap: 11,
@@ -1214,7 +1206,6 @@ fn iceland() {
                 month: Month::November,
                 day: 28
             },
-            gap_length: 11,
             kind: inner::GapKind::IntraMonth,
             ordinal_gap_start: 331,
             ordinal_gap: 10,
@@ -1246,7 +1237,6 @@ fn czechia() {
                 month: Month::January,
                 day: 17
             },
-            gap_length: 10,
             kind: inner::GapKind::IntraMonth,
             ordinal_gap_start: 16,
             ordinal_gap: 10,
@@ -1277,7 +1267,6 @@ fn skipped_month() {
                 month: Month::March,
                 day: 1
             },
-            gap_length: 28,
             kind: inner::GapKind::CrossMonth,
             ordinal_gap_start: 59,
             ordinal_gap: 28,
@@ -1315,7 +1304,6 @@ fn skipped_year() {
                 month: Month::January,
                 day: 1
             },
-            gap_length: 365,
             kind: inner::GapKind::MultiYear,
             ordinal_gap_start: 0,
             ordinal_gap: 0,

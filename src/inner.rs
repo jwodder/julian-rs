@@ -81,12 +81,6 @@ pub(crate) struct ReformGap {
     /// First Gregorian date in the calendar
     pub(crate) post_reform: Date,
 
-    /// Number of calendar dates *as reckoned in the Julian calendar* (i.e.,
-    /// counting any Julian-only leap days that may have been skipped) from the
-    /// reformation date in the Julian calendar up to (but not including) the
-    /// reformation date in the Gregorian calendar.
-    pub(crate) gap_length: u32,
-
     pub(crate) kind: GapKind,
 
     /// Given a year and day-of-year in the proleptic Gregorian calendar where
