@@ -607,11 +607,12 @@ mod china {
 
 mod minreform {
     use super::*;
+    const REFORM: Jdnum = 1830692;
 
     #[test]
     fn init() {
-        let cal = Calendar::reforming(1830692).unwrap();
-        assert_eq!(cal.reformation(), Some(1830692));
+        let cal = Calendar::reforming(REFORM).unwrap();
+        assert_eq!(cal.reformation(), Some(REFORM));
         let gap = cal.gap().unwrap();
         assert_eq!(
             gap,
@@ -640,7 +641,7 @@ mod minreform {
 
     #[test]
     fn pre_reform_month() {
-        let cal = Calendar::reforming(1830692).unwrap();
+        let cal = Calendar::reforming(REFORM).unwrap();
         let shape = cal.month_shape(300, Month::February).unwrap();
         assert_eq!(
             shape,
@@ -684,7 +685,7 @@ mod minreform {
 
     #[test]
     fn post_reform_month() {
-        let cal = Calendar::reforming(1830692).unwrap();
+        let cal = Calendar::reforming(REFORM).unwrap();
         let shape = cal.month_shape(300, Month::March).unwrap();
         assert_eq!(
             shape,
@@ -713,6 +714,90 @@ mod minreform {
         assert_eq!(shape.nth_day(32), None);
         assert_eq!(shape.gap(), None);
         assert_eq!(shape.kind(), MonthKind::Normal);
+    }
+}
+
+mod jdn2342018 {
+    // Reformation causes a gap in February prior to a Julian-only leap day
+    use super::*;
+    const REFORM: Jdnum = 2342018;
+
+    #[test]
+    fn init() {
+        let cal = Calendar::reforming(REFORM).unwrap();
+        assert_eq!(cal.reformation(), Some(REFORM));
+        let gap = cal.gap().unwrap();
+        assert_eq!(
+            gap,
+            inner::ReformGap {
+                pre_reform: inner::Date {
+                    year: 1700,
+                    ordinal: 35,
+                    month: Month::February,
+                    day: 4
+                },
+                post_reform: inner::Date {
+                    year: 1700,
+                    ordinal: 36,
+                    month: Month::February,
+                    day: 15
+                },
+                gap_length: 10,
+                kind: inner::GapKind::IntraMonth,
+                ordinal_gap_start: 45,
+                ordinal_gap: 10,
+            }
+        );
+        assert_eq!(cal.year_kind(1700), YearKind::ReformCommon);
+        assert_eq!(cal.year_length(1700), 355);
+    }
+
+    #[test]
+    fn reformation_month() {
+        let cal = Calendar::reforming(REFORM).unwrap();
+        let shape = cal.month_shape(1700, Month::February).unwrap();
+        assert_eq!(
+            shape,
+            MonthShape {
+                year: 1700,
+                month: Month::February,
+                inner: inner::MonthShape::Gapped {
+                    gap_start: 5,
+                    gap_end: 14,
+                    max_day: 28,
+                },
+            }
+        );
+        assert_eq!(shape.year(), 1700);
+        assert_eq!(shape.month(), Month::February);
+        assert_eq!(shape.len(), 18);
+        assert!(!shape.contains(0));
+        assert!(shape.contains(1));
+        assert!(shape.contains(4));
+        assert!(!shape.contains(5));
+        assert!(!shape.contains(14));
+        assert!(shape.contains(15));
+        assert!(shape.contains(28));
+        assert!(!shape.contains(29));
+        assert_eq!(shape.first_day(), 1);
+        assert_eq!(shape.last_day(), 28);
+        assert_eq!(shape.day_ordinal(0), None);
+        assert_eq!(shape.day_ordinal(1), Some(1));
+        assert_eq!(shape.day_ordinal(4), Some(4));
+        assert_eq!(shape.day_ordinal(5), None);
+        assert_eq!(shape.day_ordinal(14), None);
+        assert_eq!(shape.day_ordinal(15), Some(5));
+        assert_eq!(shape.day_ordinal(28), Some(18));
+        assert_eq!(shape.day_ordinal(29), None);
+        assert_eq!(shape.nth_day(0), None);
+        assert_eq!(shape.nth_day(1), Some(1));
+        assert_eq!(shape.nth_day(2), Some(2));
+        assert_eq!(shape.nth_day(4), Some(4));
+        assert_eq!(shape.nth_day(5), Some(15));
+        assert_eq!(shape.nth_day(18), Some(28));
+        assert_eq!(shape.nth_day(19), None);
+        assert_eq!(shape.gap(), Some(5..=14));
+        assert_eq!(shape.kind(), MonthKind::Gapped);
     }
 }
 
