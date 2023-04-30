@@ -313,6 +313,8 @@ pub(crate) fn jdn2gregorian(jd: Jdnum) -> (i32, u32) {
     // Add a "virtual leap day" to the end of each centennial year after the
     // zeroth so that `decompose_julian()` can be applied.
     if let Some(after_first_year) = sub(quad_point, LEAP_YEAR_LENGTH) {
+        // This is the one point at which we need to use truncated division
+        // rather than Euclidean division.
         quad_point += after_first_year / COMMON_CENTURY_DAYS;
     }
     let (ys, ordinal) = decompose_julian(quad_point);
@@ -367,9 +369,9 @@ fn decompose_julian(days: Jdnum) -> (i32, u32) {
     // Add a "virtual leap day" to the end of each common year so that
     // `ordinal` can be divided & modded by LEAP_YEAR_LENGTH evenly:
     if ordinal > COMMON_YEAR_LENGTH {
-        ordinal += (ordinal - LEAP_YEAR_LENGTH) / COMMON_YEAR_LENGTH;
+        ordinal += (ordinal - LEAP_YEAR_LENGTH).div_euclid(COMMON_YEAR_LENGTH);
     }
-    year += ordinal / LEAP_YEAR_LENGTH;
+    year += ordinal.div_euclid(LEAP_YEAR_LENGTH);
     ordinal %= LEAP_YEAR_LENGTH;
     (year, u32::try_from(ordinal + 1).unwrap())
 }
