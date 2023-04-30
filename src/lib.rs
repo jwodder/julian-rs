@@ -1158,6 +1158,15 @@ impl Date {
     }
 
     /// Returns the Julian day number of the date.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let date = Calendar::gregorian().at_ymd(2023, Month::May, 1).unwrap();
+    /// assert_eq!(date.julian_day_number(), 2460066);
+    /// ```
     pub fn julian_day_number(&self) -> Jdnum {
         self.jdn
     }
@@ -1192,6 +1201,16 @@ impl Date {
 
     /// Convert to the date with the same Julian day number in the given
     /// calendar.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let gregorian_date = Calendar::gregorian().at_ymd(2023, Month::May, 1).unwrap();
+    /// let julian_date = gregorian_date.convert_to(Calendar::julian());
+    /// assert_eq!(julian_date.to_string(), "2023-04-18");
+    /// ```
     pub fn convert_to(&self, calendar: Calendar) -> Date {
         calendar.at_jdn(self.julian_day_number())
     }
