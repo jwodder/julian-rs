@@ -1,4 +1,4 @@
-use crate::{Calendar, Month, GREGORIAN};
+use crate::{ncal, Calendar, Month, GREGORIAN};
 
 #[test]
 fn julian_properties() {
@@ -70,4 +70,27 @@ fn min_reform_properties() {
     assert_eq!(first_gregorian.day(), 1);
     assert_eq!(first_gregorian.ordinal(), 60);
     assert_eq!(first_gregorian.day_ordinal(), 1);
+}
+
+#[test]
+fn ord() {
+    use std::cmp::Ordering;
+    let calendars = [
+        Calendar::julian(),
+        Calendar::reforming(1830692).unwrap(),
+        Calendar::GREGORIAN_REFORM,
+        Calendar::reforming(ncal::UNITED_KINGDOM).unwrap(),
+        Calendar::reforming(ncal::RUSSIA).unwrap(),
+        Calendar::reforming(2147439588).unwrap(),
+        Calendar::gregorian(),
+    ];
+    for (i, cal1) in calendars.iter().enumerate() {
+        for (j, cal2) in calendars.iter().enumerate() {
+            match i.cmp(&j) {
+                Ordering::Less => assert!(cal1 < cal2),
+                Ordering::Equal => assert!(cal1 == cal2),
+                Ordering::Greater => assert!(cal1 > cal2),
+            }
+        }
+    }
 }

@@ -167,8 +167,8 @@ impl Calendar {
     ///
     /// Returns [`ReformingError::Arithmetic`] if numeric overflow/underflow
     /// occurs while converting `reformation` to a calendar date.  This can
-    /// only happen for Julian day numbers great than 2147439588 (corresponding
-    /// to the date 5874777-10-17 N.S. or 5874657-03-02 O.S.).
+    /// only happen for Julian day numbers greater than 2147439588
+    /// (corresponding to the date 5874777-10-17 N.S. or 5874657-03-02 O.S.).
     pub fn reforming(reformation: Jdnum) -> Result<Calendar, ReformingError> {
         let julian = Calendar::julian();
         let pre_reform = julian.at_jdn(
