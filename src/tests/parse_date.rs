@@ -359,3 +359,38 @@ fn empty() {
     assert_eq!(r, Err(ParseDateError::UnterminatedYear));
     assert_eq!(r.unwrap_err().to_string(), "year not terminated by '-'");
 }
+
+#[test]
+fn too_large_year() {
+    use std::num::IntErrorKind::PosOverflow;
+    let r = Calendar::GREGORIAN_REFORM.parse_date("999999999999-01-01");
+    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &PosOverflow);
+}
+
+#[test]
+fn too_small_year() {
+    use std::num::IntErrorKind::NegOverflow;
+    let r = Calendar::GREGORIAN_REFORM.parse_date("-999999999999-01-01");
+    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &NegOverflow);
+}
+
+#[test]
+fn too_large_month() {
+    use std::num::IntErrorKind::PosOverflow;
+    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-999999999999-01");
+    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &PosOverflow);
+}
+
+#[test]
+fn too_large_day() {
+    use std::num::IntErrorKind::PosOverflow;
+    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-04-999999999999");
+    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &PosOverflow);
+}
+
+#[test]
+fn too_large_ordinal() {
+    use std::num::IntErrorKind::PosOverflow;
+    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-999999999999");
+    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &PosOverflow);
+}
