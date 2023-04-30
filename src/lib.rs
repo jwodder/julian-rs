@@ -375,7 +375,8 @@ impl Calendar {
     /// invalid
     pub fn parse_date(&self, s: &str) -> Result<Date, ParseDateError> {
         let mut parser = inner::DateParser::new(s);
-        let year = parser.parse_year()?;
+        let year = parser.parse_int()?;
+        parser.scan_char('-')?;
         let diny = parser.parse_day_in_year()?;
         if !parser.is_empty() {
             return Err(ParseDateError::HasTrailing);
@@ -1578,26 +1579,29 @@ pub enum ParseDateError {
     #[error("trailing characters after date")]
     HasTrailing,
 
-    /// Returned if the year component of the date string was not terminated by
-    /// a hyphen/dash
-    #[error("year not terminated by '-'")]
-    UnterminatedYear,
+    /// Returned if a non-digit, non-sign character was encountered in the date
+    /// string while expecting a signed integer
+    #[error("expected signed integer, got {got:?}")]
+    InvalidIntStart {
+        /// The character encountered
+        got: char,
+    },
 
     /// Returned if a non-digit was encountered in the date string while
-    /// expecting an integer
-    #[error("expected one or more digits, got non-digit {got:?}")]
-    InvalidIntStart {
+    /// expecting an unsigned integer
+    #[error("expected unsigned integer, got {got:?}")]
+    InvalidUIntStart {
         /// The non-digit encountered
         got: char,
     },
 
     /// Returned if the end of the date string was reached while expecting an
     /// integer
-    #[error("expected one or more digits, reached end of input")]
+    #[error("expected integer, got end of input")]
     EmptyInt,
 
     /// Returned if a specific character was expected but a different one was
-    /// encountered
+    /// encountered instead
     #[error("expected {expected:?}, got {got:?}")]
     UnexpectedChar {
         /// The expected character
@@ -1608,8 +1612,8 @@ pub enum ParseDateError {
     },
 
     /// Returned if a specific character was expected but the end of the date
-    /// string was reached
-    #[error("expected {expected:?}, reached end of input")]
+    /// string was reached instead
+    #[error("expected {expected:?}, got end of input")]
     UnexpectedEnd {
         /// The expected character
         expected: char,
@@ -1617,7 +1621,7 @@ pub enum ParseDateError {
 
     /// Returned if a numeric component of the date string could not be parsed
     /// as an integer
-    #[error("invalid calendar date: numeric parse error: {0}")]
+    #[error("numeric parse error: {0}")]
     ParseInt(#[from] ParseIntError),
 }
 

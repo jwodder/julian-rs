@@ -194,17 +194,6 @@ impl<'a> DateParser<'a> {
         self.data.is_empty()
     }
 
-    pub(crate) fn parse_year(&mut self) -> Result<i32, ParseDateError> {
-        match self.data.match_indices('-').find(|&(i, _)| i > 0) {
-            Some((i, _)) => {
-                let year = self.data[..i].parse::<i32>()?;
-                self.data = &self.data[i + 1..];
-                Ok(year)
-            }
-            None => Err(ParseDateError::UnterminatedYear),
-        }
-    }
-
     pub(crate) fn parse_day_in_year(&mut self) -> Result<DayInYear, ParseDateError> {
         let field1 = self.parse_uint()?;
         if self.data.is_empty() {
@@ -218,23 +207,34 @@ impl<'a> DateParser<'a> {
         }
     }
 
-    pub(crate) fn parse_uint(&mut self) -> Result<u32, ParseDateError> {
-        match self
-            .data
-            .char_indices()
-            .take_while(|&(_, ch)| ch.is_ascii_digit())
-            .last()
-            .map(|(i, _)| i + 1)
-        {
-            Some(i) => {
-                let n = self.data[..i].parse::<u32>()?;
-                self.data = &self.data[i..];
-                Ok(n)
-            }
-            None => match self.data.chars().next() {
+    pub(crate) fn parse_int(&mut self) -> Result<i32, ParseDateError> {
+        let mut first = true;
+        match scan(self.data, |c| {
+            (std::mem::replace(&mut first, false) && (c == '-' || c == '+')) || c.is_ascii_digit()
+        }) {
+            ("", _) => match self.data.chars().next() {
                 Some(got) => Err(ParseDateError::InvalidIntStart { got }),
                 None => Err(ParseDateError::EmptyInt),
             },
+            (numstr, rest) => {
+                let n = numstr.parse::<i32>()?;
+                self.data = rest;
+                Ok(n)
+            }
+        }
+    }
+
+    pub(crate) fn parse_uint(&mut self) -> Result<u32, ParseDateError> {
+        match scan(self.data, |c| c.is_ascii_digit()) {
+            ("", _) => match self.data.chars().next() {
+                Some(got) => Err(ParseDateError::InvalidUIntStart { got }),
+                None => Err(ParseDateError::EmptyInt),
+            },
+            (numstr, rest) => {
+                let n = numstr.parse::<u32>()?;
+                self.data = rest;
+                Ok(n)
+            }
         }
     }
 
@@ -258,6 +258,15 @@ impl<'a> DateParser<'a> {
 pub(crate) enum DayInYear {
     Ordinal(u32),
     Date { month: Month, day: u32 },
+}
+
+pub fn scan<P: FnMut(char) -> bool>(s: &str, mut predicate: P) -> (&str, &str) {
+    let boundary = s
+        .char_indices()
+        .find(move |&(_, ch)| !predicate(ch))
+        .map(|(i, _)| i)
+        .unwrap_or_else(|| s.len());
+    s.split_at(boundary)
 }
 
 pub(crate) fn is_julian_leap_year(year: i32) -> bool {
@@ -637,5 +646,20 @@ mod tests {
         assert!(is_gregorian_leap_year(400));
         assert!(!is_gregorian_leap_year(1000));
         assert!(is_gregorian_leap_year(2000));
+    }
+
+    #[test]
+    fn test_scan_half() {
+        assert_eq!(scan("123abc", |c| c.is_ascii_digit()), ("123", "abc"));
+    }
+
+    #[test]
+    fn test_scan_all() {
+        assert_eq!(scan("123456", |c| c.is_ascii_digit()), ("123456", ""));
+    }
+
+    #[test]
+    fn test_scan_none() {
+        assert_eq!(scan("abc123", |c| c.is_ascii_digit()), ("", "abc123"));
     }
 }

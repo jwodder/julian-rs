@@ -123,7 +123,7 @@ fn year_hyphen() {
     assert_eq!(r, Err(ParseDateError::EmptyInt));
     assert_eq!(
         r.unwrap_err().to_string(),
-        "expected one or more digits, reached end of input",
+        "expected integer, got end of input",
     );
 }
 
@@ -133,17 +133,17 @@ fn year_month_hyphen() {
     assert_eq!(r, Err(ParseDateError::EmptyInt));
     assert_eq!(
         r.unwrap_err().to_string(),
-        "expected one or more digits, reached end of input"
+        "expected integer, got end of input"
     );
 }
 
 #[test]
 fn year_hyphen_hyphen_md() {
     let r = Calendar::GREGORIAN_REFORM.parse_date("2023--04-20");
-    assert_eq!(r, Err(ParseDateError::InvalidIntStart { got: '-' }));
+    assert_eq!(r, Err(ParseDateError::InvalidUIntStart { got: '-' }));
     assert_eq!(
         r.unwrap_err().to_string(),
-        "expected one or more digits, got non-digit '-'"
+        "expected unsigned integer, got '-'"
     );
 }
 
@@ -336,28 +336,76 @@ fn bad_month_day_sep() {
 }
 
 #[test]
+fn bad_year_month_sep() {
+    let r = Calendar::GREGORIAN_REFORM.parse_date("2023:04-20");
+    assert_eq!(
+        r,
+        Err(ParseDateError::UnexpectedChar {
+            expected: '-',
+            got: ':'
+        })
+    );
+    assert_eq!(r.unwrap_err().to_string(), "expected '-', got ':'");
+}
+
+#[test]
+fn bad_year_ordinal_sep() {
+    let r = Calendar::GREGORIAN_REFORM.parse_date("2023:110");
+    assert_eq!(
+        r,
+        Err(ParseDateError::UnexpectedChar {
+            expected: '-',
+            got: ':'
+        })
+    );
+    assert_eq!(r.unwrap_err().to_string(), "expected '-', got ':'");
+}
+
+#[test]
 fn just_year() {
     let r = Calendar::GREGORIAN_REFORM.parse_date("2023");
-    assert_eq!(r, Err(ParseDateError::UnterminatedYear));
-    assert_eq!(r.unwrap_err().to_string(), "year not terminated by '-'");
+    assert_eq!(r, Err(ParseDateError::UnexpectedEnd { expected: '-' }));
+    assert_eq!(r.unwrap_err().to_string(), "expected '-', got end of input");
 }
 
 #[test]
 fn nonint_year() {
-    use std::num::IntErrorKind::InvalidDigit;
     let r = Calendar::GREGORIAN_REFORM.parse_date("202e-04-20");
-    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &InvalidDigit);
-    assert!(r
-        .unwrap_err()
-        .to_string()
-        .starts_with("invalid calendar date: numeric parse error: "));
+    assert_eq!(
+        r,
+        Err(ParseDateError::UnexpectedChar {
+            expected: '-',
+            got: 'e'
+        })
+    );
+    assert_eq!(r.unwrap_err().to_string(), "expected '-', got 'e'");
+}
+
+#[test]
+fn colon_ymd() {
+    let r = Calendar::GREGORIAN_REFORM.parse_date(":2023-04-20");
+    assert_eq!(r, Err(ParseDateError::InvalidIntStart { got: ':' }));
+    assert_eq!(
+        r.unwrap_err().to_string(),
+        "expected signed integer, got ':'"
+    );
 }
 
 #[test]
 fn empty() {
     let r = Calendar::GREGORIAN_REFORM.parse_date("");
-    assert_eq!(r, Err(ParseDateError::UnterminatedYear));
-    assert_eq!(r.unwrap_err().to_string(), "year not terminated by '-'");
+    assert_eq!(r, Err(ParseDateError::EmptyInt));
+    assert_eq!(
+        r.unwrap_err().to_string(),
+        "expected integer, got end of input"
+    );
+}
+
+#[test]
+fn hyphen_hyphen_start() {
+    use std::num::IntErrorKind::InvalidDigit;
+    let r = Calendar::GREGORIAN_REFORM.parse_date("--12-23-56");
+    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &InvalidDigit);
 }
 
 #[test]
