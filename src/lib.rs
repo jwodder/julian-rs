@@ -565,6 +565,7 @@ impl Calendar {
                             LEAP_YEAR_LENGTH as u32
                         };
                         use inner::GapKind::*;
+                        // TODO: Simplify to use gap.ordinal_gap:
                         match gap.kind {
                             IntraMonth | CrossMonth => {
                                 length -= gap.gap_length;
@@ -583,8 +584,7 @@ impl Calendar {
                                     length = gap.pre_reform.ordinal;
                                 } else {
                                     debug_assert!(year == gap.post_reform.year);
-                                    length -= gap.gap_length
-                                        - (self.year_length(year - 1) - gap.pre_reform.ordinal - 1);
+                                    length -= gap.ordinal_gap;
                                 }
                             }
                         }
