@@ -1404,6 +1404,16 @@ fn skipped_month() {
         cal.month_shape(3901, Month::March).unwrap().kind(),
         MonthKind::Normal
     );
+    for day in [0, 1, 28, 32] {
+        assert_eq!(
+            cal.at_ymd(3901, Month::February, day),
+            Err(DateError::SkippedDate {
+                year: 3901,
+                month: Month::February,
+                day
+            })
+        );
+    }
 }
 
 #[test]
@@ -1448,6 +1458,32 @@ fn skipped_year() {
         cal.month_shape(48902, Month::January).unwrap().kind(),
         MonthKind::Normal
     );
+    for (month, day) in [
+        (Month::January, 0),
+        (Month::January, 1),
+        (Month::January, 32),
+        (Month::June, 19),
+        (Month::December, 1),
+    ] {
+        assert_eq!(
+            cal.at_ymd(48901, month, day),
+            Err(DateError::SkippedDate {
+                year: 48901,
+                month,
+                day
+            })
+        );
+    }
+    for ordinal in [0, 1, 180, 365, 1000] {
+        assert_eq!(
+            cal.at_ordinal_date(48901, ordinal),
+            Err(DateError::OrdinalOutOfRange {
+                year: 48901,
+                ordinal,
+                max_ordinal: 0
+            })
+        );
+    }
 }
 
 #[test]
