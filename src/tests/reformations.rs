@@ -531,6 +531,38 @@ fn iceland() {
 }
 
 #[test]
+fn czechia() {
+    // Reformation year contains a post-reformation leap day
+    let cal = Calendar::reforming(ncal::CZECH_REPUBLIC).unwrap();
+    assert_eq!(cal.reformation(), Some(ncal::CZECH_REPUBLIC));
+    let gap = cal.gap().unwrap();
+    assert_eq!(
+        gap,
+        inner::ReformGap {
+            pre_reform: inner::Date {
+                year: 1584,
+                ordinal: 6,
+                month: Month::January,
+                day: 6
+            },
+            post_reform: inner::Date {
+                year: 1584,
+                ordinal: 7,
+                month: Month::January,
+                day: 17
+            },
+            gap_length: 10,
+            kind: inner::GapKind::IntraMonth,
+            ordinal_gap_start: 16,
+            ordinal_gap: 10,
+        }
+    );
+    assert_eq!(cal.year_kind(1584), YearKind::ReformLeap);
+    assert_eq!(cal.year_length(1584), 356);
+    assert!(cal.at_ymd(1584, Month::February, 29).is_ok());
+}
+
+#[test]
 fn skipped_month() {
     let cal = Calendar::reforming(3145930).unwrap();
     assert_eq!(cal.reformation(), Some(3145930));
