@@ -235,6 +235,14 @@ mod germany {
         assert_eq!(shape.nth_day(19), None);
         assert_eq!(shape.gap(), Some(19..=29));
         assert_eq!(shape.kind(), MonthKind::Tailless);
+        assert_eq!(
+            cal.at_ymd(1700, Month::February, 29),
+            Err(DateError::SkippedDate {
+                year: 1700,
+                month: Month::February,
+                day: 29
+            })
+        );
     }
 
     #[test]
@@ -381,8 +389,7 @@ mod russia {
 
 mod prussia {
     // A reformation with a tailless month followed by a headless month
-    // Also, a reformation with a pre-reformation leap day in the reformation
-    // year
+    // Also, reformation year contains a pre-reformation leap day
     use super::*;
     const PRUSSIA: Jdnum = 2310076;
 
@@ -489,6 +496,38 @@ mod prussia {
         assert_eq!(shape.gap(), Some(1..=1));
         assert_eq!(shape.kind(), MonthKind::Headless);
     }
+}
+
+#[test]
+fn iceland() {
+    // Reformation year contains a pre-reformation Julian-only leap day
+    let cal = Calendar::reforming(ncal::ICELAND).unwrap();
+    assert_eq!(cal.reformation(), Some(ncal::ICELAND));
+    let gap = cal.gap().unwrap();
+    assert_eq!(
+        gap,
+        inner::ReformGap {
+            pre_reform: inner::Date {
+                year: 1700,
+                ordinal: 321,
+                month: Month::November,
+                day: 16
+            },
+            post_reform: inner::Date {
+                year: 1700,
+                ordinal: 322,
+                month: Month::November,
+                day: 28
+            },
+            gap_length: 11,
+            kind: inner::GapKind::IntraMonth,
+            ordinal_gap_start: 331,
+            ordinal_gap: 10,
+        }
+    );
+    assert_eq!(cal.year_kind(1700), YearKind::ReformLeap);
+    assert_eq!(cal.year_length(1700), 355);
+    assert!(cal.at_ymd(1700, Month::February, 29).is_ok());
 }
 
 #[test]
