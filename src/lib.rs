@@ -567,8 +567,9 @@ impl Calendar {
                         // If this is a Julian-only leap year and the year kind
                         // is ReformLeap, then the year contains a Julian-only
                         // leap day and we need to add 1 to `ordinal_gap`
-                        // (which is a difference of ordinals in the Gregorian
-                        // calendar).
+                        // because the `pre_reform.ordinal` subtrahend that
+                        // produced it counted the leap day but the
+                        // `post_reform.ordinal` minuend did not.
                         let correction =
                             u32::from(year % 100 == 0 && year % 400 != 0 && k.is_leap());
                         length - gap.ordinal_gap - correction
