@@ -41,6 +41,8 @@ const LEAP_YEAR_LENGTH: Jdnum = 366;
 ///
 /// A year can be common or leap, and a year in a "reforming" calendar can be
 /// shortened or skipped entirely.
+///
+/// A `YearKind` can be obtained by calling [`Calendar::year_kind()`].
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub enum YearKind {
     /// A full-length year not containing February 29
@@ -594,66 +596,11 @@ impl Calendar {
         }
     }
 
-    // TODO: Docs
-    pub fn month_length(&self, year: i32, month: Month) -> u32 {
-        self.month_shape(year, month).len()
-    }
-
-    /// [Private] Calculate the month, day of month, and ordinal day of month
-    /// for a given year and day of year.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`DateError::OrdinalOutOfRange`] if `ordinal` is zero or
-    /// greater than the length of the year.
-    fn ordinal2ymddo(&self, year: i32, ordinal: u32) -> Result<(Month, u32, u32), DateError> {
-        let max_ordinal = self.year_length(year);
-        if !(1..=max_ordinal).contains(&ordinal) {
-            return Err(DateError::OrdinalOutOfRange {
-                year,
-                ordinal,
-                max_ordinal,
-            });
-        }
-        let mut days = ordinal;
-        for month in MonthIter::new() {
-            let shape = self.month_shape(year, month);
-            if let Some(day) = shape.get_day_label(days) {
-                return Ok((month, day, days));
-            }
-            days -= shape.len();
-        }
-        unreachable!()
-    }
-
-    /// [Private] Calculate the day of year for a given year, month, and day
-    /// ordinal of month.  The day ordinal must be valid for the given month;
-    /// otherwise, the result will be garbage.
-    fn ymdo2ordinal(&self, year: i32, month: Month, day_ordinal: u32) -> u32 {
-        MonthIter::new()
-            .take_while(|&m| m < month)
-            .map(|m| self.month_length(year, m))
-            .sum::<u32>()
-            + day_ordinal
-    }
-
-    /// [Private] Calculate the day ordinal for a given year, month, and day of
-    /// month.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`DateError::DayOutOfRange`] if `day` is zero or greater than
-    /// the last day of the given month for the given year.
-    ///
-    /// Returns [`DateError::SkippedDate`] if the given date was skipped by a
-    /// calendar reformation.
-    fn get_day_ordinal(&self, year: i32, month: Month, day: u32) -> Result<u32, DateError> {
-        self.month_shape(year, month).get_day_ordinal(day)
-    }
-
-    /// [Private] Returns information on the "shape" of the given month of the
-    /// given year.
-    fn month_shape(&self, year: i32, month: Month) -> inner::MonthShape {
+    /// Returns information on the "shape" of the given month of the given
+    /// year.  Returns `None` if the month was completely skipped by a calendar
+    /// reformation.
+    // TODO: Give the smallest JDN at which a month can be skipped
+    pub fn month_shape(&self, year: i32, month: Month) -> Option<MonthShape> {
         use Month::*;
         let length = match month {
             January => 31,
@@ -675,46 +622,94 @@ impl Calendar {
             November => 30,
             December => 31,
         };
-        if let inner::Calendar::Reforming { gap, .. } = self.0 {
+        let inshape = if let inner::Calendar::Reforming { gap, .. } = self.0 {
             use inner::RangeOrdering::*;
-            return match gap.cmp_year_month(year, month) {
+            match gap.cmp_year_month(year, month) {
                 EqLower | EqBoth => {
                     if gap.kind == inner::GapKind::IntraMonth {
-                        inner::MonthShape::HasGap {
-                            year,
-                            month,
-                            gap: (gap.pre_reform.day + 1)..(gap.post_reform.day),
+                        inner::MonthShape::Gapped {
+                            gap_start: gap.pre_reform.day + 1,
+                            gap_end: gap.post_reform.day - 1,
                             max_day: length,
                         }
                     } else {
-                        inner::MonthShape::Solid {
-                            year,
-                            month,
-                            range: 1..=(gap.pre_reform.day),
+                        inner::MonthShape::Tailless {
+                            max_day: gap.pre_reform.day,
                             natural_max_day: length,
                         }
                     }
                 }
-                Between => inner::MonthShape::Skipped { year, month },
-                EqUpper => inner::MonthShape::Solid {
-                    year,
-                    month,
-                    range: (gap.post_reform.day)..=length,
-                    natural_max_day: length,
+                Between => return None,
+                EqUpper if gap.post_reform.day > 1 => inner::MonthShape::Headless {
+                    min_day: gap.post_reform.day,
+                    max_day: length,
                 },
-                _ => inner::MonthShape::Solid {
-                    year,
-                    month,
-                    range: 1..=length,
-                    natural_max_day: length,
-                },
-            };
-        }
-        inner::MonthShape::Solid {
+                _ => inner::MonthShape::Normal { max_day: length },
+            }
+        } else {
+            inner::MonthShape::Normal { max_day: length }
+        };
+        Some(MonthShape {
             year,
             month,
-            range: 1..=length,
-            natural_max_day: length,
+            inner: inshape,
+        })
+    }
+
+    /// [Private] Calculate the month, day of month, and ordinal day of month
+    /// for a given year and day of year.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DateError::OrdinalOutOfRange`] if `ordinal` is zero or
+    /// greater than the length of the year.
+    fn ordinal2ymddo(&self, year: i32, ordinal: u32) -> Result<(Month, u32, u32), DateError> {
+        let max_ordinal = self.year_length(year);
+        if !(1..=max_ordinal).contains(&ordinal) {
+            return Err(DateError::OrdinalOutOfRange {
+                year,
+                ordinal,
+                max_ordinal,
+            });
+        }
+        let mut days = ordinal;
+        for month in MonthIter::new() {
+            if let Some(shape) = self.month_shape(year, month) {
+                if let Some(day) = shape.nth_day(days) {
+                    return Ok((month, day, days));
+                }
+                days -= shape.len();
+            }
+        }
+        unreachable!()
+    }
+
+    /// [Private] Calculate the day of year for a given year, month, and day
+    /// ordinal of month.  The day ordinal must be valid for the given month;
+    /// otherwise, the result will be garbage.
+    fn ymdo2ordinal(&self, year: i32, month: Month, day_ordinal: u32) -> u32 {
+        MonthIter::new()
+            .take_while(|&m| m < month)
+            .filter_map(|m| self.month_shape(year, m).map(|ms| ms.len()))
+            .sum::<u32>()
+            + day_ordinal
+    }
+
+    /// [Private] Calculate the day ordinal for a given year, month, and day of
+    /// month.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DateError::DayOutOfRange`] if `day` is zero or greater than
+    /// the last day of the given month for the given year.
+    ///
+    /// Returns [`DateError::SkippedDate`] if the given date (or the entirety
+    /// of the month) was skipped by a calendar reformation.
+    fn get_day_ordinal(&self, year: i32, month: Month, day: u32) -> Result<u32, DateError> {
+        if let Some(shape) = self.month_shape(year, month) {
+            shape.day_ordinal_err(day)
+        } else {
+            Err(DateError::SkippedDate { year, month, day })
         }
     }
 
@@ -739,6 +734,286 @@ impl Calendar {
             inner::gregorian2jdn(year, ordinal)
         }.ok_or(ArithmeticError)
     }
+}
+
+/// Information about the days of a month.
+///
+/// Due to calendar reformations, not every month ranges from 1 to some number
+/// from 28 to 31.  A reformation can cause a month to lose days at the
+/// beginning, middle, or end, or even to be skipped entirely (though months of
+/// this last kind do not have corresponding `MonthShape`s).  When days of a
+/// month are skipped due to a reformation, actual day numbers (the values that
+/// one would write in a date) will be skipped, resulting in, for example, a
+/// month that goes from day 5 to day 15 or a month that starts on day 14.
+///
+/// A `MonthShape` can be obtained by calling [`Calendar::month_shape()`].
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
+pub struct MonthShape {
+    year: i32,
+    month: Month,
+    inner: inner::MonthShape,
+}
+
+impl MonthShape {
+    /// Returns the year in which the month occurs
+    pub fn year(&self) -> i32 {
+        self.year
+    }
+
+    /// Returns the [`Month`] value for the month
+    pub fn month(&self) -> Month {
+        self.month
+    }
+
+    /// Returns the number of days in the month, not counting days skipped due
+    /// to a calendar reformation
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> u32 {
+        use inner::MonthShape::*;
+        match self.inner {
+            Normal { max_day } => max_day,
+            Headless { min_day, max_day } => max_day - min_day + 1,
+            Tailless { max_day, .. } => max_day,
+            Gapped {
+                gap_start,
+                gap_end,
+                max_day,
+            } => max_day - (gap_end - gap_start + 1),
+        }
+    }
+
+    /// Returns true if the given day occurs in the month.  False may be
+    /// returned for a value between [`MonthShape::first_day()`] and
+    /// [`MonthShape::last_day()`] if one or more days in the middle of the
+    /// month were skipped by a calendar reformation.
+    pub fn contains(&self, day: u32) -> bool {
+        use inner::MonthShape::*;
+        match self.inner {
+            Normal { max_day } => (1..=max_day).contains(&day),
+            Headless { min_day, max_day } => (min_day..=max_day).contains(&day),
+            Tailless { max_day, .. } => (1..=max_day).contains(&day),
+            Gapped {
+                gap_start,
+                gap_end,
+                max_day,
+            } => (1..=max_day).contains(&day) && !(gap_start..=gap_end).contains(&day),
+        }
+    }
+
+    /// Returns the first day of the month.  This can be larger than 1 in cases
+    /// where one or more days at the beginning of the month were skipped due
+    /// to a calendar reformation.
+    pub fn first_day(&self) -> u32 {
+        use inner::MonthShape::*;
+        match self.inner {
+            Headless { min_day, .. } => min_day,
+            _ => 1,
+        }
+    }
+
+    /// Returns the last day of the month.  This can be smaller than the
+    /// "traditional" length in cases where one or more days at the end of the
+    /// month were skipped due to a calendar reformation.
+    pub fn last_day(&self) -> u32 {
+        use inner::MonthShape::*;
+        match self.inner {
+            Normal { max_day } => max_day,
+            Headless { max_day, .. } => max_day,
+            Tailless { max_day, .. } => max_day,
+            Gapped { max_day, .. } => max_day,
+        }
+    }
+
+    /// Converts a day of the month to the corresponding ordinal number of the
+    /// day within the month.  This is a number starting from one that does
+    /// *not* count days skipped due to a calendar reformation.
+    ///
+    /// Returns `None` if the given day does not occur in the month.
+    pub fn day_ordinal(&self, day: u32) -> Option<u32> {
+        self.day_ordinal_err(day).ok()
+    }
+
+    /// [Private] Converts a day of the month to the corresponding ordinal
+    /// number of the day within the month.  This is a number starting from one
+    /// that does *not* count days skipped due to a calendar reformation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DateError::DayOutOfRange`] if `day` is zero or greater than
+    /// the last normal day of the month.
+    ///
+    /// Returns [`DateError::SkippedDate`] if the given date was skipped by a
+    /// calendar reformation.
+    fn day_ordinal_err(&self, day: u32) -> Result<u32, DateError> {
+        use inner::MonthShape::*;
+        match self.inner {
+            Normal { max_day } => {
+                if (1..=max_day).contains(&day) {
+                    Ok(day)
+                } else {
+                    Err(DateError::DayOutOfRange {
+                        year: self.year,
+                        month: self.month,
+                        day,
+                        min_day: 1,
+                        max_day,
+                    })
+                }
+            }
+            Headless { min_day, max_day } => {
+                if (min_day..=max_day).contains(&day) {
+                    Ok(day - min_day + 1)
+                } else if (1..min_day).contains(&day) {
+                    Err(DateError::SkippedDate {
+                        year: self.year,
+                        month: self.month,
+                        day,
+                    })
+                } else {
+                    Err(DateError::DayOutOfRange {
+                        year: self.year,
+                        month: self.month,
+                        day,
+                        min_day,
+                        max_day,
+                    })
+                }
+            }
+            Tailless {
+                max_day,
+                natural_max_day,
+            } => {
+                if (1..=max_day).contains(&day) {
+                    Ok(day)
+                } else if ((max_day + 1)..=natural_max_day).contains(&day) {
+                    Err(DateError::SkippedDate {
+                        year: self.year,
+                        month: self.month,
+                        day,
+                    })
+                } else {
+                    Err(DateError::DayOutOfRange {
+                        year: self.year,
+                        month: self.month,
+                        day,
+                        min_day: 1,
+                        max_day,
+                    })
+                }
+            }
+            Gapped {
+                gap_start,
+                gap_end,
+                max_day,
+            } => {
+                if day == 0 || day > max_day {
+                    Err(DateError::DayOutOfRange {
+                        year: self.year,
+                        month: self.month,
+                        day,
+                        min_day: 1,
+                        max_day,
+                    })
+                } else if day < gap_start {
+                    Ok(day)
+                } else if day <= gap_end {
+                    Err(DateError::SkippedDate {
+                        year: self.year,
+                        month: self.month,
+                        day,
+                    })
+                } else {
+                    Ok(day - (gap_end - gap_start + 1))
+                }
+            }
+        }
+    }
+
+    /// Converts a one-based ordinal number to the corresponding day of the
+    /// month.
+    ///
+    /// Returns `None` if `day` is 0 or larger than [`MonthShape::len()`].
+    pub fn nth_day(&self, day_ordinal: u32) -> Option<u32> {
+        use inner::MonthShape::*;
+        match self.inner {
+            Normal { max_day } => (1..=max_day).contains(&day_ordinal).then_some(day_ordinal),
+            Headless { min_day, max_day } => (min_day..=max_day)
+                .contains(&day_ordinal)
+                .then_some(day_ordinal + min_day - 1),
+            Tailless { max_day, .. } => (1..=max_day).contains(&day_ordinal).then_some(day_ordinal),
+            Gapped {
+                gap_start,
+                gap_end,
+                max_day,
+            } => {
+                if day_ordinal == 0 {
+                    None
+                } else if day_ordinal < gap_start {
+                    Some(day_ordinal)
+                } else {
+                    let day = day_ordinal + (gap_end - gap_start + 1);
+                    (day <= max_day).then_some(day)
+                }
+            }
+        }
+    }
+
+    /// Returns the range of days of the month that were skipped by a calendar
+    /// reformation.
+    ///
+    /// Returns `None` if the month was not affected by a reformation.
+    pub fn gap(&self) -> Option<RangeInclusive<u32>> {
+        use inner::MonthShape::*;
+        match self.inner {
+            Normal { .. } => None,
+            Headless { min_day, .. } => Some(1..=min_day),
+            Tailless {
+                max_day,
+                natural_max_day,
+            } => Some((max_day + 1)..=natural_max_day),
+            Gapped {
+                gap_start, gap_end, ..
+            } => Some(gap_start..=gap_end),
+        }
+    }
+
+    /// Returns the [`MonthKind`] for the month
+    pub fn kind(&self) -> MonthKind {
+        use inner::MonthShape::*;
+        match self.inner {
+            Normal { .. } => MonthKind::Normal,
+            Headless { .. } => MonthKind::Headless,
+            Tailless { .. } => MonthKind::Tailless,
+            Gapped { .. } => MonthKind::Gapped,
+        }
+    }
+}
+
+/// A description of how a calendar month was affected by a calendar
+/// reformation.
+///
+/// A month can be either affected or unaffected by a calendar reformation,
+/// and, if it is affected, it can have days at the beginning, end, or middle
+/// skipped.  (A month can also be skipped in its entirety by a calendar
+/// reformation, but such months do not get `MonthKind` values.)
+///
+/// A `MonthKind` can be obtained by calling [`MonthShape::kind()`].
+#[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
+pub enum MonthKind {
+    /// The month was unaffected by a calendar reformation
+    Normal,
+
+    /// The month had one or more days at the beginning skipped by a calendar
+    /// reformation
+    Headless,
+
+    /// The month had one or more days at the end skipped by a calendar
+    /// reformation
+    Tailless,
+
+    /// The month had one or more days in the middle skipped by a calendar
+    /// reformation
+    Gapped,
 }
 
 /// A date (year, month, and day of month) in a certain calendar.

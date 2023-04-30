@@ -1,4 +1,4 @@
-use crate::{inner, Calendar, Month, ReformingError, YearKind};
+use crate::{inner, Calendar, Month, MonthShape, ReformingError, YearKind};
 use assert_matches::assert_matches;
 
 #[test]
@@ -37,24 +37,25 @@ fn german_reformation_year() {
     let cal = Calendar::reforming(2342032).unwrap();
     assert_eq!(cal.year_kind(1700), YearKind::ReformCommon);
     assert_eq!(cal.year_length(1700), 355);
-    let shape_feb = cal.month_shape(1700, Month::February);
+    let shape_feb = cal.month_shape(1700, Month::February).unwrap();
     assert_eq!(
         shape_feb,
-        inner::MonthShape::Solid {
+        MonthShape {
             year: 1700,
             month: Month::February,
-            range: 1..=18,
-            natural_max_day: 28,
+            inner: inner::MonthShape::Tailless {
+                max_day: 18,
+                natural_max_day: 28
+            },
         }
     );
-    let shape_mar = cal.month_shape(1700, Month::March);
+    let shape_mar = cal.month_shape(1700, Month::March).unwrap();
     assert_eq!(
         shape_mar,
-        inner::MonthShape::Solid {
+        MonthShape {
             year: 1700,
             month: Month::March,
-            range: 1..=31,
-            natural_max_day: 31,
+            inner: inner::MonthShape::Normal { max_day: 31 },
         }
     );
 }

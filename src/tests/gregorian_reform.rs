@@ -1,4 +1,4 @@
-use crate::{inner, Calendar, DateError, Month, GREGORIAN};
+use crate::{inner, Calendar, DateError, Month, MonthShape, GREGORIAN};
 use rstest::rstest;
 
 #[test]
@@ -39,27 +39,30 @@ fn gregorian_reform() {
 fn reformation_month_shape() {
     use Month::October;
     let cal = Calendar::GREGORIAN_REFORM;
-    let shape = cal.month_shape(1582, October);
+    let shape = cal.month_shape(1582, October).unwrap();
     assert_eq!(
         shape,
-        inner::MonthShape::HasGap {
+        MonthShape {
             year: 1582,
             month: October,
-            gap: 5..15,
-            max_day: 31
+            inner: inner::MonthShape::Gapped {
+                gap_start: 5,
+                gap_end: 14,
+                max_day: 31,
+            },
         }
     );
     assert_eq!(shape.len(), 21);
-    //assert!(!shape.has_day(0));
-    //assert!(shape.has_day(1));
-    //assert!(shape.has_day(4));
-    //assert!(!shape.has_day(5));
-    //assert!(!shape.has_day(14));
-    //assert!(shape.has_day(15));
-    //assert!(shape.has_day(31));
-    //assert!(!shape.has_day(32));
+    assert!(!shape.contains(0));
+    assert!(shape.contains(1));
+    assert!(shape.contains(4));
+    assert!(!shape.contains(5));
+    assert!(!shape.contains(14));
+    assert!(shape.contains(15));
+    assert!(shape.contains(31));
+    assert!(!shape.contains(32));
     assert_eq!(
-        shape.get_day_ordinal(0),
+        shape.day_ordinal_err(0),
         Err(DateError::DayOutOfRange {
             year: 1582,
             month: October,
@@ -68,10 +71,10 @@ fn reformation_month_shape() {
             max_day: 31,
         })
     );
-    assert_eq!(shape.get_day_ordinal(1), Ok(1));
-    assert_eq!(shape.get_day_ordinal(4), Ok(4));
+    assert_eq!(shape.day_ordinal(1), Some(1));
+    assert_eq!(shape.day_ordinal(4), Some(4));
     assert_eq!(
-        shape.get_day_ordinal(5),
+        shape.day_ordinal_err(5),
         Err(DateError::SkippedDate {
             year: 1582,
             month: October,
@@ -79,17 +82,17 @@ fn reformation_month_shape() {
         })
     );
     assert_eq!(
-        shape.get_day_ordinal(14),
+        shape.day_ordinal_err(14),
         Err(DateError::SkippedDate {
             year: 1582,
             month: October,
             day: 14
         })
     );
-    assert_eq!(shape.get_day_ordinal(15), Ok(5));
-    assert_eq!(shape.get_day_ordinal(31), Ok(21));
+    assert_eq!(shape.day_ordinal(15), Some(5));
+    assert_eq!(shape.day_ordinal(31), Some(21));
     assert_eq!(
-        shape.get_day_ordinal(32),
+        shape.day_ordinal_err(32),
         Err(DateError::DayOutOfRange {
             year: 1582,
             month: October,
@@ -98,12 +101,12 @@ fn reformation_month_shape() {
             max_day: 31,
         })
     );
-    assert_eq!(shape.get_day_label(1), Some(1));
-    assert_eq!(shape.get_day_label(2), Some(2));
-    assert_eq!(shape.get_day_label(4), Some(4));
-    assert_eq!(shape.get_day_label(5), Some(15));
-    assert_eq!(shape.get_day_label(21), Some(31));
-    assert_eq!(shape.get_day_label(22), None);
+    assert_eq!(shape.nth_day(1), Some(1));
+    assert_eq!(shape.nth_day(2), Some(2));
+    assert_eq!(shape.nth_day(4), Some(4));
+    assert_eq!(shape.nth_day(5), Some(15));
+    assert_eq!(shape.nth_day(21), Some(31));
+    assert_eq!(shape.nth_day(22), None);
 }
 
 #[rstest]
@@ -145,5 +148,5 @@ fn reformation_month_shape() {
 #[case(1582, Month::December, 31)]
 fn month_length(#[case] year: i32, #[case] month: Month, #[case] length: u32) {
     let cal = Calendar::GREGORIAN_REFORM;
-    assert_eq!(cal.month_length(year, month), length);
+    assert_eq!(cal.month_shape(year, month).unwrap().len(), length);
 }
