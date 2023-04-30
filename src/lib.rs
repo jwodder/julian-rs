@@ -991,8 +991,8 @@ impl MonthShape {
     }
 
     /// Returns an iterator over all the valid days of the month
-    pub fn days(&self) -> Days<'_> {
-        Days::new(self)
+    pub fn days(&self) -> Days {
+        Days::new(*self)
     }
 }
 
@@ -1026,13 +1026,13 @@ pub enum MonthKind {
 /// An iterator over the days of a month.
 ///
 /// A `Days` instance can be acquired by calling [`MonthShape::days()`].
-pub struct Days<'a> {
-    month_shape: &'a MonthShape,
+pub struct Days {
+    month_shape: MonthShape,
     inner: RangeInclusive<u32>,
 }
 
-impl<'a> Days<'a> {
-    fn new(month_shape: &'a MonthShape) -> Self {
+impl Days {
+    fn new(month_shape: MonthShape) -> Self {
         Days {
             month_shape,
             inner: 1..=(month_shape.len()),
@@ -1040,7 +1040,7 @@ impl<'a> Days<'a> {
     }
 }
 
-impl<'a> Iterator for Days<'a> {
+impl Iterator for Days {
     type Item = u32;
 
     fn next(&mut self) -> Option<u32> {
@@ -1052,11 +1052,11 @@ impl<'a> Iterator for Days<'a> {
     }
 }
 
-impl<'a> FusedIterator for Days<'a> {}
+impl FusedIterator for Days {}
 
-impl<'a> ExactSizeIterator for Days<'a> {}
+impl ExactSizeIterator for Days {}
 
-impl<'a> DoubleEndedIterator for Days<'a> {
+impl DoubleEndedIterator for Days {
     fn next_back(&mut self) -> Option<u32> {
         self.month_shape.nth_day(self.inner.next_back()?)
     }
