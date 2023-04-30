@@ -1,4 +1,4 @@
-use crate::{ncal, Calendar, Month, GREGORIAN};
+use crate::{ncal, Calendar, Month, MonthIter, MonthKind, YearKind, GREGORIAN};
 
 #[test]
 fn julian_properties() {
@@ -92,5 +92,53 @@ fn ord() {
                 Ordering::Greater => assert!(cal1 > cal2),
             }
         }
+    }
+}
+
+#[test]
+fn gregorian_leap_year() {
+    let cal = Calendar::gregorian();
+    assert_eq!(cal.year_kind(2000), YearKind::Leap);
+    assert_eq!(cal.year_length(2000), 366);
+    for (m, days) in MonthIter::new().zip([31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]) {
+        let shape = cal.month_shape(2000, m).unwrap();
+        assert_eq!(shape.len(), days);
+        assert_eq!(shape.kind(), MonthKind::Normal);
+    }
+}
+
+#[test]
+fn gregorian_common_year() {
+    let cal = Calendar::gregorian();
+    assert_eq!(cal.year_kind(1900), YearKind::Common);
+    assert_eq!(cal.year_length(1900), 365);
+    for (m, days) in MonthIter::new().zip([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]) {
+        let shape = cal.month_shape(1900, m).unwrap();
+        assert_eq!(shape.len(), days);
+        assert_eq!(shape.kind(), MonthKind::Normal);
+    }
+}
+
+#[test]
+fn julian_leap_year() {
+    let cal = Calendar::julian();
+    assert_eq!(cal.year_kind(1900), YearKind::Leap);
+    assert_eq!(cal.year_length(1900), 366);
+    for (m, days) in MonthIter::new().zip([31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]) {
+        let shape = cal.month_shape(1900, m).unwrap();
+        assert_eq!(shape.len(), days);
+        assert_eq!(shape.kind(), MonthKind::Normal);
+    }
+}
+
+#[test]
+fn julian_common_year() {
+    let cal = Calendar::gregorian();
+    assert_eq!(cal.year_kind(1901), YearKind::Common);
+    assert_eq!(cal.year_length(1901), 365);
+    for (m, days) in MonthIter::new().zip([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]) {
+        let shape = cal.month_shape(1901, m).unwrap();
+        assert_eq!(shape.len(), days);
+        assert_eq!(shape.kind(), MonthKind::Normal);
     }
 }
