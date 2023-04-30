@@ -1310,8 +1310,11 @@ fn skipped_year() {
         }
     );
     assert_eq!(cal.year_kind(48900), YearKind::Leap);
+    assert_eq!(cal.year_length(48900), 366);
     assert_eq!(cal.year_kind(48901), YearKind::Skipped);
+    assert_eq!(cal.year_length(48901), 0);
     assert_eq!(cal.year_kind(48902), YearKind::Common);
+    assert_eq!(cal.year_length(48902), 365);
     assert_eq!(
         cal.month_shape(48900, Month::December).unwrap().kind(),
         MonthKind::Normal
