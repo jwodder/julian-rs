@@ -1,7 +1,7 @@
 use crate::{ncal, Calendar, Month};
 
 #[test]
-fn display_date() {
+fn display() {
     let date = Calendar::GREGORIAN_REFORM
         .at_ymd(2023, Month::April, 20)
         .unwrap();
@@ -9,7 +9,7 @@ fn display_date() {
 }
 
 #[test]
-fn alternate_display_date() {
+fn alternate_display() {
     let date = Calendar::GREGORIAN_REFORM
         .at_ymd(2023, Month::April, 20)
         .unwrap();
@@ -17,7 +17,7 @@ fn alternate_display_date() {
 }
 
 #[test]
-fn alternate_display_date_padded() {
+fn alternate_display_padded() {
     let date = Calendar::GREGORIAN_REFORM
         .at_ymd(2023, Month::March, 15)
         .unwrap();
@@ -54,4 +54,18 @@ fn ord() {
             }
         }
     }
+}
+
+#[test]
+fn convert_to() {
+    let julian = Calendar::julian();
+    let gregorian = Calendar::gregorian();
+    let date = gregorian.at_ymd(2023, Month::April, 30).unwrap();
+    let date2 = date.convert_to(julian);
+    assert_eq!(date2.year(), 2023);
+    assert_eq!(date2.month(), Month::April);
+    assert_eq!(date2.day(), 17);
+    assert_eq!(date.julian_day_number(), date2.julian_day_number());
+    assert_eq!(date.julian_day_number(), 2460065);
+    assert_eq!(date2, julian.at_ymd(2023, Month::April, 17).unwrap());
 }

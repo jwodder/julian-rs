@@ -1190,21 +1190,24 @@ impl Date {
         }
     }
 
-    /// Convert the date to a date in the given calendar.
+    /// Convert to the date with the same Julian day number in the given
+    /// calendar.
     pub fn convert_to(&self, calendar: Calendar) -> Date {
         calendar.at_jdn(self.julian_day_number())
     }
 }
 
 impl PartialOrd for Date {
-    /// `Date` instances are ordered first by Julian day, then by `Calendar`.
+    /// `Date` instances are ordered first by Julian day number, then by
+    /// `Calendar`.
     fn partial_cmp(&self, other: &Date) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for Date {
-    /// `Date` instances are ordered first by Julian day, then by `Calendar`.
+    /// `Date` instances are ordered first by Julian day number, then by
+    /// `Calendar`.
     fn cmp(&self, other: &Date) -> Ordering {
         (self.julian_day_number(), self.calendar())
             .cmp(&(other.julian_day_number(), other.calendar()))
