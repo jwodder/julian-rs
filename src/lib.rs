@@ -108,7 +108,7 @@
 //! was conventional to give the date in both the Julian and Gregorian
 //! calendars, with the Julian date marked as "Old Style" or "O.S." and the
 //! Gregorian date marked as "New Style" or "N.S."  This documentation follows
-//! the same convention for most dates.
+//! the same convention for most dates where appropriate.
 //!
 //! Because of these changes in calendar, there is a third calendar — or
 //! rather, a class of infinitely many calendars[^infinite] — that `julian`
