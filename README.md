@@ -6,9 +6,48 @@
 [GitHub](https://github.com/jwodder/julian-rs) <!-- | [crates.io](https://crates.io/crates/julian) | [Documentation](https://docs.rs/julian) --> | [Issues](https://github.com/jwodder/julian-rs/issues)
 
 `julian` is a Rust library for converting between [Julian day numbers][] and
-dates in the [Gregorian calendar][] (non-proleptic, with the Reformation at
-1582-10-05) and [Julian calendar][].
+dates in the [Gregorian calendar][] (either proleptic or with the Reformation
+occurring at a given date) and/or the proleptic [Julian calendar][].  There are
+also features for querying details about years & months in a "reforming"
+Gregorian calendar and how they are affected by the calendar reformation date
+of your choice.
 
 [Julian day numbers]: https://en.wikipedia.org/wiki/Julian_day
 [Gregorian calendar]: https://en.wikipedia.org/wiki/Gregorian_calendar
 [Julian calendar]: https://en.wikipedia.org/wiki/Julian_calendar
+
+Examples
+========
+
+Before you construct a date, you must first choose a calendar in which to
+reckon dates.  `Calendar::gregorian()` gives you a proleptic Gregorian
+calendar, which should be both simple and useful enough for most basic
+purposes.
+
+To convert a Julian day number to a date in a calendar, use the
+`Calendar::at_jdn()` method, like so:
+
+```rust
+use julian::{Calendar, Month};
+
+let cal = Calendar::gregorian();
+let date = cal.at_jdn(2460065);
+assert_eq!(date.year(), 2023);
+assert_eq!(date.month(), Month::April);
+assert_eq!(date.day(), 30);
+```
+
+So JDN 2460065 is April 30, 2023, in the proleptic Gregorian calendar.
+
+To convert a date to a Julian day number, use `Calendar::at_ymd()` to construct
+the date, and then call its `julian_day_number()` method:
+
+```rust
+use julian::{Calendar, Month};
+
+let cal = Calendar::gregorian();
+let date = cal.at_ymd(2023, Month::April, 30).unwrap();
+assert_eq!(date.julian_day_number(), 2460065);
+```
+
+See [the documentation](https://docs.rs/julian) for more things you can do!

@@ -1,3 +1,163 @@
+//! `julian` is a Rust library for converting between [Julian day numbers][jdn]
+//! and dates in the [Gregorian calendar][] (either proleptic or with the
+//! Reformation occurring at a given date) and/or the proleptic [Julian
+//! calendar][].  There are also features for querying details about years &
+//! months in a "reforming" Gregorian calendar and how they are affected by the
+//! calendar reformation date of your choice.
+//!
+//! [Gregorian calendar]: https://en.wikipedia.org/wiki/Gregorian_calendar
+//! [Julian calendar]: https://en.wikipedia.org/wiki/Julian_calendar
+//!
+//! Examples
+//! ========
+//!
+//! Before you construct a date, you must first choose a [calendar][Calendar]
+//! in which to reckon [dates][Date].  [`Calendar::gregorian()`] gives you a
+//! proleptic Gregorian calendar, which should be both simple and useful enough
+//! for most basic purposes.
+//!
+//! To convert a Julian day number to a date in a calendar, use the
+//! [`Calendar::at_jdn()`] method, like so:
+//!
+//! ```
+//! use julian::{Calendar, Month};
+//!
+//! let cal = Calendar::gregorian();
+//! let date = cal.at_jdn(2460065);
+//! assert_eq!(date.year(), 2023);
+//! assert_eq!(date.month(), Month::April);
+//! assert_eq!(date.day(), 30);
+//! ```
+//!
+//! So JDN 2460065 is April 30, 2023, in the proleptic Gregorian calendar.
+//!
+//! To convert a date to a Julian day number, use [`Calendar::at_ymd()`] to
+//! construct the date, and then call its
+//! [`julian_day_number()`][Date::julian_day_number] method:
+//!
+//! ```
+//! use julian::{Calendar, Month};
+//!
+//! let cal = Calendar::gregorian();
+//! let date = cal.at_ymd(2023, Month::April, 30).unwrap();
+//! assert_eq!(date.julian_day_number(), 2460065);
+//! ```
+//!
+//! See the documentation below for more things you can do!
+//!
+//! Terminology and Conventions Used by This Crate
+//! ==============================================
+//!
+//! Julian Day Numbers
+//! ------------------
+//!
+//! A [Julian day number][jdn] is an integer assigned to each day, with day 0
+//! being January 1, 4713 BC, in the proleptic Julian calendar (or November 24,
+//! 4714 BC, in the proleptic Gregorian calendar), ticking over at midnight
+//! UTC.  For example, the Julian day number for the day I'm writing this,
+//! April 30, 2023, in the Gregorian calendar is 2460065.
+//!
+//! Years
+//! -----
+//!
+//! `julian` uses [astronomical year numbering][yzero], where 1 BC (the year
+//! immediately before AD 1) is denoted on input & output as year 0 (or "0000"
+//! when displaying a date), and the year before that (normally called 2 BC) is
+//! denoted -1 (displayed as "-0001").  Thus, 4713 BC is represented by this
+//! crate as -4712.
+//!
+//! In addition, the start of the year is always taken as being on January 1,
+//! even though [not all users of the Julian calendar throughout history have
+//! followed this convention][NYD].
+//!
+//! Calendars
+//! ---------
+//!
+//! `julian` works with three types of calendars.  The first is the [proleptic
+//! Julian calendar][julian], in which a leap day is inserted at the end of
+//! February in every fourth year.  "Proleptic" means that this system is
+//! extended backwards before its historical introduction, including pretending
+//! that [early inaccuracies in applying the leap year rule][leap-error] never
+//! happened.  If you wish to determine the exact date of an event recorded
+//! before AD 8, you will need to consult external sources.
+//!
+//! However, the Julian calendar's rule for inserting leap years proved
+//! insufficiently accurate to the solar year, causing the dates of the
+//! solstices and equinoctes to drift earlier in the calendar over the
+//! centuries.  This was a problem for the Catholic Church, which set the date
+//! of Easter based on the first full moon after March 21, which was expected
+//! to be the date of the vernal equinox by the First Council of Nicaea in AD
+//! 325.  Eventually, Pope Gregory XIII proclaimed a reformation to the
+//! calendar to address this problem: Leap years would thereafter only be
+//! observed in years divisible by four, excluding years divisible by 100 that
+//! were not also divisible by 400.  Moreover, in order to align the calendar
+//! so that the vernal equinox once again fell on March 21, ten days were to be
+//! skipped in October 1582, with the day after October 4 being October 15.
+//!
+//! This gives us the second calendar that `julian` works with: the [proleptic
+//! Gregorian calendar][gregorian], which uses the leap year rule given above
+//! and which is only aligned with the Julian calendar from March 1, AD 200,
+//! through February 28, AD 300.
+//!
+//! For political and other reasons, not every jurisdiction immediately adopted
+//! the Gregorian calendar.  For example, Great Britain and its colonies did
+//! not switch until 1752, when September 2 was followed by September 14, and
+//! Russia (arguably the last major country to switch) did not reform its
+//! calendar until 1918.  During these reforms, when one could be expected to
+//! communicate with people using a calendar slightly off from one's own, it
+//! was conventional to give the date in both the Julian and Gregorian
+//! calendars, with the Julian date marked as "Old Style" or "O.S." and the
+//! Gregorian date marked as "New Style" or "N.S."  This documentation follows
+//! the same convention for most dates.
+//!
+//! Because of these changes in calendar, there is a third calendar — or
+//! rather, a class of infinitely many calendars[^infinite] — that `julian`
+//! must deal with: a calendar that follows the Julian rule for leap days for
+//! some time before undergoing a calendar reformation, switching to the
+//! Gregorian rule and skipping some number of dates in order to align with the
+//! proleptic Gregorian calendar.  `julian` calls these "reforming" calendars,
+//! and each one is defined by the date (as a Julian day number) on which the
+//! Gregorian calendar was first used.
+//!
+//! Days and Day Ordinals
+//! ---------------------
+//!
+//! Because "reforming" calendars (described above) necessarily skip some dates
+//! at some point, it is not always the case that day *n* of a month is the
+//! *n*-th date of that month.  For example, for the initial reformation in
+//! 1582, October 4 (the fourth day of the month) was followed by October 15
+//! (the fifth day of the month).  `julian` calls the actual day numbers that
+//! are written in dates "days" (queried with [`Date::day()`]), and a given
+//! day's one-based ordinal index in its month is called the "day ordinal"
+//! (queried with [`Date::day_ordinal()`]).
+//!
+//! [jdn]: https://en.wikipedia.org/wiki/Julian_day
+//! [yzero]: https://en.wikipedia.org/wiki/Astronomical_year_numbering
+//! [NYD]: https://en.wikipedia.org/wiki/Julian_calendar#New_Year's_Day
+//! [ordinal dates]: https://en.wikipedia.org/wiki/Ordinal_date
+//! [julian]: https://en.wikipedia.org/wiki/Proleptic_Julian_calendar
+//! [leap-error]: https://en.wikipedia.org/wiki/Julian_calendar#Leap_year_error
+//! [gregorian]: https://en.wikipedia.org/wiki/Proleptic_Gregorian_calendar
+//!
+//! [^infinite]: Technically, as far as this library (limited by finite integer
+//!     arithmetic) is concerned, 2,145,608,897 calendars.
+//!
+//! Valid Input Value Ranges
+//! ========================
+//!
+//! Care has been taken to support converting to & from all Julian day numbers
+//! that fit in an [`i32`].  Other forms of input — i.e., dates and Unix
+//! timestamps — can only be supported so long as their corresponding Julian
+//! day numbers fit in this type.  Thus, the ranges of accepted input values
+//! are:
+//!
+//! |                         | Minimum          | Maximum         |
+//! | ----------------------- | ---------------- | --------------- |
+//! | Julian day number       | -2147483648      | 2147483647      |
+//! | Julian calendar date    | -5884202-03-16   | 5874777-10-17   |
+//! | Gregorian calendar date | -5884323-05-15   | 5874898-06-03   |
+//! | Unix timestamp          | -185753453990400 | 185331720383999 |
+
 #[cfg(test)]
 extern crate rstest_reuse;
 
@@ -226,7 +386,7 @@ impl Calendar {
     }
 
     /// Returns the current date according to the calendar, along with a count
-    /// of seconds since midnight.  UTC is used as the timezone.
+    /// of seconds since midnight UTC.
     ///
     /// # Errors
     ///
@@ -239,8 +399,7 @@ impl Calendar {
     }
 
     /// Returns the date according to the calendar for the given system time,
-    /// along with a count of seconds since midnight.  UTC is used as the
-    /// timezone.
+    /// along with a count of seconds since midnight UTC.
     ///
     /// # Errors
     ///
@@ -254,8 +413,7 @@ impl Calendar {
     }
 
     /// Returns the date according to the calendar for the given [Unix time][],
-    /// along with a count of seconds since midnight.  UTC is used as the
-    /// timezone.
+    /// along with a count of seconds since midnight UTC.
     ///
     /// [Unix time]: https://en.wikipedia.org/wiki/Unix_time
     ///
@@ -1648,8 +1806,7 @@ pub enum ParseDateError {
 }
 
 /// Converts a [`std::time::SystemTime`] instance to the corresponding Julian
-/// day number, along with a count of seconds since midnight.  UTC is used as
-/// the timezone.
+/// day number, along with a count of seconds since midnight UTC.
 ///
 /// # Errors
 ///
@@ -1667,7 +1824,7 @@ pub fn system2jdn(t: SystemTime) -> Result<(Jdnum, u32), ArithmeticError> {
 }
 
 /// Converts a [Unix time][] to the corresponding Julian day number, along with
-/// a count of seconds since midnight.  UTC is used as the timezone.
+/// a count of seconds since midnight UTC.
 ///
 /// [Unix time]: https://en.wikipedia.org/wiki/Unix_time
 ///
