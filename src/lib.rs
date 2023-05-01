@@ -1046,6 +1046,16 @@ impl MonthShape {
 
     /// Returns the number of days in the month, not counting days skipped due
     /// to a calendar reformation
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let shape = cal.month_shape(1582, Month::October).unwrap();
+    /// assert_eq!(shape.len(), 21);
+    /// ```
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> u32 {
         use inner::MonthShape::*;
@@ -1065,6 +1075,22 @@ impl MonthShape {
     /// returned for a value between [`MonthShape::first_day()`] and
     /// [`MonthShape::last_day()`] if one or more days in the middle of the
     /// month were skipped by a calendar reformation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let shape = cal.month_shape(1582, Month::October).unwrap();
+    /// assert!(shape.contains(1));
+    /// assert!(shape.contains(4));
+    /// assert!(!shape.contains(5));
+    /// assert!(!shape.contains(14));
+    /// assert!(shape.contains(15));
+    /// assert!(shape.contains(31));
+    /// assert!(!shape.contains(32));
+    /// ```
     pub fn contains(&self, day: u32) -> bool {
         use inner::MonthShape::*;
         match self.inner {
@@ -1082,6 +1108,16 @@ impl MonthShape {
     /// Returns the first day of the month.  This can be larger than 1 in cases
     /// where one or more days at the beginning of the month were skipped due
     /// to a calendar reformation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let shape = cal.month_shape(1582, Month::October).unwrap();
+    /// assert_eq!(shape.first_day(), 1);
+    /// ```
     pub fn first_day(&self) -> u32 {
         use inner::MonthShape::*;
         match self.inner {
@@ -1093,6 +1129,15 @@ impl MonthShape {
     /// Returns the last day of the month.  This can be smaller than the
     /// "traditional" length in cases where one or more days at the end of the
     /// month were skipped due to a calendar reformation.
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let shape = cal.month_shape(1582, Month::October).unwrap();
+    /// assert_eq!(shape.last_day(), 31);
+    /// ```
     pub fn last_day(&self) -> u32 {
         use inner::MonthShape::*;
         match self.inner {
@@ -1108,6 +1153,22 @@ impl MonthShape {
     /// *not* count days skipped due to a calendar reformation.
     ///
     /// Returns `None` if the given day does not occur in the month.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let shape = cal.month_shape(1582, Month::October).unwrap();
+    /// assert_eq!(shape.day_ordinal(1), Some(1));
+    /// assert_eq!(shape.day_ordinal(4), Some(4));
+    /// assert_eq!(shape.day_ordinal(5), None);
+    /// assert_eq!(shape.day_ordinal(14), None);
+    /// assert_eq!(shape.day_ordinal(15), Some(5));
+    /// assert_eq!(shape.day_ordinal(31), Some(21));
+    /// assert_eq!(shape.day_ordinal(32), None);
+    /// ```
     pub fn day_ordinal(&self, day: u32) -> Option<u32> {
         self.day_ordinal_err(day).ok()
     }
@@ -1212,6 +1273,22 @@ impl MonthShape {
     /// month.
     ///
     /// Returns `None` if `day` is 0 or larger than [`MonthShape::len()`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let shape = cal.month_shape(1582, Month::October).unwrap();
+    /// assert_eq!(shape.nth_day(0), None);
+    /// assert_eq!(shape.nth_day(1), Some(1));
+    /// assert_eq!(shape.nth_day(2), Some(2));
+    /// assert_eq!(shape.nth_day(4), Some(4));
+    /// assert_eq!(shape.nth_day(5), Some(15));
+    /// assert_eq!(shape.nth_day(21), Some(31));
+    /// assert_eq!(shape.nth_day(22), None);
+    /// ```
     pub fn nth_day(&self, day_ordinal: u32) -> Option<u32> {
         use inner::MonthShape::*;
         match self.inner {
@@ -1241,6 +1318,16 @@ impl MonthShape {
     /// reformation.
     ///
     /// Returns `None` if the month was not affected by a reformation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let shape = cal.month_shape(1582, Month::October).unwrap();
+    /// assert_eq!(shape.gap(), Some(5..=14));
+    /// ```
     pub fn gap(&self) -> Option<RangeInclusive<u32>> {
         use inner::MonthShape::*;
         match self.inner {
@@ -1257,6 +1344,16 @@ impl MonthShape {
     }
 
     /// Returns the [`MonthKind`] for the month
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month, MonthKind};
+    ///
+    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let shape = cal.month_shape(1582, Month::October).unwrap();
+    /// assert_eq!(shape.kind(), MonthKind::Gapped);
+    /// ```
     pub fn kind(&self) -> MonthKind {
         use inner::MonthShape::*;
         match self.inner {
@@ -1268,6 +1365,21 @@ impl MonthShape {
     }
 
     /// Returns an iterator over all the valid days of the month
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month, MonthKind};
+    ///
+    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let shape = cal.month_shape(1582, Month::October).unwrap();
+    /// let days = shape.days().collect::<Vec<u32>>();
+    /// assert_eq!(days, [
+    ///      1,  2,  3,  4, 15, 16, 17,
+    ///     18, 19, 20, 21, 22, 23, 24,
+    ///     25, 26, 27, 28, 29, 30, 31,
+    /// ]);
+    /// ```
     pub fn days(&self) -> Days {
         Days::new(*self)
     }
