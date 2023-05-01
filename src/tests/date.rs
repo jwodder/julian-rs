@@ -2,25 +2,19 @@ use crate::{ncal, Calendar, Month};
 
 #[test]
 fn display() {
-    let date = Calendar::GREGORIAN_REFORM
-        .at_ymd(2023, Month::April, 20)
-        .unwrap();
+    let date = Calendar::REFORM1582.at_ymd(2023, Month::April, 20).unwrap();
     assert_eq!(format!("{date}"), "2023-04-20");
 }
 
 #[test]
 fn alternate_display() {
-    let date = Calendar::GREGORIAN_REFORM
-        .at_ymd(2023, Month::April, 20)
-        .unwrap();
+    let date = Calendar::REFORM1582.at_ymd(2023, Month::April, 20).unwrap();
     assert_eq!(format!("{date:#}"), "2023-110");
 }
 
 #[test]
 fn alternate_display_padded() {
-    let date = Calendar::GREGORIAN_REFORM
-        .at_ymd(2023, Month::March, 15)
-        .unwrap();
+    let date = Calendar::REFORM1582.at_ymd(2023, Month::March, 15).unwrap();
     assert_eq!(format!("{date:#}"), "2023-074");
 }
 
@@ -28,7 +22,7 @@ fn alternate_display_padded() {
 fn ord() {
     use std::cmp::Ordering;
     let julian = Calendar::julian();
-    let r1582 = Calendar::GREGORIAN_REFORM;
+    let r1582 = Calendar::REFORM1582;
     let r1752 = Calendar::reforming(ncal::UNITED_KINGDOM).unwrap();
     let gregorian = Calendar::gregorian();
     let dates = [

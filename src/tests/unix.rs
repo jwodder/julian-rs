@@ -23,7 +23,7 @@ fn at_unix_time(
     #[case] day: u32,
     #[case] seconds: u32,
 ) {
-    let (date, s) = Calendar::GREGORIAN_REFORM.at_unix_time(ts).unwrap();
+    let (date, s) = Calendar::REFORM1582.at_unix_time(ts).unwrap();
     assert_eq!(date.year(), year);
     assert_eq!(date.month(), month);
     assert_eq!(date.day(), day);
@@ -32,14 +32,14 @@ fn at_unix_time(
 
 #[test]
 fn cal_pre_min_unix_time() {
-    let r = Calendar::GREGORIAN_REFORM.at_unix_time(-185753453990401);
+    let r = Calendar::REFORM1582.at_unix_time(-185753453990401);
     assert_eq!(r, Err(ArithmeticError));
     assert_eq!(r.unwrap_err().to_string(), "arithmetic overflow/underflow");
 }
 
 #[test]
 fn cal_past_max_unix_time() {
-    let r = Calendar::GREGORIAN_REFORM.at_unix_time(185331720384000);
+    let r = Calendar::REFORM1582.at_unix_time(185331720384000);
     assert_eq!(r, Err(ArithmeticError));
     assert_eq!(r.unwrap_err().to_string(), "arithmetic overflow/underflow");
 }

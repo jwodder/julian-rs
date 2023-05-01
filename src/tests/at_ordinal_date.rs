@@ -1094,9 +1094,7 @@ fn at_ordinal_date(
     #[case] month: Month,
     #[case] day: u32,
 ) {
-    let date = Calendar::GREGORIAN_REFORM
-        .at_ordinal_date(year, ordinal)
-        .unwrap();
+    let date = Calendar::REFORM1582.at_ordinal_date(year, ordinal).unwrap();
     assert_eq!(date.year(), year);
     assert_eq!(date.ordinal(), ordinal);
     assert_eq!(date.month(), month);
@@ -1117,7 +1115,7 @@ fn at_ordinal_date(
 #[case(1582, 1000, 355)]
 #[case(1582, 2147483647, 355)]
 fn at_ordinal_date_err(#[case] year: i32, #[case] ordinal: u32, #[case] max_ordinal: u32) {
-    let r = Calendar::GREGORIAN_REFORM.at_ordinal_date(year, ordinal);
+    let r = Calendar::REFORM1582.at_ordinal_date(year, ordinal);
     assert_eq!(
         r,
         Err(DateError::OrdinalOutOfRange {

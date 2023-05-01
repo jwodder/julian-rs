@@ -4,7 +4,7 @@ use rstest::rstest;
 
 #[test]
 fn ymd() {
-    let date = Calendar::GREGORIAN_REFORM.parse_date("2023-04-20").unwrap();
+    let date = Calendar::REFORM1582.parse_date("2023-04-20").unwrap();
     assert_eq!(date.year(), 2023);
     assert_eq!(date.month(), Month::April);
     assert_eq!(date.day(), 20);
@@ -13,7 +13,7 @@ fn ymd() {
 
 #[test]
 fn ordinal_date() {
-    let date = Calendar::GREGORIAN_REFORM.parse_date("2023-110").unwrap();
+    let date = Calendar::REFORM1582.parse_date("2023-110").unwrap();
     assert_eq!(date.year(), 2023);
     assert_eq!(date.month(), Month::April);
     assert_eq!(date.day(), 20);
@@ -22,7 +22,7 @@ fn ordinal_date() {
 
 #[test]
 fn ordinal_date_padded() {
-    let date = Calendar::GREGORIAN_REFORM.parse_date("2023-006").unwrap();
+    let date = Calendar::REFORM1582.parse_date("2023-006").unwrap();
     assert_eq!(date.year(), 2023);
     assert_eq!(date.month(), Month::January);
     assert_eq!(date.day(), 6);
@@ -31,9 +31,7 @@ fn ordinal_date_padded() {
 
 #[test]
 fn negative_ymd() {
-    let date = Calendar::GREGORIAN_REFORM
-        .parse_date("-2023-04-20")
-        .unwrap();
+    let date = Calendar::REFORM1582.parse_date("-2023-04-20").unwrap();
     assert_eq!(date.year(), -2023);
     assert_eq!(date.month(), Month::April);
     assert_eq!(date.day(), 20);
@@ -42,9 +40,7 @@ fn negative_ymd() {
 
 #[test]
 fn plus_ymd() {
-    let date = Calendar::GREGORIAN_REFORM
-        .parse_date("+2023-04-20")
-        .unwrap();
+    let date = Calendar::REFORM1582.parse_date("+2023-04-20").unwrap();
     assert_eq!(date.year(), 2023);
     assert_eq!(date.month(), Month::April);
     assert_eq!(date.day(), 20);
@@ -53,7 +49,7 @@ fn plus_ymd() {
 
 #[test]
 fn ymd_short_year() {
-    let date = Calendar::GREGORIAN_REFORM.parse_date("20-04-20").unwrap();
+    let date = Calendar::REFORM1582.parse_date("20-04-20").unwrap();
     assert_eq!(date.year(), 20);
     assert_eq!(date.month(), Month::April);
     assert_eq!(date.day(), 20);
@@ -62,21 +58,21 @@ fn ymd_short_year() {
 
 #[test]
 fn short_ordinal() {
-    let date = Calendar::GREGORIAN_REFORM.parse_date("1234-56").unwrap();
+    let date = Calendar::REFORM1582.parse_date("1234-56").unwrap();
     assert_eq!(date.year(), 1234);
     assert_eq!(date.ordinal(), 56);
 }
 
 #[test]
 fn long_ordinal() {
-    let date = Calendar::GREGORIAN_REFORM.parse_date("1234-0078").unwrap();
+    let date = Calendar::REFORM1582.parse_date("1234-0078").unwrap();
     assert_eq!(date.year(), 1234);
     assert_eq!(date.ordinal(), 78);
 }
 
 #[test]
 fn big_ordinal() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("1234-5678");
+    let r = Calendar::REFORM1582.parse_date("1234-5678");
     assert_eq!(
         r,
         Err(ParseDateError::InvalidDate(DateError::OrdinalOutOfRange {
@@ -93,7 +89,7 @@ fn big_ordinal() {
 
 #[test]
 fn ymd_short_month() {
-    let date = Calendar::GREGORIAN_REFORM.parse_date("2023-4-20").unwrap();
+    let date = Calendar::REFORM1582.parse_date("2023-4-20").unwrap();
     assert_eq!(date.year(), 2023);
     assert_eq!(date.month(), Month::April);
     assert_eq!(date.day(), 20);
@@ -101,9 +97,7 @@ fn ymd_short_month() {
 
 #[test]
 fn ymd_long_month() {
-    let date = Calendar::GREGORIAN_REFORM
-        .parse_date("2023-012-20")
-        .unwrap();
+    let date = Calendar::REFORM1582.parse_date("2023-012-20").unwrap();
     assert_eq!(date.year(), 2023);
     assert_eq!(date.month(), Month::December);
     assert_eq!(date.day(), 20);
@@ -111,7 +105,7 @@ fn ymd_long_month() {
 
 #[test]
 fn ymd_short_day() {
-    let date = Calendar::GREGORIAN_REFORM.parse_date("2023-04-2").unwrap();
+    let date = Calendar::REFORM1582.parse_date("2023-04-2").unwrap();
     assert_eq!(date.year(), 2023);
     assert_eq!(date.month(), Month::April);
     assert_eq!(date.day(), 2);
@@ -119,7 +113,7 @@ fn ymd_short_day() {
 
 #[test]
 fn year_hyphen() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-");
+    let r = Calendar::REFORM1582.parse_date("2023-");
     assert_eq!(r, Err(ParseDateError::EmptyInt));
     assert_eq!(
         r.unwrap_err().to_string(),
@@ -129,7 +123,7 @@ fn year_hyphen() {
 
 #[test]
 fn year_month_hyphen() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-04-");
+    let r = Calendar::REFORM1582.parse_date("2023-04-");
     assert_eq!(r, Err(ParseDateError::EmptyInt));
     assert_eq!(
         r.unwrap_err().to_string(),
@@ -139,7 +133,7 @@ fn year_month_hyphen() {
 
 #[test]
 fn year_hyphen_hyphen_md() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023--04-20");
+    let r = Calendar::REFORM1582.parse_date("2023--04-20");
     assert_eq!(r, Err(ParseDateError::InvalidUIntStart { got: '-' }));
     assert_eq!(
         r.unwrap_err().to_string(),
@@ -149,21 +143,21 @@ fn year_hyphen_hyphen_md() {
 
 #[test]
 fn zero_month() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-00-13");
+    let r = Calendar::REFORM1582.parse_date("2023-00-13");
     assert_eq!(r, Err(ParseDateError::InvalidMonth { value: 0 }));
     assert_eq!(r.unwrap_err().to_string(), "invalid month number: 0");
 }
 
 #[test]
 fn smarch() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-13-13");
+    let r = Calendar::REFORM1582.parse_date("2023-13-13");
     assert_eq!(r, Err(ParseDateError::InvalidMonth { value: 13 }));
     assert_eq!(r.unwrap_err().to_string(), "invalid month number: 13");
 }
 
 #[test]
 fn day_0() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-04-00");
+    let r = Calendar::REFORM1582.parse_date("2023-04-00");
     assert_eq!(
         r,
         Err(ParseDateError::InvalidDate(DateError::DayOutOfRange {
@@ -182,7 +176,7 @@ fn day_0() {
 
 #[test]
 fn day_32() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-04-32");
+    let r = Calendar::REFORM1582.parse_date("2023-04-32");
     assert_eq!(
         r,
         Err(ParseDateError::InvalidDate(DateError::DayOutOfRange {
@@ -201,7 +195,7 @@ fn day_32() {
 
 #[test]
 fn sep_31() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-09-31");
+    let r = Calendar::REFORM1582.parse_date("2023-09-31");
     assert_eq!(
         r,
         Err(ParseDateError::InvalidDate(DateError::DayOutOfRange {
@@ -220,7 +214,7 @@ fn sep_31() {
 
 #[test]
 fn invalid_leap_day() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-02-29");
+    let r = Calendar::REFORM1582.parse_date("2023-02-29");
     assert_eq!(
         r,
         Err(ParseDateError::InvalidDate(DateError::DayOutOfRange {
@@ -239,7 +233,7 @@ fn invalid_leap_day() {
 
 #[test]
 fn valid_leap_day() {
-    let date = Calendar::GREGORIAN_REFORM.parse_date("2024-02-29").unwrap();
+    let date = Calendar::REFORM1582.parse_date("2024-02-29").unwrap();
     assert_eq!(date.year(), 2024);
     assert_eq!(date.month(), Month::February);
     assert_eq!(date.day(), 29);
@@ -247,7 +241,7 @@ fn valid_leap_day() {
 
 #[test]
 fn skipped_date() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("1582-10-10");
+    let r = Calendar::REFORM1582.parse_date("1582-10-10");
     assert_eq!(
         r,
         Err(ParseDateError::InvalidDate(DateError::SkippedDate {
@@ -264,7 +258,7 @@ fn skipped_date() {
 
 #[test]
 fn first_skipped_date() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("1582-10-05");
+    let r = Calendar::REFORM1582.parse_date("1582-10-05");
     assert_eq!(
         r,
         Err(ParseDateError::InvalidDate(DateError::SkippedDate {
@@ -281,7 +275,7 @@ fn first_skipped_date() {
 
 #[test]
 fn last_skipped_date() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("1582-10-14");
+    let r = Calendar::REFORM1582.parse_date("1582-10-14");
     assert_eq!(
         r,
         Err(ParseDateError::InvalidDate(DateError::SkippedDate {
@@ -307,7 +301,7 @@ fn last_skipped_date() {
 #[case(1582, 356, 355)]
 #[case(1582, 1000, 355)]
 fn invalid_ordinal_date(#[case] year: i32, #[case] ordinal: u32, #[case] max_ordinal: u32) {
-    let r = Calendar::GREGORIAN_REFORM.parse_date(&format!("{year:04}-{ordinal:03}"));
+    let r = Calendar::REFORM1582.parse_date(&format!("{year:04}-{ordinal:03}"));
     assert_eq!(
         r,
         Err(ParseDateError::InvalidDate(DateError::OrdinalOutOfRange {
@@ -324,7 +318,7 @@ fn invalid_ordinal_date(#[case] year: i32, #[case] ordinal: u32, #[case] max_ord
 
 #[test]
 fn bad_month_day_sep() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-04:20");
+    let r = Calendar::REFORM1582.parse_date("2023-04:20");
     assert_eq!(
         r,
         Err(ParseDateError::UnexpectedChar {
@@ -337,7 +331,7 @@ fn bad_month_day_sep() {
 
 #[test]
 fn bad_year_month_sep() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023:04-20");
+    let r = Calendar::REFORM1582.parse_date("2023:04-20");
     assert_eq!(
         r,
         Err(ParseDateError::UnexpectedChar {
@@ -350,7 +344,7 @@ fn bad_year_month_sep() {
 
 #[test]
 fn bad_year_ordinal_sep() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023:110");
+    let r = Calendar::REFORM1582.parse_date("2023:110");
     assert_eq!(
         r,
         Err(ParseDateError::UnexpectedChar {
@@ -363,14 +357,14 @@ fn bad_year_ordinal_sep() {
 
 #[test]
 fn just_year() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023");
+    let r = Calendar::REFORM1582.parse_date("2023");
     assert_eq!(r, Err(ParseDateError::UnexpectedEnd { expected: '-' }));
     assert_eq!(r.unwrap_err().to_string(), "expected '-', got end of input");
 }
 
 #[test]
 fn nonint_year() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("202e-04-20");
+    let r = Calendar::REFORM1582.parse_date("202e-04-20");
     assert_eq!(
         r,
         Err(ParseDateError::UnexpectedChar {
@@ -383,7 +377,7 @@ fn nonint_year() {
 
 #[test]
 fn colon_ymd() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date(":2023-04-20");
+    let r = Calendar::REFORM1582.parse_date(":2023-04-20");
     assert_eq!(r, Err(ParseDateError::InvalidIntStart { got: ':' }));
     assert_eq!(
         r.unwrap_err().to_string(),
@@ -393,7 +387,7 @@ fn colon_ymd() {
 
 #[test]
 fn empty() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("");
+    let r = Calendar::REFORM1582.parse_date("");
     assert_eq!(r, Err(ParseDateError::EmptyInt));
     assert_eq!(
         r.unwrap_err().to_string(),
@@ -404,48 +398,48 @@ fn empty() {
 #[test]
 fn hyphen_hyphen_start() {
     use std::num::IntErrorKind::InvalidDigit;
-    let r = Calendar::GREGORIAN_REFORM.parse_date("--12-23-56");
+    let r = Calendar::REFORM1582.parse_date("--12-23-56");
     assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &InvalidDigit);
 }
 
 #[test]
 fn too_large_year() {
     use std::num::IntErrorKind::PosOverflow;
-    let r = Calendar::GREGORIAN_REFORM.parse_date("999999999999-01-01");
+    let r = Calendar::REFORM1582.parse_date("999999999999-01-01");
     assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &PosOverflow);
 }
 
 #[test]
 fn too_small_year() {
     use std::num::IntErrorKind::NegOverflow;
-    let r = Calendar::GREGORIAN_REFORM.parse_date("-999999999999-01-01");
+    let r = Calendar::REFORM1582.parse_date("-999999999999-01-01");
     assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &NegOverflow);
 }
 
 #[test]
 fn too_large_month() {
     use std::num::IntErrorKind::PosOverflow;
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-999999999999-01");
+    let r = Calendar::REFORM1582.parse_date("2023-999999999999-01");
     assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &PosOverflow);
 }
 
 #[test]
 fn too_large_day() {
     use std::num::IntErrorKind::PosOverflow;
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-04-999999999999");
+    let r = Calendar::REFORM1582.parse_date("2023-04-999999999999");
     assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &PosOverflow);
 }
 
 #[test]
 fn too_large_ordinal() {
     use std::num::IntErrorKind::PosOverflow;
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-999999999999");
+    let r = Calendar::REFORM1582.parse_date("2023-999999999999");
     assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &PosOverflow);
 }
 
 #[test]
 fn trailing() {
-    let r = Calendar::GREGORIAN_REFORM.parse_date("2023-04-20.");
+    let r = Calendar::REFORM1582.parse_date("2023-04-20.");
     assert_eq!(r, Err(ParseDateError::Trailing));
     assert_eq!(r.unwrap_err().to_string(), "trailing characters after date");
 }

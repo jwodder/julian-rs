@@ -178,7 +178,7 @@ pub type Jdnum = i32;
 
 /// The Julian day number of the date at which the Gregorian Reformation was
 /// first put into effect (1582-10-15, following 1582-10-04 O.S.)
-pub const GREGORIAN: Jdnum = 2299161;
+pub const REFORM1582_JDN: Jdnum = 2299161;
 
 /// The Julian day number of the start of the Unix epoch (1970-01-01)
 pub const UNIX_EPOCH_JDN: Jdnum = 2440588;
@@ -280,8 +280,8 @@ impl Calendar {
     /// (i.e., 1582-10-15, following 1582-10-04 O.S.).
     ///
     /// This calendar is equal to
-    /// `Calendar::reforming(julian::GREGORIAN).unwrap()`.
-    pub const GREGORIAN_REFORM: Calendar = Calendar(inner::Calendar::Reforming {
+    /// `Calendar::reforming(julian::REFORM1582_JDN).unwrap()`.
+    pub const REFORM1582: Calendar = Calendar(inner::Calendar::Reforming {
         reformation: 2299161,
         gap: inner::ReformGap {
             pre_reform: inner::Date {
@@ -646,7 +646,7 @@ impl Calendar {
     /// ```
     /// use julian::{Calendar, Month};
     ///
-    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let cal = Calendar::REFORM1582;
     /// let date = cal.last_julian_date().unwrap();
     /// assert_eq!(date.year(), 1582);
     /// assert_eq!(date.month(), Month::October);
@@ -676,7 +676,7 @@ impl Calendar {
     /// ```
     /// use julian::{Calendar, Month};
     ///
-    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let cal = Calendar::REFORM1582;
     /// let date = cal.first_gregorian_date().unwrap();
     /// assert_eq!(date.year(), 1582);
     /// assert_eq!(date.month(), Month::October);
@@ -710,7 +710,7 @@ impl Calendar {
     /// ```
     /// use julian::{Calendar, YearKind};
     ///
-    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let cal = Calendar::REFORM1582;
     /// assert_eq!(cal.year_kind(1582), YearKind::ReformCommon);
     /// assert_eq!(cal.year_kind(1900), YearKind::Common);
     /// assert_eq!(cal.year_kind(2000), YearKind::Leap);
@@ -810,7 +810,7 @@ impl Calendar {
     /// ```
     /// use julian::{Calendar, YearKind};
     ///
-    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let cal = Calendar::REFORM1582;
     /// assert_eq!(cal.year_length(1582), 355);
     /// assert_eq!(cal.year_length(1900), 365);
     /// assert_eq!(cal.year_length(2000), 366);
@@ -1052,7 +1052,7 @@ impl MonthShape {
     /// ```
     /// use julian::{Calendar, Month};
     ///
-    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let cal = Calendar::REFORM1582;
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// assert_eq!(shape.len(), 21);
     /// ```
@@ -1081,7 +1081,7 @@ impl MonthShape {
     /// ```
     /// use julian::{Calendar, Month};
     ///
-    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let cal = Calendar::REFORM1582;
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// assert!(shape.contains(1));
     /// assert!(shape.contains(4));
@@ -1114,7 +1114,7 @@ impl MonthShape {
     /// ```
     /// use julian::{Calendar, Month};
     ///
-    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let cal = Calendar::REFORM1582;
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// assert_eq!(shape.first_day(), 1);
     /// ```
@@ -1134,7 +1134,7 @@ impl MonthShape {
     /// ```
     /// use julian::{Calendar, Month};
     ///
-    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let cal = Calendar::REFORM1582;
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// assert_eq!(shape.last_day(), 31);
     /// ```
@@ -1159,7 +1159,7 @@ impl MonthShape {
     /// ```
     /// use julian::{Calendar, Month};
     ///
-    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let cal = Calendar::REFORM1582;
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// assert_eq!(shape.day_ordinal(1), Some(1));
     /// assert_eq!(shape.day_ordinal(4), Some(4));
@@ -1279,7 +1279,7 @@ impl MonthShape {
     /// ```
     /// use julian::{Calendar, Month};
     ///
-    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let cal = Calendar::REFORM1582;
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// assert_eq!(shape.nth_day(0), None);
     /// assert_eq!(shape.nth_day(1), Some(1));
@@ -1324,7 +1324,7 @@ impl MonthShape {
     /// ```
     /// use julian::{Calendar, Month};
     ///
-    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let cal = Calendar::REFORM1582;
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// assert_eq!(shape.gap(), Some(5..=14));
     /// ```
@@ -1350,7 +1350,7 @@ impl MonthShape {
     /// ```
     /// use julian::{Calendar, Month, MonthKind};
     ///
-    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let cal = Calendar::REFORM1582;
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// assert_eq!(shape.kind(), MonthKind::Gapped);
     /// ```
@@ -1371,7 +1371,7 @@ impl MonthShape {
     /// ```
     /// use julian::{Calendar, Month, MonthKind};
     ///
-    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let cal = Calendar::REFORM1582;
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// let days = shape.days().collect::<Vec<u32>>();
     /// assert_eq!(days, [
@@ -1490,14 +1490,14 @@ impl Date {
     /// # Example
     ///
     /// ```
-    /// use julian::{Calendar, GREGORIAN};
+    /// use julian::{Calendar, REFORM1582_JDN};
     ///
-    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let cal = Calendar::REFORM1582;
     ///
-    /// let pre_reform = cal.at_jdn(GREGORIAN - 1);
+    /// let pre_reform = cal.at_jdn(REFORM1582_JDN - 1);
     /// assert_eq!(pre_reform.day(), 4);
     ///
-    /// let post_reform = cal.at_jdn(GREGORIAN);
+    /// let post_reform = cal.at_jdn(REFORM1582_JDN);
     /// assert_eq!(post_reform.day(), 15);
     /// ```
     pub fn day(&self) -> u32 {
@@ -1511,14 +1511,14 @@ impl Date {
     /// # Example
     ///
     /// ```
-    /// use julian::{Calendar, GREGORIAN};
+    /// use julian::{Calendar, REFORM1582_JDN};
     ///
-    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let cal = Calendar::REFORM1582;
     ///
-    /// let pre_reform = cal.at_jdn(GREGORIAN - 1);
+    /// let pre_reform = cal.at_jdn(REFORM1582_JDN - 1);
     /// assert_eq!(pre_reform.day_ordinal(), 4);
     ///
-    /// let post_reform = cal.at_jdn(GREGORIAN);
+    /// let post_reform = cal.at_jdn(REFORM1582_JDN);
     /// assert_eq!(post_reform.day_ordinal(), 5);
     /// ```
     pub fn day_ordinal(&self) -> u32 {

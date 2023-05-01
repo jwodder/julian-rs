@@ -1,4 +1,4 @@
-use crate::{ncal, Calendar, Month, MonthIter, MonthKind, YearKind, GREGORIAN};
+use crate::{ncal, Calendar, Month, MonthIter, MonthKind, YearKind, REFORM1582_JDN};
 
 #[test]
 fn julian_properties() {
@@ -26,12 +26,12 @@ fn gregorian_properties() {
 
 #[test]
 fn gregorian_reform_properties() {
-    let cal = Calendar::GREGORIAN_REFORM;
+    let cal = Calendar::REFORM1582;
     assert!(!cal.is_julian());
     assert!(!cal.is_gregorian());
     assert!(cal.is_reforming());
     assert!(!cal.is_proleptic());
-    assert_eq!(cal.reformation(), Some(GREGORIAN));
+    assert_eq!(cal.reformation(), Some(REFORM1582_JDN));
     let last_julian = cal.last_julian_date().unwrap();
     assert_eq!(last_julian.calendar(), &cal);
     assert_eq!(last_julian.year(), 1582);
@@ -78,7 +78,7 @@ fn ord() {
     let calendars = [
         Calendar::julian(),
         Calendar::reforming(1830692).unwrap(),
-        Calendar::GREGORIAN_REFORM,
+        Calendar::REFORM1582,
         Calendar::reforming(ncal::UNITED_KINGDOM).unwrap(),
         Calendar::reforming(ncal::RUSSIA).unwrap(),
         Calendar::reforming(2147439588).unwrap(),

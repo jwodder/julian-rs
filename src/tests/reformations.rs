@@ -1,6 +1,6 @@
 use crate::{
     inner, ncal, Calendar, DateError, Jdnum, Month, MonthKind, MonthShape, ReformingError,
-    YearKind, GREGORIAN,
+    YearKind, REFORM1582_JDN,
 };
 use rstest::rstest;
 
@@ -10,12 +10,12 @@ mod gregorian_reform {
 
     #[test]
     fn init() {
-        let cal = Calendar::reforming(GREGORIAN).unwrap();
-        assert_eq!(cal, Calendar::GREGORIAN_REFORM);
-        assert_eq!(cal.reformation(), Calendar::GREGORIAN_REFORM.reformation());
-        assert_eq!(cal.reformation(), Some(GREGORIAN));
+        let cal = Calendar::reforming(REFORM1582_JDN).unwrap();
+        assert_eq!(cal, Calendar::REFORM1582);
+        assert_eq!(cal.reformation(), Calendar::REFORM1582.reformation());
+        assert_eq!(cal.reformation(), Some(REFORM1582_JDN));
         let gap_fn = cal.gap().unwrap();
-        let gap_const = Calendar::GREGORIAN_REFORM.gap().unwrap();
+        let gap_const = Calendar::REFORM1582.gap().unwrap();
         assert_eq!(gap_fn, gap_const);
         assert_eq!(
             gap_fn,
@@ -44,7 +44,7 @@ mod gregorian_reform {
     #[test]
     fn reformation_month() {
         use Month::October;
-        let cal = Calendar::GREGORIAN_REFORM;
+        let cal = Calendar::REFORM1582;
         let shape = cal.month_shape(1582, October).unwrap();
         assert_eq!(
             shape,
@@ -124,7 +124,7 @@ mod gregorian_reform {
 
     #[test]
     fn gapped_month_days() {
-        let cal = Calendar::GREGORIAN_REFORM;
+        let cal = Calendar::REFORM1582;
         let shape = cal.month_shape(1582, Month::October).unwrap();
         let mut iter = shape.days();
         assert_eq!(iter.size_hint(), (21, Some(21)));
@@ -177,7 +177,7 @@ mod gregorian_reform {
 
     #[test]
     fn gapped_month_days_rev() {
-        let cal = Calendar::GREGORIAN_REFORM;
+        let cal = Calendar::REFORM1582;
         let shape = cal.month_shape(1582, Month::October).unwrap();
         let mut iter = shape.days().rev();
         assert_eq!(iter.size_hint(), (21, Some(21)));
@@ -266,7 +266,7 @@ mod gregorian_reform {
     #[case(1582, Month::November, 30)]
     #[case(1582, Month::December, 31)]
     fn month_length(#[case] year: i32, #[case] month: Month, #[case] length: u32) {
-        let cal = Calendar::GREGORIAN_REFORM;
+        let cal = Calendar::REFORM1582;
         assert_eq!(cal.month_shape(year, month).unwrap().len(), length);
     }
 }
