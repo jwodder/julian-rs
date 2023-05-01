@@ -104,7 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         writeln!(&mut fp, "    fn jdn_{}() {{", r.jdn_id())?;
         writeln!(&mut fp, "        let cal = Calendar::julian();")?;
         writeln!(&mut fp, "        let date = cal.at_jdn({});", r.jdn)?;
-        writeln!(&mut fp, "        assert_eq!(date.calendar(), &cal);")?;
+        writeln!(&mut fp, "        assert_eq!(date.calendar(), cal);")?;
         writeln!(&mut fp, "        assert!(date.is_julian());")?;
         writeln!(&mut fp, "        assert!(!date.is_gregorian());")?;
         r.julian_date().assert(&mut fp)?;
@@ -129,7 +129,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "        let date = cal.at_ymd({}, Month::{}, {}).unwrap();",
             r.jyear, r.jmonth, r.jday
         )?;
-        writeln!(&mut fp, "        assert_eq!(date.calendar(), &cal);")?;
+        writeln!(&mut fp, "        assert_eq!(date.calendar(), cal);")?;
         writeln!(&mut fp, "        assert!(date.is_julian());")?;
         writeln!(&mut fp, "        assert!(!date.is_gregorian());")?;
         r.julian_date().assert(&mut fp)?;
@@ -143,7 +143,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "        let date = cal.at_ordinal_date({}, {}).unwrap();",
             r.jyear, r.jordinal
         )?;
-        writeln!(&mut fp, "        assert_eq!(date.calendar(), &cal);")?;
+        writeln!(&mut fp, "        assert_eq!(date.calendar(), cal);")?;
         writeln!(&mut fp, "        assert!(date.is_julian());")?;
         writeln!(&mut fp, "        assert!(!date.is_gregorian());")?;
         r.julian_date().assert(&mut fp)?;
@@ -164,7 +164,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         writeln!(&mut fp, "    fn jdn_{}() {{", r.jdn_id())?;
         writeln!(&mut fp, "        let cal = Calendar::gregorian();")?;
         writeln!(&mut fp, "        let date = cal.at_jdn({});", r.jdn)?;
-        writeln!(&mut fp, "        assert_eq!(date.calendar(), &cal);")?;
+        writeln!(&mut fp, "        assert_eq!(date.calendar(), cal);")?;
         writeln!(&mut fp, "        assert!(!date.is_julian());")?;
         writeln!(&mut fp, "        assert!(date.is_gregorian());")?;
         r.gregorian_date().assert(&mut fp)?;
@@ -189,7 +189,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "        let date = cal.at_ymd({}, Month::{}, {}).unwrap();",
             r.gyear, r.gmonth, r.gday
         )?;
-        writeln!(&mut fp, "        assert_eq!(date.calendar(), &cal);")?;
+        writeln!(&mut fp, "        assert_eq!(date.calendar(), cal);")?;
         writeln!(&mut fp, "        assert!(!date.is_julian());")?;
         writeln!(&mut fp, "        assert!(date.is_gregorian());")?;
         r.gregorian_date().assert(&mut fp)?;
@@ -203,7 +203,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "        let date = cal.at_ordinal_date({}, {}).unwrap();",
             r.gyear, r.gordinal
         )?;
-        writeln!(&mut fp, "        assert_eq!(date.calendar(), &cal);")?;
+        writeln!(&mut fp, "        assert_eq!(date.calendar(), cal);")?;
         writeln!(&mut fp, "        assert!(!date.is_julian());")?;
         writeln!(&mut fp, "        assert!(date.is_gregorian());")?;
         r.gregorian_date().assert(&mut fp)?;

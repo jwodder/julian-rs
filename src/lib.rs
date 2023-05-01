@@ -1467,9 +1467,9 @@ pub struct Date {
 }
 
 impl Date {
-    /// Returns a reference to the [`Calendar`] to which the date belongs
-    pub fn calendar(&self) -> &Calendar {
-        &self.calendar
+    /// Returns the [`Calendar`] to which the date belongs
+    pub fn calendar(&self) -> Calendar {
+        self.calendar
     }
 
     /// Returns the date's year
