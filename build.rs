@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         writeln!(&mut fp, "    #[test]")?;
         writeln!(&mut fp, "    fn jdn_{}() {{", r.jdn_id())?;
-        writeln!(&mut fp, "        let cal = Calendar::julian();")?;
+        writeln!(&mut fp, "        let cal = Calendar::JULIAN;")?;
         writeln!(&mut fp, "        let date = cal.at_jdn({});", r.jdn)?;
         writeln!(&mut fp, "        assert_eq!(date.calendar(), cal);")?;
         writeln!(&mut fp, "        assert!(date.is_julian());")?;
@@ -123,7 +123,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         writeln!(&mut fp, "    #[test]")?;
         writeln!(&mut fp, "    fn jdn_{}_ymd() {{", r.jdn_id())?;
-        writeln!(&mut fp, "        let cal = Calendar::julian();")?;
+        writeln!(&mut fp, "        let cal = Calendar::JULIAN;")?;
         writeln!(
             &mut fp,
             "        let date = cal.at_ymd({}, Month::{}, {}).unwrap();",
@@ -137,7 +137,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         writeln!(&mut fp)?;
         writeln!(&mut fp, "    #[test]")?;
         writeln!(&mut fp, "    fn jdn_{}_ordinal() {{", r.jdn_id())?;
-        writeln!(&mut fp, "        let cal = Calendar::julian();")?;
+        writeln!(&mut fp, "        let cal = Calendar::JULIAN;")?;
         writeln!(
             &mut fp,
             "        let date = cal.at_ordinal_date({}, {}).unwrap();",
@@ -162,7 +162,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         writeln!(&mut fp, "    #[test]")?;
         writeln!(&mut fp, "    fn jdn_{}() {{", r.jdn_id())?;
-        writeln!(&mut fp, "        let cal = Calendar::gregorian();")?;
+        writeln!(&mut fp, "        let cal = Calendar::GREGORIAN;")?;
         writeln!(&mut fp, "        let date = cal.at_jdn({});", r.jdn)?;
         writeln!(&mut fp, "        assert_eq!(date.calendar(), cal);")?;
         writeln!(&mut fp, "        assert!(!date.is_julian());")?;
@@ -183,7 +183,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         writeln!(&mut fp, "    #[test]")?;
         writeln!(&mut fp, "    fn jdn_{}_ymd() {{", r.jdn_id())?;
-        writeln!(&mut fp, "        let cal = Calendar::gregorian();")?;
+        writeln!(&mut fp, "        let cal = Calendar::GREGORIAN;")?;
         writeln!(
             &mut fp,
             "        let date = cal.at_ymd({}, Month::{}, {}).unwrap();",
@@ -197,7 +197,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         writeln!(&mut fp)?;
         writeln!(&mut fp, "    #[test]")?;
         writeln!(&mut fp, "    fn jdn_{}_ordinal() {{", r.jdn_id())?;
-        writeln!(&mut fp, "        let cal = Calendar::gregorian();")?;
+        writeln!(&mut fp, "        let cal = Calendar::GREGORIAN;")?;
         writeln!(
             &mut fp,
             "        let date = cal.at_ordinal_date({}, {}).unwrap();",

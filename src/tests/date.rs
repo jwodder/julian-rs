@@ -21,10 +21,10 @@ fn alternate_display_padded() {
 #[test]
 fn ord() {
     use std::cmp::Ordering;
-    let julian = Calendar::julian();
+    let julian = Calendar::JULIAN;
     let r1582 = Calendar::REFORM1582;
     let r1752 = Calendar::reforming(ncal::UNITED_KINGDOM).unwrap();
-    let gregorian = Calendar::gregorian();
+    let gregorian = Calendar::GREGORIAN;
     let dates = [
         julian.at_jdn(-69105),
         r1582.at_jdn(-69105),
@@ -52,8 +52,8 @@ fn ord() {
 
 #[test]
 fn convert_to() {
-    let julian = Calendar::julian();
-    let gregorian = Calendar::gregorian();
+    let julian = Calendar::JULIAN;
+    let gregorian = Calendar::GREGORIAN;
     let date = gregorian.at_ymd(2023, Month::April, 30).unwrap();
     let date2 = date.convert_to(julian);
     assert_eq!(date2.year(), 2023);

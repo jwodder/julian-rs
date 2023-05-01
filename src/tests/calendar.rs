@@ -2,11 +2,9 @@ use crate::{ncal, Calendar, Month, MonthIter, MonthKind, YearKind, REFORM1582_JD
 
 #[test]
 fn julian_properties() {
-    let cal = Calendar::julian();
-    assert!(cal.is_julian());
-    assert!(!cal.is_gregorian());
-    assert!(!cal.is_reforming());
+    let cal = Calendar::JULIAN;
     assert!(cal.is_proleptic());
+    assert!(!cal.is_reforming());
     assert_eq!(cal.reformation(), None);
     assert_eq!(cal.last_julian_date(), None);
     assert_eq!(cal.first_gregorian_date(), None);
@@ -14,11 +12,9 @@ fn julian_properties() {
 
 #[test]
 fn gregorian_properties() {
-    let cal = Calendar::gregorian();
-    assert!(!cal.is_julian());
-    assert!(cal.is_gregorian());
-    assert!(!cal.is_reforming());
+    let cal = Calendar::GREGORIAN;
     assert!(cal.is_proleptic());
+    assert!(!cal.is_reforming());
     assert_eq!(cal.reformation(), None);
     assert_eq!(cal.last_julian_date(), None);
     assert_eq!(cal.first_gregorian_date(), None);
@@ -27,10 +23,8 @@ fn gregorian_properties() {
 #[test]
 fn gregorian_reform_properties() {
     let cal = Calendar::REFORM1582;
-    assert!(!cal.is_julian());
-    assert!(!cal.is_gregorian());
-    assert!(cal.is_reforming());
     assert!(!cal.is_proleptic());
+    assert!(cal.is_reforming());
     assert_eq!(cal.reformation(), Some(REFORM1582_JDN));
     let last_julian = cal.last_julian_date().unwrap();
     assert_eq!(last_julian.calendar(), cal);
@@ -51,10 +45,8 @@ fn gregorian_reform_properties() {
 #[test]
 fn min_reform_properties() {
     let cal = Calendar::reforming(1830692).unwrap();
-    assert!(!cal.is_julian());
-    assert!(!cal.is_gregorian());
-    assert!(cal.is_reforming());
     assert!(!cal.is_proleptic());
+    assert!(cal.is_reforming());
     assert_eq!(cal.reformation(), Some(1830692));
     let last_julian = cal.last_julian_date().unwrap();
     assert_eq!(last_julian.calendar(), cal);
@@ -76,13 +68,13 @@ fn min_reform_properties() {
 fn ord() {
     use std::cmp::Ordering;
     let calendars = [
-        Calendar::julian(),
+        Calendar::JULIAN,
         Calendar::reforming(1830692).unwrap(),
         Calendar::REFORM1582,
         Calendar::reforming(ncal::UNITED_KINGDOM).unwrap(),
         Calendar::reforming(ncal::RUSSIA).unwrap(),
         Calendar::reforming(2147439588).unwrap(),
-        Calendar::gregorian(),
+        Calendar::GREGORIAN,
     ];
     for (i, cal1) in calendars.iter().enumerate() {
         for (j, cal2) in calendars.iter().enumerate() {
@@ -97,7 +89,7 @@ fn ord() {
 
 #[test]
 fn gregorian_leap_year() {
-    let cal = Calendar::gregorian();
+    let cal = Calendar::GREGORIAN;
     assert_eq!(cal.year_kind(2000), YearKind::Leap);
     assert_eq!(cal.year_length(2000), 366);
     for (m, days) in MonthIter::new().zip([31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]) {
@@ -109,7 +101,7 @@ fn gregorian_leap_year() {
 
 #[test]
 fn gregorian_common_year() {
-    let cal = Calendar::gregorian();
+    let cal = Calendar::GREGORIAN;
     assert_eq!(cal.year_kind(1900), YearKind::Common);
     assert_eq!(cal.year_length(1900), 365);
     for (m, days) in MonthIter::new().zip([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]) {
@@ -121,7 +113,7 @@ fn gregorian_common_year() {
 
 #[test]
 fn julian_leap_year() {
-    let cal = Calendar::julian();
+    let cal = Calendar::JULIAN;
     assert_eq!(cal.year_kind(1900), YearKind::Leap);
     assert_eq!(cal.year_length(1900), 366);
     for (m, days) in MonthIter::new().zip([31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]) {
@@ -133,7 +125,7 @@ fn julian_leap_year() {
 
 #[test]
 fn julian_common_year() {
-    let cal = Calendar::gregorian();
+    let cal = Calendar::GREGORIAN;
     assert_eq!(cal.year_kind(1901), YearKind::Common);
     assert_eq!(cal.year_length(1901), 365);
     for (m, days) in MonthIter::new().zip([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]) {

@@ -96,28 +96,28 @@ fn gregorian_reform_to_jdn(
 
 #[test]
 fn gregorian_ymd_to_pre_min_jdn() {
-    let r = Calendar::gregorian().at_ymd(-5884323, Month::May, 14);
+    let r = Calendar::GREGORIAN.at_ymd(-5884323, Month::May, 14);
     assert_eq!(r, Err(DateError::Arithmetic));
     assert_eq!(r.unwrap_err().to_string(), "arithmetic overflow/underflow");
 }
 
 #[test]
 fn gregorian_ymd_to_past_max_jdn() {
-    let r = Calendar::gregorian().at_ymd(5874898, Month::June, 4);
+    let r = Calendar::GREGORIAN.at_ymd(5874898, Month::June, 4);
     assert_eq!(r, Err(DateError::Arithmetic));
     assert_eq!(r.unwrap_err().to_string(), "arithmetic overflow/underflow");
 }
 
 #[test]
 fn julian_ymd_to_pre_min_jdn() {
-    let r = Calendar::julian().at_ymd(-5884202, Month::March, 15);
+    let r = Calendar::JULIAN.at_ymd(-5884202, Month::March, 15);
     assert_eq!(r, Err(DateError::Arithmetic));
     assert_eq!(r.unwrap_err().to_string(), "arithmetic overflow/underflow");
 }
 
 #[test]
 fn julian_ymd_to_past_max_jdn() {
-    let r = Calendar::julian().at_ymd(5874777, Month::October, 18);
+    let r = Calendar::JULIAN.at_ymd(5874777, Month::October, 18);
     assert_eq!(r, Err(DateError::Arithmetic));
     assert_eq!(r.unwrap_err().to_string(), "arithmetic overflow/underflow");
 }

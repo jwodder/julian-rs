@@ -145,7 +145,7 @@ impl Options {
         self.fmt_date(s, when);
         if self.ospolicy.show_old_style(jdn) {
             write!(s, " [O.S. ").unwrap();
-            self.fmt_date(s, Calendar::julian().at_jdn(jdn));
+            self.fmt_date(s, Calendar::JULIAN.at_jdn(jdn));
             write!(s, "]").unwrap();
         }
     }
