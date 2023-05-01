@@ -276,7 +276,8 @@ pub struct Calendar(inner::Calendar);
 
 impl Calendar {
     /// An instance of a reforming calendar with the reformation set at the
-    /// date in history at which the Gregorian Reformation was first observed.
+    /// date in history at which the Gregorian Reformation was first observed
+    /// (i.e., 1582-10-15, following 1582-10-04 O.S.).
     ///
     /// This calendar is equal to
     /// `Calendar::reforming(julian::GREGORIAN).unwrap()`.
@@ -301,12 +302,12 @@ impl Calendar {
         },
     });
 
-    /// Construct an instance of a proleptic Julian calendar
+    /// Returns a proleptic Julian calendar
     pub fn julian() -> Calendar {
         Calendar(inner::Calendar::Julian)
     }
 
-    /// Construct an instance of a proleptic Gregorian calendar
+    /// Returns a proleptic Gregorian calendar
     pub fn gregorian() -> Calendar {
         Calendar(inner::Calendar::Gregorian)
     }
@@ -417,6 +418,19 @@ impl Calendar {
     ///
     /// [Unix time]: https://en.wikipedia.org/wiki/Unix_time
     ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::gregorian();
+    /// let (date, seconds) = cal.at_unix_time(1682906621).unwrap();
+    /// assert_eq!(date.year(), 2023);
+    /// assert_eq!(date.month(), Month::May);
+    /// assert_eq!(date.day(), 1);
+    /// assert_eq!(seconds, 7421);
+    /// ```
+    ///
     /// # Errors
     ///
     /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs while
@@ -429,6 +443,18 @@ impl Calendar {
 
     /// Returns the date of the calendar with the given year, month, and day of
     /// month.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::gregorian();
+    /// let date = cal.at_ymd(2023, Month::April, 30).unwrap();
+    /// assert_eq!(date.to_string(), "2023-04-30");
+    ///
+    /// assert!(cal.at_ymd(2023, Month::April, 31).is_err());
+    /// ```
     ///
     /// # Errors
     ///
@@ -466,6 +492,18 @@ impl Calendar {
     /// Returns the date of the calendar with the given year and day-of-year
     /// (starting counting from 1 at January 1).
     ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::gregorian();
+    /// let date = cal.at_ordinal_date(2023, 120).unwrap();
+    /// assert_eq!(date.year(), 2023);
+    /// assert_eq!(date.month(), Month::April);
+    /// assert_eq!(date.day(), 30);
+    /// ```
+    ///
     /// # Errors
     ///
     /// Returns [`DateError::OrdinalOutOfRange`] if `ordinal` is zero or
@@ -490,6 +528,18 @@ impl Calendar {
     }
 
     /// Returns the date of the calendar with the given Julian day number.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::gregorian();
+    /// let date = cal.at_jdn(2460065);
+    /// assert_eq!(date.year(), 2023);
+    /// assert_eq!(date.month(), Month::April);
+    /// assert_eq!(date.day(), 30);
+    /// ```
     pub fn at_jdn(&self, jdn: Jdnum) -> Date {
         use inner::Calendar::*;
         let (year, mut ordinal) = if self.0 == Julian
@@ -526,6 +576,18 @@ impl Calendar {
     /// In both forms, the year component may be preceded by a `+` or `-`, and
     /// each component may be any number of digits long, not just the
     /// "conventional" length shown here.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::gregorian();
+    /// let date = cal.parse_date("2023-04-30").unwrap();
+    /// assert_eq!(date.year(), 2023);
+    /// assert_eq!(date.month(), Month::April);
+    /// assert_eq!(date.day(), 30);
+    /// ```
     ///
     /// # Errors
     ///
@@ -578,6 +640,18 @@ impl Calendar {
 
     /// If this is a "reforming" calendar, returns the last date that follows
     /// the Julian calendar, i.e., the date immediately before the reformation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let date = cal.last_julian_date().unwrap();
+    /// assert_eq!(date.year(), 1582);
+    /// assert_eq!(date.month(), Month::October);
+    /// assert_eq!(date.day(), 4);
+    /// ```
     pub fn last_julian_date(&self) -> Option<Date> {
         if let inner::Calendar::Reforming { reformation, gap } = self.0 {
             Some(Date {
@@ -596,6 +670,18 @@ impl Calendar {
 
     /// If this is a "reforming" calendar, returns the first date that follows
     /// the Gregorian calendar, i.e., the date of the reformation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// let date = cal.first_gregorian_date().unwrap();
+    /// assert_eq!(date.year(), 1582);
+    /// assert_eq!(date.month(), Month::October);
+    /// assert_eq!(date.day(), 15);
+    /// ```
     pub fn first_gregorian_date(&self) -> Option<Date> {
         if let inner::Calendar::Reforming { reformation, gap } = self.0 {
             let day_ordinal = if gap.kind == inner::GapKind::IntraMonth {
@@ -618,6 +704,22 @@ impl Calendar {
     }
 
     /// Returns the [`YearKind`] for the given year in the calendar
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, YearKind};
+    ///
+    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// assert_eq!(cal.year_kind(1582), YearKind::ReformCommon);
+    /// assert_eq!(cal.year_kind(1900), YearKind::Common);
+    /// assert_eq!(cal.year_kind(2000), YearKind::Leap);
+    ///
+    /// let cal2 = Calendar::reforming(19582149).unwrap();
+    /// assert_eq!(cal2.year_kind(48900), YearKind::Leap);
+    /// assert_eq!(cal2.year_kind(48901), YearKind::Skipped);
+    /// assert_eq!(cal2.year_kind(48902), YearKind::Common);
+    /// ```
     pub fn year_kind(&self, year: i32) -> YearKind {
         match self.0 {
             inner::Calendar::Julian => {
@@ -702,6 +804,22 @@ impl Calendar {
     ///
     /// If the year was skipped in its entirety due to a calendar reformation,
     /// this method will return 0.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, YearKind};
+    ///
+    /// let cal = Calendar::GREGORIAN_REFORM;
+    /// assert_eq!(cal.year_length(1582), 355);
+    /// assert_eq!(cal.year_length(1900), 365);
+    /// assert_eq!(cal.year_length(2000), 366);
+    ///
+    /// let cal2 = Calendar::reforming(19582149).unwrap();
+    /// assert_eq!(cal2.year_length(48900), 366);
+    /// assert_eq!(cal2.year_length(48901), 0);
+    /// assert_eq!(cal2.year_length(48902), 365);
+    /// ```
     pub fn year_length(&self, year: i32) -> u32 {
         match self.0 {
             inner::Calendar::Julian | inner::Calendar::Gregorian => match self.year_kind(year) {
