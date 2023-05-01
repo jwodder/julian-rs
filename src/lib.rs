@@ -604,11 +604,31 @@ impl Calendar {
 
     /// Returns true if this is a proleptic Julian or Gregorian calendar, i.e.,
     /// not a "reforming" calendar
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::Calendar;
+    ///
+    /// assert!(Calendar::JULIAN.is_proleptic());
+    /// assert!(Calendar::GREGORIAN.is_proleptic());
+    /// assert!(!Calendar::REFORM1582.is_proleptic());
+    /// ```
     pub fn is_proleptic(&self) -> bool {
         matches!(self.0, inner::Calendar::Julian | inner::Calendar::Gregorian)
     }
 
     /// Returns true if this is a "reforming" calendar
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::Calendar;
+    ///
+    /// assert!(!Calendar::JULIAN.is_reforming());
+    /// assert!(!Calendar::GREGORIAN.is_reforming());
+    /// assert!(Calendar::REFORM1582.is_reforming());
+    /// ```
     pub fn is_reforming(&self) -> bool {
         matches!(self.0, inner::Calendar::Reforming { .. })
     }
