@@ -1534,6 +1534,32 @@ impl Date {
 
     /// Returns the ordinal number of the day within the year.  Ordinal date 1
     /// is the first day of the year, ordinal 2 is the second, etc.
+    ///
+    /// # Examples
+    ///
+    /// Ordinal for a regular date:
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::gregorian();
+    /// let date = cal.at_ymd(2023, Month::May, 1).unwrap();
+    /// assert_eq!(date.ordinal(), 121);
+    /// ```
+    ///
+    /// Ordinal around a calendar reformation:
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::REFORM1582;
+    ///
+    /// let pre_reform = cal.at_ymd(1582, Month::October, 4).unwrap();
+    /// assert_eq!(pre_reform.ordinal(), 277);
+    ///
+    /// let post_reform = cal.at_ymd(1582, Month::October, 15).unwrap();
+    /// assert_eq!(post_reform.ordinal(), 278);
+    /// ```
     pub fn ordinal(&self) -> u32 {
         self.ordinal
     }
@@ -1563,6 +1589,20 @@ impl Date {
     /// Style"), i.e., if [`Date::calendar()`] is either a proleptic Julian
     /// calendar or a "reforming" calendar for which the reformation occurs
     /// after the date in question.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::REFORM1582;
+    ///
+    /// let pre_reform = cal.at_ymd(1582, Month::October, 4).unwrap();
+    /// assert!(pre_reform.is_julian());
+    ///
+    /// let post_reform = cal.at_ymd(1582, Month::October, 15).unwrap();
+    /// assert!(!post_reform.is_julian());
+    /// ```
     pub fn is_julian(&self) -> bool {
         match self.calendar.0 {
             inner::Calendar::Julian => true,
@@ -1577,6 +1617,20 @@ impl Date {
     /// Style"), i.e., if [`Date::calendar()`] is either a proleptic Gregorian
     /// calendar or a "reforming" calendar for which the reformation occurs at
     /// or before the date in question.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::REFORM1582;
+    ///
+    /// let pre_reform = cal.at_ymd(1582, Month::October, 4).unwrap();
+    /// assert!(!pre_reform.is_gregorian());
+    ///
+    /// let post_reform = cal.at_ymd(1582, Month::October, 15).unwrap();
+    /// assert!(post_reform.is_gregorian());
+    /// ```
     pub fn is_gregorian(&self) -> bool {
         match self.calendar.0 {
             inner::Calendar::Julian => false,
