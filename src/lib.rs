@@ -2058,6 +2058,16 @@ pub fn system2jdn(t: SystemTime) -> Result<(Jdnum, u32), ArithmeticError> {
 ///
 /// [Unix time]: https://en.wikipedia.org/wiki/Unix_time
 ///
+/// # Example
+///
+/// ```
+/// use julian::unix2jdn;
+///
+/// let (jdn, seconds) = unix2jdn(1682906621).unwrap();
+/// assert_eq!(jdn, 2460066);
+/// assert_eq!(seconds, 7421);
+/// ```
+///
 /// # Errors
 ///
 /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs during
@@ -2074,6 +2084,15 @@ pub fn unix2jdn(unix_time: i64) -> Result<(Jdnum, u32), ArithmeticError> {
 /// day.
 ///
 /// [Unix time]: https://en.wikipedia.org/wiki/Unix_time
+///
+/// # Example
+///
+/// ```
+/// use julian::jdn2unix;
+///
+/// let ts = jdn2unix(2460066);
+/// assert_eq!(ts, 1682899200);
+/// ```
 pub fn jdn2unix(jdn: Jdnum) -> i64 {
     (i64::from(jdn) - (UNIX_EPOCH_JDN as i64)) * SECONDS_IN_DAY
 }
