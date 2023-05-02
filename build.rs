@@ -5,7 +5,7 @@ use std::io::{self, BufWriter, Write};
 use std::path::Path;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-struct Record {
+struct JdnRecord {
     jdn: i32,
     jyear: i32,
     jmonth: String,
@@ -17,7 +17,7 @@ struct Record {
     gordinal: u16,
 }
 
-impl Record {
+impl JdnRecord {
     fn jdn_id(&self) -> String {
         self.jdn.to_string().replace('-', "neg_")
     }
@@ -82,13 +82,78 @@ impl<'a> Date<'a> {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+struct ReformingRecord {
+    reformation: i32,
+    jdn: i32,
+    year: i32,
+    month: String,
+    day: u16,
+    ordinal: u16,
+    day_ordinal: u16,
+}
+
+impl ReformingRecord {
+    fn jdn_id(&self) -> String {
+        self.jdn.to_string().replace('-', "neg_")
+    }
+
+    fn assert<W: Write>(&self, mut out: W) -> io::Result<()> {
+        if self.jdn < self.reformation {
+            writeln!(out, "        assert!(date.is_julian());")?;
+            writeln!(out, "        assert!(!date.is_gregorian());")?;
+        } else {
+            writeln!(out, "        assert!(!date.is_julian());")?;
+            writeln!(out, "        assert!(date.is_gregorian());")?;
+        }
+        writeln!(out, "        assert_eq!(date.year(), {});", self.year)?;
+        writeln!(
+            out,
+            "        assert_eq!(date.month(), Month::{});",
+            self.month
+        )?;
+        writeln!(out, "        assert_eq!(date.day(), {});", self.day)?;
+        writeln!(
+            out,
+            "        assert_eq!(date.day_ordinal(), {});",
+            self.day_ordinal
+        )?;
+        writeln!(
+            out,
+            "        assert_eq!(date.day_ordinal0(), {});",
+            self.day_ordinal - 1
+        )?;
+        writeln!(out, "        assert_eq!(date.ordinal(), {});", self.ordinal)?;
+        writeln!(
+            out,
+            "        assert_eq!(date.ordinal0(), {});",
+            self.ordinal - 1
+        )?;
+        writeln!(
+            out,
+            "        assert_eq!(date.julian_day_number(), {});",
+            self.jdn
+        )?;
+        Ok(())
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=data/jdn.csv");
-    let records = csv::ReaderBuilder::new()
+    println!("cargo:rerun-if-changed=data/reforming.csv");
+
+    let jdn_records = csv::ReaderBuilder::new()
         .comment(Some(b'#'))
         .from_path("data/jdn.csv")?
         .deserialize()
-        .collect::<Result<Vec<Record>, _>>()?;
+        .collect::<Result<Vec<JdnRecord>, _>>()?;
+
+    let reforming_records = csv::ReaderBuilder::new()
+        .comment(Some(b'#'))
+        .from_path("data/reforming.csv")?
+        .deserialize()
+        .collect::<Result<Vec<ReformingRecord>, _>>()?;
+
     let out_dir = env::var("OUT_DIR").expect("OUT_DIR envvar not set");
     let mut fp = BufWriter::new(File::create(Path::new(&out_dir).join("autogen.rs"))?);
 
@@ -96,7 +161,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     writeln!(&mut fp, "    use crate::{{Calendar, Month}};")?;
     writeln!(&mut fp)?;
     let mut first = true;
-    for r in &records {
+    for r in &jdn_records {
         if !std::mem::replace(&mut first, false) {
             writeln!(&mut fp)?;
         }
@@ -117,7 +182,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     writeln!(&mut fp, "    use crate::{{Calendar, Month}};")?;
     writeln!(&mut fp)?;
     let mut first = true;
-    for r in &records {
+    for r in &jdn_records {
         if !std::mem::replace(&mut first, false) {
             writeln!(&mut fp)?;
         }
@@ -156,7 +221,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     writeln!(&mut fp, "    use crate::{{Calendar, Month}};")?;
     writeln!(&mut fp)?;
     let mut first = true;
-    for r in &records {
+    for r in &jdn_records {
         if !std::mem::replace(&mut first, false) {
             writeln!(&mut fp)?;
         }
@@ -177,7 +242,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     writeln!(&mut fp, "    use crate::{{Calendar, Month}};")?;
     writeln!(&mut fp)?;
     let mut first = true;
-    for r in &records {
+    for r in &jdn_records {
         if !std::mem::replace(&mut first, false) {
             writeln!(&mut fp)?;
         }
@@ -210,6 +275,87 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         writeln!(&mut fp, "    }}")?;
     }
     writeln!(&mut fp, "}}")?;
+
+    writeln!(&mut fp, "mod jdn_to_reforming {{")?;
+    writeln!(&mut fp, "    use crate::{{Calendar, Month}};")?;
+    writeln!(&mut fp)?;
+    let mut first = true;
+    for r in &reforming_records {
+        if !std::mem::replace(&mut first, false) {
+            writeln!(&mut fp)?;
+        }
+        writeln!(&mut fp, "    #[test]")?;
+        writeln!(
+            &mut fp,
+            "    fn reform_{}_jdn_{}() {{",
+            r.reformation,
+            r.jdn_id()
+        )?;
+        writeln!(
+            &mut fp,
+            "        let cal = Calendar::reforming({}).unwrap();",
+            r.reformation
+        )?;
+        writeln!(&mut fp, "        let date = cal.at_jdn({});", r.jdn)?;
+        writeln!(&mut fp, "        assert_eq!(date.calendar(), cal);")?;
+        r.assert(&mut fp)?;
+        writeln!(&mut fp, "    }}")?;
+    }
+    writeln!(&mut fp, "}}")?;
+    writeln!(&mut fp)?;
+
+    writeln!(&mut fp, "mod reforming_to_jdn {{")?;
+    writeln!(&mut fp, "    use crate::{{Calendar, Month}};")?;
+    writeln!(&mut fp)?;
+    let mut first = true;
+    for r in &reforming_records {
+        if !std::mem::replace(&mut first, false) {
+            writeln!(&mut fp)?;
+        }
+        writeln!(&mut fp, "    #[test]")?;
+        writeln!(
+            &mut fp,
+            "    fn reform_{}_jdn_{}_ymd() {{",
+            r.reformation,
+            r.jdn_id()
+        )?;
+        writeln!(
+            &mut fp,
+            "        let cal = Calendar::reforming({}).unwrap();",
+            r.reformation
+        )?;
+        writeln!(
+            &mut fp,
+            "        let date = cal.at_ymd({}, Month::{}, {}).unwrap();",
+            r.year, r.month, r.day
+        )?;
+        writeln!(&mut fp, "        assert_eq!(date.calendar(), cal);")?;
+        r.assert(&mut fp)?;
+        writeln!(&mut fp, "    }}")?;
+        writeln!(&mut fp)?;
+        writeln!(&mut fp, "    #[test]")?;
+        writeln!(
+            &mut fp,
+            "    fn reform_{}_jdn_{}_ordinal() {{",
+            r.reformation,
+            r.jdn_id()
+        )?;
+        writeln!(
+            &mut fp,
+            "        let cal = Calendar::reforming({}).unwrap();",
+            r.reformation
+        )?;
+        writeln!(
+            &mut fp,
+            "        let date = cal.at_ordinal_date({}, {}).unwrap();",
+            r.year, r.ordinal,
+        )?;
+        writeln!(&mut fp, "        assert_eq!(date.calendar(), cal);")?;
+        r.assert(&mut fp)?;
+        writeln!(&mut fp, "    }}")?;
+    }
+    writeln!(&mut fp, "}}")?;
+
     fp.flush()?;
     Ok(())
 }
