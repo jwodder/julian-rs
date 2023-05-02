@@ -1,13 +1,13 @@
 [package]
 name = "julian"
-version = "0.1.0-dev"
+version = "0.1.0"
 edition = "2021"
 rust-version = "1.66"
 description = "Convert between Julian day numbers and Julian & Gregorian calendars"
 authors = ["John Thorvald Wodder II <julian-rs@varonathe.org>"]
 repository = "https://github.com/jwodder/julian-rs"
 license = "MIT"
-keywords = ["calendar", "Gregorian calendar", "Julian calendar", "Julian day"]
+keywords = ["calendar", "gregorian-calendar", "julian-calendar", "julian-day"]
 categories = ["date-and-time"]
 exclude = ["/.*"]
 
