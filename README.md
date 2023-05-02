@@ -20,9 +20,8 @@ Examples
 ========
 
 Before you construct a date, you must first choose a calendar in which to
-reckon dates.  `Calendar::gregorian()` gives you a proleptic Gregorian
-calendar, which should be both simple and useful enough for most basic
-purposes.
+reckon dates.  `Calendar::GREGORIAN` is the proleptic Gregorian calendar, which
+should be both simple and useful enough for most basic purposes.
 
 To convert a Julian day number to a date in a calendar, use the
 `Calendar::at_jdn()` method, like so:
@@ -30,7 +29,7 @@ To convert a Julian day number to a date in a calendar, use the
 ```rust
 use julian::{Calendar, Month};
 
-let cal = Calendar::gregorian();
+let cal = Calendar::GREGORIAN;
 let date = cal.at_jdn(2460065);
 assert_eq!(date.year(), 2023);
 assert_eq!(date.month(), Month::April);
@@ -45,7 +44,7 @@ the date, and then call its `julian_day_number()` method:
 ```rust
 use julian::{Calendar, Month};
 
-let cal = Calendar::gregorian();
+let cal = Calendar::GREGORIAN;
 let date = cal.at_ymd(2023, Month::April, 30).unwrap();
 assert_eq!(date.julian_day_number(), 2460065);
 ```
