@@ -3,7 +3,7 @@
 [![codecov.io](https://codecov.io/gh/jwodder/julian-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/jwodder/julian-rs)
 [![MIT License](https://img.shields.io/github/license/jwodder/julian-rs.svg)](https://opensource.org/licenses/MIT)
 
-[GitHub](https://github.com/jwodder/julian-rs) | [crates.io](https://crates.io/crates/julian) | [Documentation](https://docs.rs/julian) | [Issues](https://github.com/jwodder/julian-rs/issues)
+[GitHub](https://github.com/jwodder/julian-rs) | [crates.io](https://crates.io/crates/julian) | [Documentation](https://docs.rs/julian) | [Issues](https://github.com/jwodder/julian-rs/issues) | [Changelog](https://github.com/jwodder/julian-rs/blob/master/CHANGELOG.md)
 
 `julian` is a Rust library for converting between [Julian day numbers][] and
 dates in the [Gregorian calendar][] (either proleptic or with the Reformation

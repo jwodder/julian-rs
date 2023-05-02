@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 //! `julian` is a Rust library for converting between [Julian day numbers][jdn]
 //! and dates in the [Gregorian calendar][] (either proleptic or with the
 //! Reformation occurring at a given date) and/or the proleptic [Julian
@@ -1696,6 +1697,51 @@ impl fmt::Display for Date {
     }
 }
 
+#[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
+impl<T: chrono::Datelike> From<T> for Date {
+    /// Convert a [`chrono::Datelike`] value to the corresponding `Date` in the
+    /// proleptic Gregorian calendar
+    fn from(date: T) -> Date {
+        Calendar::GREGORIAN
+            .at_ymd(
+                date.year(),
+                Month::try_from(date.month()).unwrap(),
+                date.day(),
+            )
+            .unwrap()
+    }
+}
+
+#[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
+impl TryFrom<Date> for chrono::naive::NaiveDate {
+    type Error = TryFromDateError;
+
+    /// Convert a [`Date`] to a [`chrono::naive::NaiveDate`].  The source date
+    /// is converted to the proleptic Gregorian calendar first, if necessary.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TryFromDateError`] if the source date is outside the valid
+    /// range for a `chrono::naive::NaiveDate`.
+    fn try_from(mut date: Date) -> Result<chrono::naive::NaiveDate, TryFromDateError> {
+        if !date.is_gregorian() {
+            date = date.convert_to(Calendar::GREGORIAN);
+        }
+        chrono::naive::NaiveDate::from_ymd_opt(date.year(), date.month().number(), date.day())
+            .ok_or(TryFromDateError)
+    }
+}
+
+#[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
+/// Error returned when converting a [`Date`] to a [`chrono::naive::NaiveDate`]
+/// fails due to the source date being outside the range of the target type.
+#[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
+#[error("date out of range for chrono::naive::NaiveDate")]
+pub struct TryFromDateError;
+
 /// An enumeration of the twelve months of "Julian-style" years.
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Month {
@@ -1886,6 +1932,50 @@ macro_rules! impl_try_from {
 }
 
 impl_try_from!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+
+#[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
+impl From<chrono::Month> for Month {
+    /// Convert a [`chrono::Month`] to a [`Month`]
+    fn from(m: chrono::Month) -> Month {
+        match m {
+            chrono::Month::January => Month::January,
+            chrono::Month::February => Month::February,
+            chrono::Month::March => Month::March,
+            chrono::Month::April => Month::April,
+            chrono::Month::May => Month::May,
+            chrono::Month::June => Month::June,
+            chrono::Month::July => Month::July,
+            chrono::Month::August => Month::August,
+            chrono::Month::September => Month::September,
+            chrono::Month::October => Month::October,
+            chrono::Month::November => Month::November,
+            chrono::Month::December => Month::December,
+        }
+    }
+}
+
+#[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
+impl From<Month> for chrono::Month {
+    /// Convert a [`Month`] to a [`chrono::Month`]
+    fn from(m: Month) -> chrono::Month {
+        match m {
+            Month::January => chrono::Month::January,
+            Month::February => chrono::Month::February,
+            Month::March => chrono::Month::March,
+            Month::April => chrono::Month::April,
+            Month::May => chrono::Month::May,
+            Month::June => chrono::Month::June,
+            Month::July => chrono::Month::July,
+            Month::August => chrono::Month::August,
+            Month::September => chrono::Month::September,
+            Month::October => chrono::Month::October,
+            Month::November => chrono::Month::November,
+            Month::December => chrono::Month::December,
+        }
+    }
+}
 
 /// Error returned when converting a number to a month fails
 #[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
@@ -2162,6 +2252,7 @@ mod tests {
     mod at_ymd;
     mod autogen;
     mod calendar;
+    mod chrono;
     mod date;
     mod jdn;
     mod month;
