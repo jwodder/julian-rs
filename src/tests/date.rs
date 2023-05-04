@@ -7,6 +7,12 @@ fn display() {
 }
 
 #[test]
+fn display_padded() {
+    let date = Calendar::REFORM1582.at_ymd(4, Month::April, 2).unwrap();
+    assert_eq!(format!("{date}"), "0004-04-02");
+}
+
+#[test]
 fn alternate_display() {
     let date = Calendar::REFORM1582.at_ymd(2023, Month::April, 20).unwrap();
     assert_eq!(format!("{date:#}"), "2023-110");
