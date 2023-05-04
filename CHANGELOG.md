@@ -1,6 +1,10 @@
 v0.2.0 (in development)
 -----------------------
-- Add a `chrono` feature for enabling conversions to & from `chrono` types
+- Added a `chrono` feature for enabling conversions to & from `chrono` types
+- Gave `MonthShape` a `calendar()` method for obtaining the associated
+  `Calendar`
+- Gave `MonthShape` `nth_date()` and `dates()` methods for obtaining `Date`
+  objects belonging to the month
 
 v0.1.0 (2023-05-02)
 -------------------

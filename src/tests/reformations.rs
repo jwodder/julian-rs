@@ -49,6 +49,7 @@ mod gregorian_reform {
         assert_eq!(
             shape,
             MonthShape {
+                calendar: cal,
                 year: 1582,
                 month: October,
                 inner: inner::MonthShape::Gapped {
@@ -58,6 +59,7 @@ mod gregorian_reform {
                 },
             }
         );
+        assert_eq!(shape.calendar(), cal);
         assert_eq!(shape.year(), 1582);
         assert_eq!(shape.month(), October);
         assert_eq!(shape.len(), 21);
@@ -228,6 +230,112 @@ mod gregorian_reform {
         assert_eq!(iter.next(), None);
     }
 
+    #[test]
+    fn gapped_month_dates() {
+        let cal = Calendar::REFORM1582;
+        let shape = cal.month_shape(1582, Month::October).unwrap();
+        let mut iter = shape.dates();
+        assert_eq!(iter.size_hint(), (21, Some(21)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-01");
+        assert_eq!(iter.size_hint(), (20, Some(20)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-02");
+        assert_eq!(iter.size_hint(), (19, Some(19)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-03");
+        assert_eq!(iter.size_hint(), (18, Some(18)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-04");
+        assert_eq!(iter.size_hint(), (17, Some(17)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-15");
+        assert_eq!(iter.size_hint(), (16, Some(16)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-16");
+        assert_eq!(iter.size_hint(), (15, Some(15)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-17");
+        assert_eq!(iter.size_hint(), (14, Some(14)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-18");
+        assert_eq!(iter.size_hint(), (13, Some(13)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-19");
+        assert_eq!(iter.size_hint(), (12, Some(12)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-20");
+        assert_eq!(iter.size_hint(), (11, Some(11)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-21");
+        assert_eq!(iter.size_hint(), (10, Some(10)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-22");
+        assert_eq!(iter.size_hint(), (9, Some(9)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-23");
+        assert_eq!(iter.size_hint(), (8, Some(8)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-24");
+        assert_eq!(iter.size_hint(), (7, Some(7)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-25");
+        assert_eq!(iter.size_hint(), (6, Some(6)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-26");
+        assert_eq!(iter.size_hint(), (5, Some(5)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-27");
+        assert_eq!(iter.size_hint(), (4, Some(4)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-28");
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-29");
+        assert_eq!(iter.size_hint(), (2, Some(2)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-30");
+        assert_eq!(iter.size_hint(), (1, Some(1)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-31");
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn gapped_month_dates_rev() {
+        let cal = Calendar::REFORM1582;
+        let shape = cal.month_shape(1582, Month::October).unwrap();
+        let mut iter = shape.dates().rev();
+        assert_eq!(iter.size_hint(), (21, Some(21)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-31");
+        assert_eq!(iter.size_hint(), (20, Some(20)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-30");
+        assert_eq!(iter.size_hint(), (19, Some(19)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-29");
+        assert_eq!(iter.size_hint(), (18, Some(18)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-28");
+        assert_eq!(iter.size_hint(), (17, Some(17)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-27");
+        assert_eq!(iter.size_hint(), (16, Some(16)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-26");
+        assert_eq!(iter.size_hint(), (15, Some(15)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-25");
+        assert_eq!(iter.size_hint(), (14, Some(14)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-24");
+        assert_eq!(iter.size_hint(), (13, Some(13)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-23");
+        assert_eq!(iter.size_hint(), (12, Some(12)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-22");
+        assert_eq!(iter.size_hint(), (11, Some(11)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-21");
+        assert_eq!(iter.size_hint(), (10, Some(10)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-20");
+        assert_eq!(iter.size_hint(), (9, Some(9)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-19");
+        assert_eq!(iter.size_hint(), (8, Some(8)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-18");
+        assert_eq!(iter.size_hint(), (7, Some(7)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-17");
+        assert_eq!(iter.size_hint(), (6, Some(6)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-16");
+        assert_eq!(iter.size_hint(), (5, Some(5)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-15");
+        assert_eq!(iter.size_hint(), (4, Some(4)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-04");
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-03");
+        assert_eq!(iter.size_hint(), (2, Some(2)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-02");
+        assert_eq!(iter.size_hint(), (1, Some(1)));
+        assert_eq!(iter.next().unwrap().to_string(), "1582-10-01");
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+    }
+
     #[rstest]
     #[case(2023, Month::January, 31)]
     #[case(2023, Month::February, 28)]
@@ -312,6 +420,7 @@ mod germany {
         assert_eq!(
             shape,
             MonthShape {
+                calendar: cal,
                 year: 1700,
                 month: Month::February,
                 inner: inner::MonthShape::Tailless {
@@ -320,6 +429,7 @@ mod germany {
                 },
             }
         );
+        assert_eq!(shape.calendar(), cal);
         assert_eq!(shape.year(), 1700);
         assert_eq!(shape.month(), Month::February);
         assert_eq!(shape.len(), 18);
@@ -444,17 +554,113 @@ mod germany {
     }
 
     #[test]
+    fn tailless_month_dates() {
+        let cal = Calendar::reforming(ncal::GERMANY).unwrap();
+        let shape = cal.month_shape(1700, Month::February).unwrap();
+        let mut iter = shape.dates();
+        assert_eq!(iter.size_hint(), (18, Some(18)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-01");
+        assert_eq!(iter.size_hint(), (17, Some(17)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-02");
+        assert_eq!(iter.size_hint(), (16, Some(16)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-03");
+        assert_eq!(iter.size_hint(), (15, Some(15)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-04");
+        assert_eq!(iter.size_hint(), (14, Some(14)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-05");
+        assert_eq!(iter.size_hint(), (13, Some(13)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-06");
+        assert_eq!(iter.size_hint(), (12, Some(12)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-07");
+        assert_eq!(iter.size_hint(), (11, Some(11)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-08");
+        assert_eq!(iter.size_hint(), (10, Some(10)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-09");
+        assert_eq!(iter.size_hint(), (9, Some(9)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-10");
+        assert_eq!(iter.size_hint(), (8, Some(8)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-11");
+        assert_eq!(iter.size_hint(), (7, Some(7)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-12");
+        assert_eq!(iter.size_hint(), (6, Some(6)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-13");
+        assert_eq!(iter.size_hint(), (5, Some(5)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-14");
+        assert_eq!(iter.size_hint(), (4, Some(4)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-15");
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-16");
+        assert_eq!(iter.size_hint(), (2, Some(2)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-17");
+        assert_eq!(iter.size_hint(), (1, Some(1)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-18");
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn tailless_month_dates_rev() {
+        let cal = Calendar::reforming(ncal::GERMANY).unwrap();
+        let shape = cal.month_shape(1700, Month::February).unwrap();
+        let mut iter = shape.dates().rev();
+        assert_eq!(iter.size_hint(), (18, Some(18)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-18");
+        assert_eq!(iter.size_hint(), (17, Some(17)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-17");
+        assert_eq!(iter.size_hint(), (16, Some(16)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-16");
+        assert_eq!(iter.size_hint(), (15, Some(15)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-15");
+        assert_eq!(iter.size_hint(), (14, Some(14)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-14");
+        assert_eq!(iter.size_hint(), (13, Some(13)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-13");
+        assert_eq!(iter.size_hint(), (12, Some(12)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-12");
+        assert_eq!(iter.size_hint(), (11, Some(11)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-11");
+        assert_eq!(iter.size_hint(), (10, Some(10)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-10");
+        assert_eq!(iter.size_hint(), (9, Some(9)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-09");
+        assert_eq!(iter.size_hint(), (8, Some(8)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-08");
+        assert_eq!(iter.size_hint(), (7, Some(7)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-07");
+        assert_eq!(iter.size_hint(), (6, Some(6)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-06");
+        assert_eq!(iter.size_hint(), (5, Some(5)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-05");
+        assert_eq!(iter.size_hint(), (4, Some(4)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-04");
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-03");
+        assert_eq!(iter.size_hint(), (2, Some(2)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-02");
+        assert_eq!(iter.size_hint(), (1, Some(1)));
+        assert_eq!(iter.next().unwrap().to_string(), "1700-02-01");
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
     fn post_reform_month() {
         let cal = Calendar::reforming(ncal::GERMANY).unwrap();
         let shape = cal.month_shape(1700, Month::March).unwrap();
         assert_eq!(
             shape,
             MonthShape {
+                calendar: cal,
                 year: 1700,
                 month: Month::March,
                 inner: inner::MonthShape::Normal { max_day: 31 },
             }
         );
+        assert_eq!(shape.calendar(), cal);
         assert_eq!(shape.year(), 1700);
         assert_eq!(shape.month(), Month::March);
         assert_eq!(shape.len(), 31);
@@ -507,6 +713,44 @@ mod germany {
         assert_eq!(iter.size_hint(), (0, Some(0)));
         assert_eq!(iter.next(), None);
     }
+
+    #[test]
+    fn normal_month_dates() {
+        let cal = Calendar::reforming(ncal::GERMANY).unwrap();
+        let shape = cal.month_shape(1700, Month::March).unwrap();
+        let mut iter = shape.dates();
+        for i in 1..=31 {
+            let sz = usize::try_from(i).unwrap();
+            assert_eq!(iter.size_hint(), (32 - sz, Some(32 - sz)));
+            assert_eq!(
+                iter.next(),
+                Some(cal.at_ymd(1700, Month::March, i).unwrap())
+            );
+        }
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn normal_month_dates_rev() {
+        let cal = Calendar::reforming(ncal::GERMANY).unwrap();
+        let shape = cal.month_shape(1700, Month::March).unwrap();
+        let mut iter = shape.dates().rev();
+        for i in 1..=31 {
+            let sz = usize::try_from(i).unwrap();
+            assert_eq!(iter.size_hint(), (32 - sz, Some(32 - sz)));
+            assert_eq!(
+                iter.next(),
+                Some(cal.at_ymd(1700, Month::March, 32 - i).unwrap())
+            );
+        }
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+    }
 }
 
 mod russia {
@@ -549,11 +793,13 @@ mod russia {
         assert_eq!(
             shape,
             MonthShape {
+                calendar: cal,
                 year: 1918,
                 month: Month::January,
                 inner: inner::MonthShape::Normal { max_day: 31 },
             }
         );
+        assert_eq!(shape.calendar(), cal);
         assert_eq!(shape.year(), 1918);
         assert_eq!(shape.month(), Month::January);
         assert_eq!(shape.len(), 31);
@@ -582,6 +828,7 @@ mod russia {
         assert_eq!(
             shape,
             MonthShape {
+                calendar: cal,
                 year: 1918,
                 month: Month::February,
                 inner: inner::MonthShape::Headless {
@@ -590,6 +837,7 @@ mod russia {
                 },
             }
         );
+        assert_eq!(shape.calendar(), cal);
         assert_eq!(shape.year(), 1918);
         assert_eq!(shape.month(), Month::February);
         assert_eq!(shape.len(), 15);
@@ -696,6 +944,88 @@ mod russia {
         assert_eq!(iter.size_hint(), (0, Some(0)));
         assert_eq!(iter.next(), None);
     }
+
+    #[test]
+    fn headless_month_dates() {
+        let cal = Calendar::reforming(ncal::RUSSIA).unwrap();
+        let shape = cal.month_shape(1918, Month::February).unwrap();
+        let mut iter = shape.dates();
+        assert_eq!(iter.size_hint(), (15, Some(15)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-14");
+        assert_eq!(iter.size_hint(), (14, Some(14)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-15");
+        assert_eq!(iter.size_hint(), (13, Some(13)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-16");
+        assert_eq!(iter.size_hint(), (12, Some(12)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-17");
+        assert_eq!(iter.size_hint(), (11, Some(11)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-18");
+        assert_eq!(iter.size_hint(), (10, Some(10)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-19");
+        assert_eq!(iter.size_hint(), (9, Some(9)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-20");
+        assert_eq!(iter.size_hint(), (8, Some(8)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-21");
+        assert_eq!(iter.size_hint(), (7, Some(7)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-22");
+        assert_eq!(iter.size_hint(), (6, Some(6)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-23");
+        assert_eq!(iter.size_hint(), (5, Some(5)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-24");
+        assert_eq!(iter.size_hint(), (4, Some(4)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-25");
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-26");
+        assert_eq!(iter.size_hint(), (2, Some(2)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-27");
+        assert_eq!(iter.size_hint(), (1, Some(1)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-28");
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn headless_month_dates_rev() {
+        let cal = Calendar::reforming(ncal::RUSSIA).unwrap();
+        let shape = cal.month_shape(1918, Month::February).unwrap();
+        let mut iter = shape.dates().rev();
+        assert_eq!(iter.size_hint(), (15, Some(15)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-28");
+        assert_eq!(iter.size_hint(), (14, Some(14)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-27");
+        assert_eq!(iter.size_hint(), (13, Some(13)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-26");
+        assert_eq!(iter.size_hint(), (12, Some(12)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-25");
+        assert_eq!(iter.size_hint(), (11, Some(11)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-24");
+        assert_eq!(iter.size_hint(), (10, Some(10)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-23");
+        assert_eq!(iter.size_hint(), (9, Some(9)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-22");
+        assert_eq!(iter.size_hint(), (8, Some(8)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-21");
+        assert_eq!(iter.size_hint(), (7, Some(7)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-20");
+        assert_eq!(iter.size_hint(), (6, Some(6)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-19");
+        assert_eq!(iter.size_hint(), (5, Some(5)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-18");
+        assert_eq!(iter.size_hint(), (4, Some(4)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-17");
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-16");
+        assert_eq!(iter.size_hint(), (2, Some(2)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-15");
+        assert_eq!(iter.size_hint(), (1, Some(1)));
+        assert_eq!(iter.next().unwrap().to_string(), "1918-02-14");
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+    }
 }
 
 mod prussia {
@@ -740,6 +1070,7 @@ mod prussia {
         assert_eq!(
             shape,
             MonthShape {
+                calendar: cal,
                 year: 1612,
                 month: Month::August,
                 inner: inner::MonthShape::Tailless {
@@ -748,6 +1079,7 @@ mod prussia {
                 },
             }
         );
+        assert_eq!(shape.calendar(), cal);
         assert_eq!(shape.year(), 1612);
         assert_eq!(shape.month(), Month::August);
         assert_eq!(shape.len(), 22);
@@ -776,6 +1108,7 @@ mod prussia {
         assert_eq!(
             shape,
             MonthShape {
+                calendar: cal,
                 year: 1612,
                 month: Month::September,
                 inner: inner::MonthShape::Headless {
@@ -784,6 +1117,7 @@ mod prussia {
                 },
             }
         );
+        assert_eq!(shape.calendar(), cal);
         assert_eq!(shape.year(), 1612);
         assert_eq!(shape.month(), Month::September);
         assert_eq!(shape.len(), 29);
@@ -851,6 +1185,7 @@ mod china {
         assert_eq!(
             shape,
             MonthShape {
+                calendar: cal,
                 year: 1911,
                 month: Month::December,
                 inner: inner::MonthShape::Tailless {
@@ -859,6 +1194,7 @@ mod china {
                 },
             }
         );
+        assert_eq!(shape.calendar(), cal);
         assert_eq!(shape.year(), 1911);
         assert_eq!(shape.month(), Month::December);
         assert_eq!(shape.len(), 18);
@@ -887,11 +1223,13 @@ mod china {
         assert_eq!(
             shape,
             MonthShape {
+                calendar: cal,
                 year: 1912,
                 month: Month::January,
                 inner: inner::MonthShape::Normal { max_day: 31 },
             }
         );
+        assert_eq!(shape.calendar(), cal);
         assert_eq!(shape.year(), 1912);
         assert_eq!(shape.month(), Month::January);
         assert_eq!(shape.len(), 31);
@@ -954,6 +1292,7 @@ mod minreform {
         assert_eq!(
             shape,
             MonthShape {
+                calendar: cal,
                 year: 300,
                 month: Month::February,
                 inner: inner::MonthShape::Tailless {
@@ -962,6 +1301,7 @@ mod minreform {
                 },
             }
         );
+        assert_eq!(shape.calendar(), cal);
         assert_eq!(shape.year(), 300);
         assert_eq!(shape.month(), Month::February);
         assert_eq!(shape.len(), 28);
@@ -998,11 +1338,13 @@ mod minreform {
         assert_eq!(
             shape,
             MonthShape {
+                calendar: cal,
                 year: 300,
                 month: Month::March,
                 inner: inner::MonthShape::Normal { max_day: 31 },
             }
         );
+        assert_eq!(shape.calendar(), cal);
         assert_eq!(shape.year(), 300);
         assert_eq!(shape.month(), Month::March);
         assert_eq!(shape.len(), 31);
@@ -1066,6 +1408,7 @@ mod jdn2342018 {
         assert_eq!(
             shape,
             MonthShape {
+                calendar: cal,
                 year: 1700,
                 month: Month::February,
                 inner: inner::MonthShape::Gapped {
@@ -1075,6 +1418,7 @@ mod jdn2342018 {
                 },
             }
         );
+        assert_eq!(shape.calendar(), cal);
         assert_eq!(shape.year(), 1700);
         assert_eq!(shape.month(), Month::February);
         assert_eq!(shape.len(), 18);
@@ -1151,6 +1495,7 @@ mod jdn2344540 {
         assert_eq!(
             shape,
             MonthShape {
+                calendar: cal,
                 year: 1707,
                 month: Month::January,
                 inner: inner::MonthShape::Headless {
@@ -1159,6 +1504,7 @@ mod jdn2344540 {
                 },
             }
         );
+        assert_eq!(shape.calendar(), cal);
         assert_eq!(shape.year(), 1707);
         assert_eq!(shape.month(), Month::January);
         assert_eq!(shape.len(), 20);
@@ -1228,6 +1574,7 @@ mod jdn2344534 {
         assert_eq!(
             shape,
             MonthShape {
+                calendar: cal,
                 year: 1706,
                 month: Month::December,
                 inner: inner::MonthShape::Tailless {
@@ -1236,6 +1583,7 @@ mod jdn2344534 {
                 },
             }
         );
+        assert_eq!(shape.calendar(), cal);
         assert_eq!(shape.year(), 1706);
         assert_eq!(shape.month(), Month::December);
         assert_eq!(shape.len(), 25);
@@ -1273,6 +1621,7 @@ mod jdn2344534 {
         assert_eq!(
             shape,
             MonthShape {
+                calendar: cal,
                 year: 1707,
                 month: Month::January,
                 inner: inner::MonthShape::Headless {
@@ -1281,6 +1630,7 @@ mod jdn2344534 {
                 },
             }
         );
+        assert_eq!(shape.calendar(), cal);
         assert_eq!(shape.year(), 1707);
         assert_eq!(shape.month(), Month::January);
         assert_eq!(shape.len(), 26);

@@ -926,6 +926,7 @@ impl Calendar {
             inner::MonthShape::Normal { max_day: length }
         };
         Some(MonthShape {
+            calendar: *self,
             year,
             month,
             inner: inshape,
@@ -1034,12 +1035,18 @@ impl Calendar {
 /// A `MonthShape` can be obtained by calling [`Calendar::month_shape()`].
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct MonthShape {
+    calendar: Calendar,
     year: i32,
     month: Month,
     inner: inner::MonthShape,
 }
 
 impl MonthShape {
+    /// Returns the [`Calendar`] to which the month shape belongs
+    pub fn calendar(&self) -> Calendar {
+        self.calendar
+    }
+
     /// Returns the year in which the month occurs
     pub fn year(&self) -> i32 {
         self.year
@@ -1320,6 +1327,26 @@ impl MonthShape {
         }
     }
 
+    /// Converts a one-based ordinal number to the corresponding [`Date`]
+    /// within the month.
+    ///
+    /// Returns `None` if `day` is 0 or larger than [`MonthShape::len()`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let cal = Calendar::REFORM1582;
+    /// let shape = cal.month_shape(1582, Month::October).unwrap();
+    /// let date = shape.nth_date(5).unwrap();
+    /// assert_eq!(date.to_string(), "1582-10-15");
+    /// ```
+    pub fn nth_date(&self, day_ordinal: u32) -> Option<Date> {
+        let day = self.nth_day(day_ordinal)?;
+        Some(self.calendar.at_ymd(self.year, self.month, day).unwrap())
+    }
+
     /// Returns the range of days of the month that were skipped by a calendar
     /// reformation.
     ///
@@ -1389,6 +1416,11 @@ impl MonthShape {
     pub fn days(&self) -> Days {
         Days::new(*self)
     }
+
+    /// Returns an iterator over all [`Date`s][Date] within the month
+    pub fn dates(&self) -> Dates {
+        Dates::new(*self)
+    }
 }
 
 /// A description of how a calendar month was affected by a calendar
@@ -1454,6 +1486,45 @@ impl ExactSizeIterator for Days {}
 impl DoubleEndedIterator for Days {
     fn next_back(&mut self) -> Option<u32> {
         self.month_shape.nth_day(self.inner.next_back()?)
+    }
+}
+
+/// An iterator over the [`Date`s][Date] within a month.
+///
+/// A `Dates` instance can be acquired by calling [`MonthShape::dates()`].
+pub struct Dates {
+    month_shape: MonthShape,
+    inner: RangeInclusive<u32>,
+}
+
+impl Dates {
+    fn new(month_shape: MonthShape) -> Self {
+        Dates {
+            month_shape,
+            inner: 1..=(month_shape.len()),
+        }
+    }
+}
+
+impl Iterator for Dates {
+    type Item = Date;
+
+    fn next(&mut self) -> Option<Date> {
+        self.month_shape.nth_date(self.inner.next()?)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+impl FusedIterator for Dates {}
+
+impl ExactSizeIterator for Dates {}
+
+impl DoubleEndedIterator for Dates {
+    fn next_back(&mut self) -> Option<Date> {
+        self.month_shape.nth_date(self.inner.next_back()?)
     }
 }
 
