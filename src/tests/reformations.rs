@@ -377,6 +377,15 @@ mod gregorian_reform {
         let cal = Calendar::REFORM1582;
         assert_eq!(cal.month_shape(year, month).unwrap().len(), length);
     }
+
+    #[test]
+    fn across_boundary() {
+        let cal = Calendar::REFORM1582;
+        let last_julian = cal.last_julian_date().unwrap();
+        let first_gregorian = cal.first_gregorian_date().unwrap();
+        assert_eq!(last_julian.succ(), Some(first_gregorian));
+        assert_eq!(first_gregorian.pred(), Some(last_julian));
+    }
 }
 
 mod germany {
@@ -751,6 +760,15 @@ mod germany {
         assert_eq!(iter.size_hint(), (0, Some(0)));
         assert_eq!(iter.next(), None);
     }
+
+    #[test]
+    fn across_boundary() {
+        let cal = Calendar::reforming(ncal::GERMANY).unwrap();
+        let last_julian = cal.last_julian_date().unwrap();
+        let first_gregorian = cal.first_gregorian_date().unwrap();
+        assert_eq!(last_julian.succ(), Some(first_gregorian));
+        assert_eq!(first_gregorian.pred(), Some(last_julian));
+    }
 }
 
 mod russia {
@@ -1026,6 +1044,15 @@ mod russia {
         assert_eq!(iter.size_hint(), (0, Some(0)));
         assert_eq!(iter.next(), None);
     }
+
+    #[test]
+    fn across_boundary() {
+        let cal = Calendar::reforming(ncal::RUSSIA).unwrap();
+        let last_julian = cal.last_julian_date().unwrap();
+        let first_gregorian = cal.first_gregorian_date().unwrap();
+        assert_eq!(last_julian.succ(), Some(first_gregorian));
+        assert_eq!(first_gregorian.pred(), Some(last_julian));
+    }
 }
 
 mod prussia {
@@ -1140,6 +1167,15 @@ mod prussia {
         assert_eq!(shape.gap(), Some(1..=1));
         assert_eq!(shape.kind(), MonthKind::Headless);
     }
+
+    #[test]
+    fn across_boundary() {
+        let cal = Calendar::reforming(PRUSSIA).unwrap();
+        let last_julian = cal.last_julian_date().unwrap();
+        let first_gregorian = cal.first_gregorian_date().unwrap();
+        assert_eq!(last_julian.succ(), Some(first_gregorian));
+        assert_eq!(first_gregorian.pred(), Some(last_julian));
+    }
 }
 
 mod china {
@@ -1249,6 +1285,15 @@ mod china {
         assert_eq!(shape.nth_day(32), None);
         assert_eq!(shape.gap(), None);
         assert_eq!(shape.kind(), MonthKind::Normal);
+    }
+
+    #[test]
+    fn across_boundary() {
+        let cal = Calendar::reforming(ncal::CHINA).unwrap();
+        let last_julian = cal.last_julian_date().unwrap();
+        let first_gregorian = cal.first_gregorian_date().unwrap();
+        assert_eq!(last_julian.succ(), Some(first_gregorian));
+        assert_eq!(first_gregorian.pred(), Some(last_julian));
     }
 }
 
@@ -1365,6 +1410,15 @@ mod minreform {
         assert_eq!(shape.gap(), None);
         assert_eq!(shape.kind(), MonthKind::Normal);
     }
+
+    #[test]
+    fn across_boundary() {
+        let cal = Calendar::reforming(REFORM).unwrap();
+        let last_julian = cal.last_julian_date().unwrap();
+        let first_gregorian = cal.first_gregorian_date().unwrap();
+        assert_eq!(last_julian.succ(), Some(first_gregorian));
+        assert_eq!(first_gregorian.pred(), Some(last_julian));
+    }
 }
 
 mod jdn2342018 {
@@ -1450,6 +1504,15 @@ mod jdn2342018 {
         assert_eq!(shape.gap(), Some(5..=14));
         assert_eq!(shape.kind(), MonthKind::Gapped);
     }
+
+    #[test]
+    fn across_boundary() {
+        let cal = Calendar::reforming(REFORM).unwrap();
+        let last_julian = cal.last_julian_date().unwrap();
+        let first_gregorian = cal.first_gregorian_date().unwrap();
+        assert_eq!(last_julian.succ(), Some(first_gregorian));
+        assert_eq!(first_gregorian.pred(), Some(last_julian));
+    }
 }
 
 mod jdn2344540 {
@@ -1528,6 +1591,15 @@ mod jdn2344540 {
         assert_eq!(shape.nth_day(21), None);
         assert_eq!(shape.gap(), Some(1..=11));
         assert_eq!(shape.kind(), MonthKind::Headless);
+    }
+
+    #[test]
+    fn across_boundary() {
+        let cal = Calendar::reforming(REFORM).unwrap();
+        let last_julian = cal.last_julian_date().unwrap();
+        let first_gregorian = cal.first_gregorian_date().unwrap();
+        assert_eq!(last_julian.succ(), Some(first_gregorian));
+        assert_eq!(first_gregorian.pred(), Some(last_julian));
     }
 }
 
@@ -1655,6 +1727,15 @@ mod jdn2344534 {
         assert_eq!(shape.gap(), Some(1..=5));
         assert_eq!(shape.kind(), MonthKind::Headless);
     }
+
+    #[test]
+    fn across_boundary() {
+        let cal = Calendar::reforming(REFORM).unwrap();
+        let last_julian = cal.last_julian_date().unwrap();
+        let first_gregorian = cal.first_gregorian_date().unwrap();
+        assert_eq!(last_julian.succ(), Some(first_gregorian));
+        assert_eq!(first_gregorian.pred(), Some(last_julian));
+    }
 }
 
 #[test]
@@ -1686,6 +1767,10 @@ fn iceland() {
     assert_eq!(cal.year_kind(1700), YearKind::ReformLeap);
     assert_eq!(cal.year_length(1700), 355);
     assert!(cal.at_ymd(1700, Month::February, 29).is_ok());
+    let last_julian = cal.last_julian_date().unwrap();
+    let first_gregorian = cal.first_gregorian_date().unwrap();
+    assert_eq!(last_julian.succ(), Some(first_gregorian));
+    assert_eq!(first_gregorian.pred(), Some(last_julian));
 }
 
 #[test]
@@ -1717,6 +1802,10 @@ fn czechia() {
     assert_eq!(cal.year_kind(1584), YearKind::ReformLeap);
     assert_eq!(cal.year_length(1584), 356);
     assert!(cal.at_ymd(1584, Month::February, 29).is_ok());
+    let last_julian = cal.last_julian_date().unwrap();
+    let first_gregorian = cal.first_gregorian_date().unwrap();
+    assert_eq!(last_julian.succ(), Some(first_gregorian));
+    assert_eq!(first_gregorian.pred(), Some(last_julian));
 }
 
 #[test]
@@ -1764,6 +1853,10 @@ fn skipped_month() {
             })
         );
     }
+    let last_julian = cal.last_julian_date().unwrap();
+    let first_gregorian = cal.first_gregorian_date().unwrap();
+    assert_eq!(last_julian.succ(), Some(first_gregorian));
+    assert_eq!(first_gregorian.pred(), Some(last_julian));
 }
 
 #[test]
@@ -1834,6 +1927,10 @@ fn skipped_year() {
             })
         );
     }
+    let last_julian = cal.last_julian_date().unwrap();
+    let first_gregorian = cal.first_gregorian_date().unwrap();
+    assert_eq!(last_julian.succ(), Some(first_gregorian));
+    assert_eq!(first_gregorian.pred(), Some(last_julian));
 }
 
 #[test]
@@ -1866,6 +1963,10 @@ fn jdn2460316() {
     assert_eq!(cal.year_length(2023), 357);
     assert_eq!(cal.year_kind(2024), YearKind::ReformLeap);
     assert_eq!(cal.year_length(2024), 361);
+    let last_julian = cal.last_julian_date().unwrap();
+    let first_gregorian = cal.first_gregorian_date().unwrap();
+    assert_eq!(last_julian.succ(), Some(first_gregorian));
+    assert_eq!(first_gregorian.pred(), Some(last_julian));
 }
 
 #[test]
@@ -1898,6 +1999,10 @@ fn jdn2460682() {
     assert_eq!(cal.year_length(2024), 358);
     assert_eq!(cal.year_kind(2025), YearKind::ReformCommon);
     assert_eq!(cal.year_length(2025), 360);
+    let last_julian = cal.last_julian_date().unwrap();
+    let first_gregorian = cal.first_gregorian_date().unwrap();
+    assert_eq!(last_julian.succ(), Some(first_gregorian));
+    assert_eq!(first_gregorian.pred(), Some(last_julian));
 }
 
 #[test]

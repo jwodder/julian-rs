@@ -1020,6 +1020,30 @@ impl Calendar {
             _ => None,
         }
     }
+
+    /// [Private] Returns the next year after `year`, skipping any skipped
+    /// years.  `year` itself must not be a skipped year or else the result
+    /// will be garbage.
+    fn next_year_after(&self, year: i32) -> i32 {
+        if let Some(gap) = self.gap() {
+            if year == gap.pre_reform.year && gap.post_reform.year > gap.pre_reform.year {
+                return gap.post_reform.year;
+            }
+        }
+        year + 1
+    }
+
+    /// [Private] Returns the year immediately before `year`, skipping any
+    /// skipped years.  `year` itself must not be a skipped year or else the
+    /// result will be garbage.
+    fn prev_year_before(&self, year: i32) -> i32 {
+        if let Some(gap) = self.gap() {
+            if year == gap.post_reform.year && gap.post_reform.year > gap.pre_reform.year {
+                return gap.pre_reform.year;
+            }
+        }
+        year - 1
+    }
 }
 
 /// Information about the days of a month.
@@ -1732,6 +1756,80 @@ impl Date {
     /// ```
     pub fn convert_to(&self, calendar: Calendar) -> Date {
         calendar.at_jdn(self.julian_day_number())
+    }
+
+    /// Returns the next date in the calendar.  Returns `None` if numeric
+    /// overflow occurs while calculating the next date's Julian day number
+    /// (See [`Calendar::at_ymd()`] for when this can happen).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let date = Calendar::REFORM1582.at_ymd(1582, Month::October, 4).unwrap();
+    /// let next_date = date.succ().unwrap();
+    /// assert_eq!(next_date.to_string(), "1582-10-15");
+    /// ```
+    pub fn succ(&self) -> Option<Date> {
+        let jdn = self.jdn.checked_add(1)?;
+        let mut year = self.year;
+        let mut ordinal = self.ordinal + 1;
+        let (month, day, day_ordinal) = match self.calendar().ordinal2ymddo(year, ordinal) {
+            Ok(values) => values,
+            Err(DateError::OrdinalOutOfRange { .. }) => {
+                year = self.calendar().next_year_after(year);
+                ordinal = 1;
+                // Erroring here shouldn't happen, but just in case...
+                self.calendar().ordinal2ymddo(year, ordinal).ok()?
+            }
+            // This shouldn't happen, but just in case...
+            _ => return None,
+        };
+        Some(Date {
+            calendar: self.calendar,
+            year,
+            ordinal,
+            month,
+            day,
+            day_ordinal,
+            jdn,
+        })
+    }
+
+    /// Returns the previous date in the calendar.  Returns `None` if numeric
+    /// underflow occurs while calculating the previous date's Julian day
+    /// number (See [`Calendar::at_ymd()`] for when this can happen).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let date = Calendar::REFORM1582.at_ymd(1582, Month::October, 15).unwrap();
+    /// let next_date = date.pred().unwrap();
+    /// assert_eq!(next_date.to_string(), "1582-10-04");
+    /// ```
+    pub fn pred(&self) -> Option<Date> {
+        let jdn = self.jdn.checked_sub(1)?;
+        let mut year = self.year;
+        let ordinal = if self.ordinal > 1 {
+            self.ordinal - 1
+        } else {
+            year = self.calendar().prev_year_before(year);
+            self.calendar().year_length(year)
+        };
+        // Erroring here shouldn't happen, but just in case...
+        let (month, day, day_ordinal) = self.calendar().ordinal2ymddo(year, ordinal).ok()?;
+        Some(Date {
+            calendar: self.calendar,
+            year,
+            ordinal,
+            month,
+            day,
+            day_ordinal,
+            jdn,
+        })
     }
 }
 

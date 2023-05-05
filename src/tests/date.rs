@@ -1,4 +1,4 @@
-use crate::{ncal, Calendar, Month};
+use crate::{ncal, Calendar, Jdnum, Month};
 
 #[test]
 fn display() {
@@ -68,4 +68,62 @@ fn convert_to() {
     assert_eq!(date.julian_day_number(), date2.julian_day_number());
     assert_eq!(date.julian_day_number(), 2460065);
     assert_eq!(date2, julian.at_ymd(2023, Month::April, 17).unwrap());
+}
+
+#[test]
+fn pred_min_date() {
+    let date = Calendar::GREGORIAN.at_jdn(Jdnum::MIN);
+    assert_eq!(date.pred(), None);
+}
+
+#[test]
+fn succ_min_date() {
+    let date = Calendar::GREGORIAN.at_jdn(Jdnum::MIN);
+    let succ = date.succ().unwrap();
+    assert_eq!(succ.calendar(), Calendar::GREGORIAN);
+    assert_eq!(succ.year(), -5884323);
+    assert_eq!(succ.month(), Month::May);
+    assert_eq!(succ.day(), 16);
+    assert_eq!(succ.julian_day_number(), Jdnum::MIN + 1);
+}
+
+#[test]
+fn pred_across_normal_year() {
+    let date = Calendar::GREGORIAN.at_ymd(2023, Month::January, 1).unwrap();
+    let pred = date.pred().unwrap();
+    assert_eq!(pred.calendar(), Calendar::GREGORIAN);
+    assert_eq!(pred.year(), 2022);
+    assert_eq!(pred.month(), Month::December);
+    assert_eq!(pred.day(), 31);
+    assert_eq!(pred.ordinal(), 365);
+}
+
+#[test]
+fn succ_across_normal_year() {
+    let date = Calendar::GREGORIAN
+        .at_ymd(2022, Month::December, 31)
+        .unwrap();
+    let succ = date.succ().unwrap();
+    assert_eq!(succ.calendar(), Calendar::GREGORIAN);
+    assert_eq!(succ.year(), 2023);
+    assert_eq!(succ.month(), Month::January);
+    assert_eq!(succ.day(), 1);
+    assert_eq!(succ.ordinal(), 1);
+}
+
+#[test]
+fn pred_max_date() {
+    let date = Calendar::GREGORIAN.at_jdn(Jdnum::MAX);
+    let succ = date.pred().unwrap();
+    assert_eq!(succ.calendar(), Calendar::GREGORIAN);
+    assert_eq!(succ.year(), 5874898);
+    assert_eq!(succ.month(), Month::June);
+    assert_eq!(succ.day(), 2);
+    assert_eq!(succ.julian_day_number(), Jdnum::MAX - 1);
+}
+
+#[test]
+fn succ_max_date() {
+    let date = Calendar::GREGORIAN.at_jdn(Jdnum::MAX);
+    assert_eq!(date.succ(), None);
 }

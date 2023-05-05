@@ -5,6 +5,8 @@ v0.2.0 (in development)
   `Calendar`
 - Gave `MonthShape` `nth_date()` and `dates()` methods for obtaining `Date`
   objects belonging to the month
+- Gave `Date` `pred()` and `succ()` methods for getting the previous & next
+  dates
 
 v0.1.0 (2023-05-02)
 -------------------
