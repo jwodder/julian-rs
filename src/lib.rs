@@ -1686,6 +1686,20 @@ impl Date {
         self.jdn
     }
 
+    /// Returns the date's day of the week.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month, Weekday};
+    ///
+    /// let date = Calendar::GREGORIAN.at_ymd(2023, Month::May, 1).unwrap();
+    /// assert_eq!(date.weekday(), Weekday::Monday);
+    /// ```
+    pub fn weekday(&self) -> Weekday {
+        Weekday::for_jdn(self.jdn)
+    }
+
     /// Returns true if the date is in the Julian calendar (a.k.a. "Old
     /// Style"), i.e., if [`Date::calendar()`] is either a proleptic Julian
     /// calendar or a "reforming" calendar for which the reformation occurs
@@ -2065,7 +2079,7 @@ impl FromStr for Month {
 #[error("invalid month name")]
 pub struct ParseMonthError;
 
-macro_rules! impl_try_from {
+macro_rules! impl_month_try_from {
     ($($t:ty),* $(,)?) => {
       $(
         impl TryFrom<$t> for Month {
@@ -2075,8 +2089,8 @@ macro_rules! impl_try_from {
             ///
             /// # Errors
             ///
-            /// Returns [`TryIntoMonthError`] if the given number is zero or
-            /// greater than twelve.
+            /// Returns [`TryIntoMonthError`] if the given number is less than
+            /// one or greater than twelve.
             fn try_from(value: $t) -> Result<Month, TryIntoMonthError> {
                 use Month::*;
                 match value {
@@ -2100,7 +2114,12 @@ macro_rules! impl_try_from {
     }
 }
 
-impl_try_from!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+impl_month_try_from!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+
+/// Error returned when converting a number to a month fails
+#[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
+#[error("value out of range for month number; must be from 1 through 12")]
+pub struct TryIntoMonthError;
 
 #[cfg(feature = "chrono")]
 #[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
@@ -2145,11 +2164,6 @@ impl From<Month> for chrono::Month {
         }
     }
 }
-
-/// Error returned when converting a number to a month fails
-#[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
-#[error("value out of range for month number; must be from 1 through 12")]
-pub struct TryIntoMonthError;
 
 /// Iterator over the months of the year in order.
 ///
@@ -2208,6 +2222,211 @@ impl ExactSizeIterator for MonthIter {}
 impl DoubleEndedIterator for MonthIter {
     fn next_back(&mut self) -> Option<Month> {
         Some(u32::from(self.0.next_back()?).try_into().unwrap())
+    }
+}
+
+/// An enumeration of the seven days of the week.
+///
+/// This type follows the ISO convention of designating Monday as the first day
+/// of the week and Sunday as the last.
+#[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
+pub enum Weekday {
+    Monday = 1,
+    Tuesday = 2,
+    Wednesday = 3,
+    Thursday = 4,
+    Friday = 5,
+    Saturday = 6,
+    Sunday = 7,
+}
+
+impl Weekday {
+    /// Returns the English name of the weekday.  This is the same as the
+    /// weekday's Rust identifier.
+    pub fn name(&self) -> &'static str {
+        use Weekday::*;
+        match self {
+            Monday => "Monday",
+            Tuesday => "Tuesday",
+            Wednesday => "Wednesday",
+            Thursday => "Thursday",
+            Friday => "Friday",
+            Saturday => "Saturday",
+            Sunday => "Sunday",
+        }
+    }
+
+    /// Returns the first three letters of the English name of the weekday
+    pub fn short_name(&self) -> &'static str {
+        use Weekday::*;
+        match self {
+            Monday => "Mon",
+            Tuesday => "Tue",
+            Wednesday => "Wed",
+            Thursday => "Thu",
+            Friday => "Fri",
+            Saturday => "Sat",
+            Sunday => "Sun",
+        }
+    }
+
+    /// Returns the number of the weekday, where Monday is 1 and Sunday is 7.
+    ///
+    /// These values are also available as the enumeration discriminants and
+    /// can be accessed by casting, e.g., `Weekday::Monday as u32`.
+    pub fn number(&self) -> u32 {
+        *self as u32
+    }
+
+    /// Returns the zero-based number of the weekday, where Monday is 0 and
+    /// Sunday is 6.
+    pub fn number0(&self) -> u32 {
+        self.number() - 1
+    }
+
+    /// Returns the weekday for the given Julian day number
+    pub fn for_jdn(jdn: Jdnum) -> Weekday {
+        Weekday::try_from(jdn.rem_euclid(7) + 1).unwrap()
+    }
+
+    /// Returns the day of the week before this one.  Returns `None` for
+    /// Monday.
+    pub fn pred(&self) -> Option<Weekday> {
+        use Weekday::*;
+        match self {
+            Monday => None,
+            Tuesday => Some(Monday),
+            Wednesday => Some(Tuesday),
+            Thursday => Some(Wednesday),
+            Friday => Some(Thursday),
+            Saturday => Some(Friday),
+            Sunday => Some(Saturday),
+        }
+    }
+
+    /// Returns the day of the week after this one.  Returns `None` for
+    /// Sunday.
+    pub fn succ(&self) -> Option<Weekday> {
+        use Weekday::*;
+        match self {
+            Monday => Some(Tuesday),
+            Tuesday => Some(Wednesday),
+            Wednesday => Some(Thursday),
+            Thursday => Some(Friday),
+            Friday => Some(Saturday),
+            Saturday => Some(Sunday),
+            Sunday => None,
+        }
+    }
+}
+
+impl fmt::Display for Weekday {
+    /// A `Weekday` is displayed as its English name by default.  Selecting the
+    /// alternate form with `{:#}` instead produces just the first three
+    /// letters of the English name.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if f.alternate() {
+            write!(f, "{}", self.short_name())
+        } else {
+            write!(f, "{}", self.name())
+        }
+    }
+}
+
+impl FromStr for Weekday {
+    type Err = ParseWeekdayError;
+
+    /// Parses a weekday from either its English name or just the first three
+    /// letters of the name.  Input is treated case-insensitively.
+    fn from_str(s: &str) -> Result<Weekday, ParseWeekdayError> {
+        use Weekday::*;
+        match s.to_ascii_lowercase().as_str() {
+            "sunday" | "sun" => Ok(Sunday),
+            "monday" | "mon" => Ok(Monday),
+            "tuesday" | "tue" => Ok(Tuesday),
+            "wednesday" | "wed" => Ok(Wednesday),
+            "thursday" | "thu" => Ok(Thursday),
+            "friday" | "fri" => Ok(Friday),
+            "saturday" | "sat" => Ok(Saturday),
+            _ => Err(ParseWeekdayError),
+        }
+    }
+}
+
+/// Error returned when parsing a weekday fails
+#[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
+#[error("invalid weekday name")]
+pub struct ParseWeekdayError;
+
+macro_rules! impl_weekday_try_from {
+    ($($t:ty),* $(,)?) => {
+      $(
+        impl TryFrom<$t> for Weekday {
+            type Error = TryIntoWeekdayError;
+
+            /// Convert a number from 1 to 7 to a weekday, where 1 is Monday
+            /// and 7 is Sunday.
+            ///
+            /// # Errors
+            ///
+            /// Returns [`TryIntoWeekdayError`] if the given number is less
+            /// than one or greater than seven.
+            fn try_from(value: $t) -> Result<Weekday, TryIntoWeekdayError> {
+                use Weekday::*;
+                match value {
+                    1 => Ok(Monday),
+                    2 => Ok(Tuesday),
+                    3 => Ok(Wednesday),
+                    4 => Ok(Thursday),
+                    5 => Ok(Friday),
+                    6 => Ok(Saturday),
+                    7 => Ok(Sunday),
+                    _ => Err(TryIntoWeekdayError),
+                }
+            }
+        }
+      )*
+    }
+}
+
+impl_weekday_try_from!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+
+/// Error returned when converting a number to a weekday fails
+#[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
+#[error("value out of range for weekday number; must be from 1 through 7")]
+pub struct TryIntoWeekdayError;
+
+#[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
+impl From<chrono::Weekday> for Weekday {
+    /// Convert a [`chrono::Weekday`] to a [`Weekday`]
+    fn from(wd: chrono::Weekday) -> Weekday {
+        match wd {
+            chrono::Weekday::Sun => Weekday::Sunday,
+            chrono::Weekday::Mon => Weekday::Monday,
+            chrono::Weekday::Tue => Weekday::Tuesday,
+            chrono::Weekday::Wed => Weekday::Wednesday,
+            chrono::Weekday::Thu => Weekday::Thursday,
+            chrono::Weekday::Fri => Weekday::Friday,
+            chrono::Weekday::Sat => Weekday::Saturday,
+        }
+    }
+}
+
+#[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
+impl From<Weekday> for chrono::Weekday {
+    /// Convert a [`Weekday`] to a [`chrono::Weekday`]
+    fn from(wd: Weekday) -> chrono::Weekday {
+        match wd {
+            Weekday::Sunday => chrono::Weekday::Sun,
+            Weekday::Monday => chrono::Weekday::Mon,
+            Weekday::Tuesday => chrono::Weekday::Tue,
+            Weekday::Wednesday => chrono::Weekday::Wed,
+            Weekday::Thursday => chrono::Weekday::Thu,
+            Weekday::Friday => chrono::Weekday::Fri,
+            Weekday::Saturday => chrono::Weekday::Sat,
+        }
     }
 }
 
@@ -2428,5 +2647,6 @@ mod tests {
     mod parse_date;
     mod reformations;
     mod unix;
+    mod weekday;
     mod year_kind;
 }

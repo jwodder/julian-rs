@@ -1,5 +1,5 @@
 #![cfg(feature = "chrono")]
-use crate::{Calendar, Date, Month, TryFromDateError};
+use crate::{Calendar, Date, Month, TryFromDateError, Weekday};
 use chrono::{naive::NaiveDate, Datelike};
 
 #[test]
@@ -196,4 +196,58 @@ fn convert_december() {
         chrono::Month::December
     );
     assert_eq!(Month::from(chrono::Month::December), Month::December);
+}
+
+#[test]
+fn convert_monday() {
+    assert_eq!(chrono::Weekday::from(Weekday::Monday), chrono::Weekday::Mon);
+    assert_eq!(Weekday::from(chrono::Weekday::Mon), Weekday::Monday);
+}
+
+#[test]
+fn convert_tuesday() {
+    assert_eq!(
+        chrono::Weekday::from(Weekday::Tuesday),
+        chrono::Weekday::Tue
+    );
+    assert_eq!(Weekday::from(chrono::Weekday::Tue), Weekday::Tuesday);
+}
+
+#[test]
+fn convert_wednesday() {
+    assert_eq!(
+        chrono::Weekday::from(Weekday::Wednesday),
+        chrono::Weekday::Wed
+    );
+    assert_eq!(Weekday::from(chrono::Weekday::Wed), Weekday::Wednesday);
+}
+
+#[test]
+fn convert_thursday() {
+    assert_eq!(
+        chrono::Weekday::from(Weekday::Thursday),
+        chrono::Weekday::Thu
+    );
+    assert_eq!(Weekday::from(chrono::Weekday::Thu), Weekday::Thursday);
+}
+
+#[test]
+fn convert_friday() {
+    assert_eq!(chrono::Weekday::from(Weekday::Friday), chrono::Weekday::Fri);
+    assert_eq!(Weekday::from(chrono::Weekday::Fri), Weekday::Friday);
+}
+
+#[test]
+fn convert_saturday() {
+    assert_eq!(
+        chrono::Weekday::from(Weekday::Saturday),
+        chrono::Weekday::Sat
+    );
+    assert_eq!(Weekday::from(chrono::Weekday::Sat), Weekday::Saturday);
+}
+
+#[test]
+fn convert_sunday() {
+    assert_eq!(chrono::Weekday::from(Weekday::Sunday), chrono::Weekday::Sun);
+    assert_eq!(Weekday::from(chrono::Weekday::Sun), Weekday::Sunday);
 }

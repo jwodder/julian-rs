@@ -1,4 +1,4 @@
-use crate::{ncal, Calendar, Jdnum, Month};
+use crate::{ncal, Calendar, Jdnum, Month, Weekday};
 
 #[test]
 fn display() {
@@ -126,4 +126,22 @@ fn pred_max_date() {
 fn succ_max_date() {
     let date = Calendar::GREGORIAN.at_jdn(Jdnum::MAX);
     assert_eq!(date.succ(), None);
+}
+
+#[test]
+fn test_week_of_weekdays() {
+    let mut date = Calendar::GREGORIAN.at_ymd(2023, Month::May, 8).unwrap();
+    assert_eq!(date.weekday(), Weekday::Monday);
+    date = date.succ().unwrap();
+    assert_eq!(date.weekday(), Weekday::Tuesday);
+    date = date.succ().unwrap();
+    assert_eq!(date.weekday(), Weekday::Wednesday);
+    date = date.succ().unwrap();
+    assert_eq!(date.weekday(), Weekday::Thursday);
+    date = date.succ().unwrap();
+    assert_eq!(date.weekday(), Weekday::Friday);
+    date = date.succ().unwrap();
+    assert_eq!(date.weekday(), Weekday::Saturday);
+    date = date.succ().unwrap();
+    assert_eq!(date.weekday(), Weekday::Sunday);
 }
