@@ -1,8 +1,18 @@
+/// This is a program for automatically generating a number of test cases for
+/// `julian` from data files in `data/`.  Run it whenever a file in `data/`
+/// changes.
+///
+/// Run with:
+///
+///     cargo run --bin gentests --features gentests -- path/to/root/of/project
+///
+/// where the path argument can be omitted when running from the project root
+/// itself.
+use anyhow::Context;
 use serde::Deserialize;
-use std::env;
-use std::fs::File;
+use std::fs::{create_dir_all, File};
 use std::io::{self, BufWriter, Write};
-use std::path::Path;
+use std::path::PathBuf;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 struct JdnRecord {
@@ -138,24 +148,31 @@ impl ReformingRecord {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("cargo:rerun-if-changed=data/jdn.csv");
-    println!("cargo:rerun-if-changed=data/reforming.csv");
+fn main() -> anyhow::Result<()> {
+    let project_root = std::env::args_os()
+        .nth(1)
+        .map(PathBuf::from)
+        .unwrap_or_default();
+    let outdir = project_root.join("src").join("tests").join("autogen");
+    create_dir_all(&outdir)
+        .with_context(|| format!("Failed to create directory at {}", outdir.display()))?;
+    let data_dir = project_root.join("data");
+    make_jdn_tests(data_dir.join("jdn.csv"), outdir.join("jdn.rs"))?;
+    make_reforming_tests(data_dir.join("reforming.csv"), outdir.join("reforming.rs"))?;
+    Ok(())
+}
 
+fn make_jdn_tests(inpath: PathBuf, outpath: PathBuf) -> anyhow::Result<()> {
+    eprintln!("Loading {} ...", inpath.display());
     let jdn_records = csv::ReaderBuilder::new()
         .comment(Some(b'#'))
-        .from_path("data/jdn.csv")?
+        .from_path(&inpath)
+        .with_context(|| format!("Failed to read {}", inpath.display()))?
         .deserialize()
-        .collect::<Result<Vec<JdnRecord>, _>>()?;
-
-    let reforming_records = csv::ReaderBuilder::new()
-        .comment(Some(b'#'))
-        .from_path("data/reforming.csv")?
-        .deserialize()
-        .collect::<Result<Vec<ReformingRecord>, _>>()?;
-
-    let out_dir = env::var("OUT_DIR").expect("OUT_DIR envvar not set");
-    let mut fp = BufWriter::new(File::create(Path::new(&out_dir).join("autogen.rs"))?);
+        .collect::<Result<Vec<JdnRecord>, _>>()
+        .with_context(|| format!("Failed to deserialize {}", inpath.display()))?;
+    eprintln!("Generating {} ...", outpath.display());
+    let mut fp = BufWriter::new(File::create(outpath)?);
 
     writeln!(&mut fp, "mod jdn_to_julian {{")?;
     writeln!(&mut fp, "    use crate::{{Calendar, Month}};")?;
@@ -275,6 +292,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         writeln!(&mut fp, "    }}")?;
     }
     writeln!(&mut fp, "}}")?;
+
+    fp.flush()?;
+    Ok(())
+}
+
+fn make_reforming_tests(inpath: PathBuf, outpath: PathBuf) -> anyhow::Result<()> {
+    eprintln!("Loading {} ...", inpath.display());
+    let reforming_records = csv::ReaderBuilder::new()
+        .comment(Some(b'#'))
+        .from_path(&inpath)
+        .with_context(|| format!("Failed to read {}", inpath.display()))?
+        .deserialize()
+        .collect::<Result<Vec<ReformingRecord>, _>>()
+        .with_context(|| format!("Failed to deserialize {}", inpath.display()))?;
+    eprintln!("Generating {} ...", outpath.display());
+    let mut fp = BufWriter::new(File::create(outpath)?);
 
     writeln!(&mut fp, "mod jdn_to_reforming {{")?;
     writeln!(&mut fp, "    use crate::{{Calendar, Month}};")?;
