@@ -9,6 +9,19 @@
 //! [Gregorian calendar]: https://en.wikipedia.org/wiki/Gregorian_calendar
 //! [Julian calendar]: https://en.wikipedia.org/wiki/Julian_calendar
 //!
+//! Features
+//! ========
+//!
+//! The `julian` crate has the following optional features.  None of them are
+//! enabled by default.
+//!
+//! - `chrono` — Enables converting values of certain `julian` types to the
+//!   corresponding [`chrono`](https://crates.io/crates/chrono) types and *vice
+//!   versa*.
+//!
+//! - `gentests` — Used internally to install dependencies needed for a utility
+//!   binary.  Do not enable.
+//!
 //! Examples
 //! ========
 //!
