@@ -1,5 +1,5 @@
-v0.2.0 (in development)
------------------------
+v0.2.0 (2023-05-13)
+-------------------
 - Added a `chrono` feature for enabling conversions to & from `chrono` types
 - Gave `MonthShape` a `calendar()` method for obtaining the associated
   `Calendar`
