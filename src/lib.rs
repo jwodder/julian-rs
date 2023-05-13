@@ -1858,6 +1858,84 @@ impl Date {
             jdn,
         })
     }
+
+    /// Returns an iterator over all later days in the calendar, starting after
+    /// (and not including) the receiver date.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let date = Calendar::REFORM1582.at_ymd(1582, Month::October, 2).unwrap();
+    /// let mut iter = date.later();
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-03");
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-04");
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-15");
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-16");
+    /// ```
+    pub fn later(&self) -> Later {
+        Later::new(*self)
+    }
+
+    /// Returns an iterator over all earlier days in the calendar, starting
+    /// before (and not including) the receiver date.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let date = Calendar::REFORM1582.at_ymd(1582, Month::October, 17).unwrap();
+    /// let mut iter = date.earlier();
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-16");
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-15");
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-04");
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-03");
+    /// ```
+    pub fn earlier(&self) -> Earlier {
+        Earlier::new(*self)
+    }
+
+    /// Returns an iterator that yields the receiver date followed by all later
+    /// days in the calendar.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let date = Calendar::REFORM1582.at_ymd(1582, Month::October, 2).unwrap();
+    /// let mut iter = date.and_later();
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-02");
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-03");
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-04");
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-15");
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-16");
+    /// ```
+    pub fn and_later(&self) -> AndLater {
+        AndLater::new(*self)
+    }
+
+    /// Returns an iterator that yields the receiver date followed by all
+    /// earlier days in the calendar.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use julian::{Calendar, Month};
+    ///
+    /// let date = Calendar::REFORM1582.at_ymd(1582, Month::October, 17).unwrap();
+    /// let mut iter = date.and_earlier();
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-17");
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-16");
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-15");
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-04");
+    /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-03");
+    /// ```
+    pub fn and_earlier(&self) -> AndEarlier {
+        AndEarlier::new(*self)
+    }
 }
 
 impl PartialOrd for Date {
@@ -1937,6 +2015,116 @@ impl TryFrom<Date> for chrono::naive::NaiveDate {
 #[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
 #[error("date out of range for chrono::naive::NaiveDate")]
 pub struct TryFromDateError;
+
+/// Iterator over calendar dates later than a given date.
+///
+/// A `Later` instance is acquired by calling [`Date::later()`].
+///
+/// A `Later` iterator will stop yielding after it reaches 5874898-06-03 N.S.
+/// (5874777-10-17 O.S.).
+pub struct Later {
+    date: Option<Date>,
+}
+
+impl Later {
+    fn new(date: Date) -> Later {
+        Later { date: Some(date) }
+    }
+}
+
+impl Iterator for Later {
+    type Item = Date;
+
+    fn next(&mut self) -> Option<Date> {
+        self.date = self.date.and_then(|d| d.succ());
+        self.date
+    }
+}
+
+impl FusedIterator for Later {}
+
+/// Iterator over calendar dates earlier than a given date.
+///
+/// An `Earlier` instance is acquired by calling [`Date::earlier()`].
+///
+/// An `Earlier` iterator will stop yielding after it reaches -5884323-05-15
+/// N.S. (-5884202-03-16 O.S.).
+pub struct Earlier {
+    date: Option<Date>,
+}
+
+impl Earlier {
+    fn new(date: Date) -> Earlier {
+        Earlier { date: Some(date) }
+    }
+}
+
+impl Iterator for Earlier {
+    type Item = Date;
+
+    fn next(&mut self) -> Option<Date> {
+        self.date = self.date.and_then(|d| d.pred());
+        self.date
+    }
+}
+
+impl FusedIterator for Earlier {}
+
+/// Iterator over calendar dates equal to or later than a given date.
+///
+/// An `AndLater` instance is acquired by calling [`Date::and_later()`].
+///
+/// An `AndLater` iterator will stop yielding after it reaches 5874898-06-03
+/// N.S. (5874777-10-17 O.S.).
+pub struct AndLater {
+    date: Option<Date>,
+}
+
+impl AndLater {
+    fn new(date: Date) -> AndLater {
+        AndLater { date: Some(date) }
+    }
+}
+
+impl Iterator for AndLater {
+    type Item = Date;
+
+    fn next(&mut self) -> Option<Date> {
+        let date = self.date?;
+        self.date = date.succ();
+        Some(date)
+    }
+}
+
+impl FusedIterator for AndLater {}
+
+/// Iterator over calendar dates equal to or earlier than a given date.
+///
+/// An `AndEarlier` instance is acquired by calling [`Date::and_earlier()`].
+///
+/// An `AndEarlier` iterator will stop yielding after it reaches -5884323-05-15
+/// N.S. (-5884202-03-16 O.S.).
+pub struct AndEarlier {
+    date: Option<Date>,
+}
+
+impl AndEarlier {
+    fn new(date: Date) -> AndEarlier {
+        AndEarlier { date: Some(date) }
+    }
+}
+
+impl Iterator for AndEarlier {
+    type Item = Date;
+
+    fn next(&mut self) -> Option<Date> {
+        let date = self.date?;
+        self.date = date.pred();
+        Some(date)
+    }
+}
+
+impl FusedIterator for AndEarlier {}
 
 /// An enumeration of the twelve months of "Julian-style" years.
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
