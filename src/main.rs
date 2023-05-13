@@ -18,8 +18,8 @@ impl Command {
             match arg {
                 Arg::Short('h') | Arg::Long("help") => return Ok(Command::Help),
                 Arg::Short('V') | Arg::Long("version") => return Ok(Command::Version),
-                Arg::Short('j') | Arg::Long("ordinal") => opts.ordinal = true,
                 Arg::Short('J') | Arg::Long("julian") => opts.julian = true,
+                Arg::Short('o') | Arg::Long("ordinal") => opts.ordinal = true,
                 Arg::Short('v') | Arg::Long("verbose") => opts.verbose = true,
                 Arg::Short(c) if c.is_ascii_digit() => {
                     let mut s = String::from_iter(['-', c]);
@@ -48,17 +48,17 @@ impl Command {
                 println!("Convert Julian day numbers to & from calendar dates");
                 println!();
                 println!("Options:");
-                println!("  -j, --ordinal     Output calendar dates in the form \"YYYY-DDD\"");
+                println!(
+                    "  -J, --julian      Read & write dates in the Julian calendar instead of the"
+                );
+                println!("                    Gregorian");
+                println!();
+                println!("  -o, --ordinal     Output calendar dates in the form \"YYYY-DDD\"");
                 println!();
                 println!(
                     "                    The part after the hyphen is the day of the year from 001"
                 );
                 println!("                    to 366 (the ordinal date).");
-                println!();
-                println!(
-                    "  -J, --julian      Read & write dates in the Julian calendar instead of the"
-                );
-                println!("                    Gregorian");
                 println!();
                 println!("  -v, --verbose     Print the input date before each output date");
                 println!();
