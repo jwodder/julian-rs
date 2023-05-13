@@ -103,36 +103,28 @@ impl Options {
                         .parse_date(&arg)
                         .with_context(|| format!("Invalid calendar date: {arg}"))?;
                     let jdn = when.julian_day_number();
-                    output.push(self.show_cal_to_julian(when, jdn));
+                    let mut s = String::new();
+                    if self.verbose {
+                        self.fmt_date(&mut s, when);
+                        write!(&mut s, " = ").unwrap();
+                    }
+                    write!(&mut s, "{jdn}").unwrap();
+                    output.push(s);
                 } else {
                     let jdn = arg
                         .parse::<Jdnum>()
                         .with_context(|| format!("Invalid Julian day number: {arg}"))?;
                     let when = cal.at_jdn(jdn);
-                    output.push(self.show_julian_to_cal(when, jdn));
+                    let mut s = String::new();
+                    if self.verbose {
+                        write!(&mut s, "{jdn} = ").unwrap();
+                    }
+                    self.fmt_date(&mut s, when);
+                    output.push(s);
                 }
             }
         }
         Ok(output)
-    }
-
-    fn show_cal_to_julian(&self, when: Date, jdn: Jdnum) -> String {
-        let mut s = String::new();
-        if self.verbose {
-            self.fmt_date(&mut s, when);
-            write!(&mut s, " = ").unwrap();
-        }
-        write!(&mut s, "{jdn}").unwrap();
-        s
-    }
-
-    fn show_julian_to_cal(&self, when: Date, jdn: Jdnum) -> String {
-        let mut s = String::new();
-        if self.verbose {
-            write!(&mut s, "{jdn} = ").unwrap();
-        }
-        self.fmt_date(&mut s, when);
-        s
     }
 
     fn fmt_date(&self, s: &mut String, when: Date) {
