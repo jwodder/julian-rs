@@ -100,12 +100,12 @@ struct Options {
 impl Options {
     fn run(&self, dates: Vec<Argument>) -> Vec<String> {
         let mut output = Vec::with_capacity(dates.len());
-        let cal = Calendar::REFORM1582;
         if dates.is_empty() {
-            let (now, _) = cal.now().unwrap();
+            let (now, _) = Calendar::GREGORIAN.now().unwrap();
             let jd = now.julian_day_number();
-            output.push(self.show_cal_to_julian(now, jd));
+            output.push(format!("{now} = {jd}"));
         } else {
+            let cal = Calendar::REFORM1582;
             for d in dates {
                 match d {
                     Argument::CalendarDate(when) => {
