@@ -10,6 +10,7 @@ license = "MIT"
 keywords = ["calendar", "gregorian-calendar", "julian-calendar", "julian-day"]
 categories = ["date-and-time"]
 exclude = ["/.*"]
+default-run = "julian"
 
 [dependencies]
 anyhow = { version = "1.0.71", optional = true }
