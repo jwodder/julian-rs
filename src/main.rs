@@ -1,13 +1,11 @@
-use julian::{ncal::UNITED_KINGDOM, Calendar, Date, Jdnum, ParseDateError, REFORM1582_JDN};
-use lexopt::{Arg, Error, Parser, ValueExt};
+use anyhow::Context;
+use julian::{Calendar, Date, Jdnum};
+use lexopt::{Arg, Parser, ValueExt};
 use std::fmt::Write;
-use std::num::ParseIntError;
-use std::str::FromStr;
-use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq)]
 enum Command {
-    Run(Options, Vec<Argument>),
+    Run(Options, Vec<String>),
     Help,
     Version,
 }
@@ -15,45 +13,32 @@ enum Command {
 impl Command {
     fn from_parser(mut parser: Parser) -> Result<Command, lexopt::Error> {
         let mut opts = Options::default();
-        let mut dates = Vec::new();
+        let mut args = Vec::new();
         while let Some(arg) = parser.next()? {
             match arg {
                 Arg::Short('h') | Arg::Long("help") => return Ok(Command::Help),
                 Arg::Short('V') | Arg::Long("version") => return Ok(Command::Version),
                 Arg::Short('j') | Arg::Long("ordinal") => opts.ordinal = true,
-                Arg::Short('O') | Arg::Long("old-style") => {
-                    opts.ospolicy = OldStylePolicy::PostReform;
-                }
-                Arg::Short('o') | Arg::Long("old-style-uk") => {
-                    opts.ospolicy = OldStylePolicy::UkDelay;
-                }
+                Arg::Short('J') | Arg::Long("julian") => opts.julian = true,
                 Arg::Short('v') | Arg::Long("verbose") => opts.verbose = true,
                 Arg::Short(c) if c.is_ascii_digit() => {
                     let mut s = String::from_iter(['-', c]);
                     if let Some(v) = parser.optional_value() {
                         s.push_str(&(v.string()?));
                     }
-                    match s.parse::<Argument>() {
-                        Ok(d) => dates.push(d),
-                        Err(e) => {
-                            return Err(Error::ParsingFailed {
-                                value: s,
-                                error: Box::new(e),
-                            })
-                        }
-                    }
+                    args.push(s);
                 }
-                Arg::Value(val) => dates.push(val.parse::<Argument>()?),
+                Arg::Value(val) => args.push(val.string()?),
                 _ => return Err(arg.unexpected()),
             }
         }
-        Ok(Command::Run(opts, dates))
+        Ok(Command::Run(opts, args))
     }
 
-    fn run(self) {
+    fn run(self) -> anyhow::Result<()> {
         match self {
-            Command::Run(opts, dates) => {
-                for ln in opts.run(dates) {
+            Command::Run(opts, args) => {
+                for ln in opts.run(args)? {
                     println!("{ln}");
                 }
             }
@@ -70,15 +55,12 @@ impl Command {
                 );
                 println!("                    to 366 (the ordinal date).");
                 println!();
-                println!("  -O, --old-style   Append Old Style dates to post-Reformation dates");
-                println!();
-                println!("  -o, --old-style-uk");
                 println!(
-                    "                    Append Old Style dates to dates between the Gregorian"
+                    "  -J, --julian      Read & write dates in the Julian calendar instead of the"
                 );
-                println!("                    Reformation and the UK's adoption thereof");
+                println!("                    Gregorian");
                 println!();
-                println!("  -v, --verbose     Print out the input date before each output date");
+                println!("  -v, --verbose     Print the input date before each output date");
                 println!();
                 println!("  -h, --help        Display this help message and exit");
                 println!("  -V, --version     Show the program version and exit");
@@ -87,67 +69,70 @@ impl Command {
                 println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
             }
         }
+        Ok(())
     }
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct Options {
     ordinal: bool,
-    ospolicy: OldStylePolicy,
+    julian: bool,
     verbose: bool,
 }
 
 impl Options {
-    fn run(&self, dates: Vec<Argument>) -> Vec<String> {
-        let mut output = Vec::with_capacity(dates.len());
-        if dates.is_empty() {
+    fn run(&self, args: Vec<String>) -> anyhow::Result<Vec<String>> {
+        let mut output = Vec::with_capacity(args.len());
+        if args.is_empty() {
             let (now, _) = Calendar::GREGORIAN.now().unwrap();
             let jd = now.julian_day_number();
-            output.push(format!("{now} = {jd}"));
+            if self.verbose {
+                output.push(format!("{now} = {jd}"));
+            } else {
+                output.push(jd.to_string());
+            }
         } else {
-            let cal = Calendar::REFORM1582;
-            for d in dates {
-                match d {
-                    Argument::CalendarDate(when) => {
-                        let jdn = when.julian_day_number();
-                        output.push(self.show_cal_to_julian(when, jdn));
-                    }
-                    Argument::Jdn(jdn) => {
-                        let when = cal.at_jdn(jdn);
-                        output.push(self.show_julian_to_cal(when, jdn));
-                    }
+            let cal = if self.julian {
+                Calendar::JULIAN
+            } else {
+                Calendar::GREGORIAN
+            };
+            for arg in args {
+                if arg.match_indices('-').any(|(i, _)| i > 0) {
+                    let when = cal
+                        .parse_date(&arg)
+                        .with_context(|| format!("Invalid calendar date: {arg}"))?;
+                    let jdn = when.julian_day_number();
+                    output.push(self.show_cal_to_julian(when, jdn));
+                } else {
+                    let jdn = arg
+                        .parse::<Jdnum>()
+                        .with_context(|| format!("Invalid Julian day number: {arg}"))?;
+                    let when = cal.at_jdn(jdn);
+                    output.push(self.show_julian_to_cal(when, jdn));
                 }
             }
         }
-        output
+        Ok(output)
     }
 
-    fn show_cal_to_julian(&self, cal: Date, jdn: Jdnum) -> String {
+    fn show_cal_to_julian(&self, when: Date, jdn: Jdnum) -> String {
         let mut s = String::new();
         if self.verbose {
-            self.fmt_styled(&mut s, cal, jdn);
+            self.fmt_date(&mut s, when);
             write!(&mut s, " = ").unwrap();
         }
         write!(&mut s, "{jdn}").unwrap();
         s
     }
 
-    fn show_julian_to_cal(&self, cal: Date, jdn: Jdnum) -> String {
+    fn show_julian_to_cal(&self, when: Date, jdn: Jdnum) -> String {
         let mut s = String::new();
         if self.verbose {
             write!(&mut s, "{jdn} = ").unwrap();
         }
-        self.fmt_styled(&mut s, cal, jdn);
+        self.fmt_date(&mut s, when);
         s
-    }
-
-    fn fmt_styled(&self, s: &mut String, when: Date, jdn: Jdnum) {
-        self.fmt_date(s, when);
-        if self.ospolicy.show_old_style(jdn) {
-            write!(s, " [O.S. ").unwrap();
-            self.fmt_date(s, Calendar::JULIAN.at_jdn(jdn));
-            write!(s, "]").unwrap();
-        }
     }
 
     fn fmt_date(&self, s: &mut String, when: Date) {
@@ -159,65 +144,20 @@ impl Options {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-enum OldStylePolicy {
-    #[default]
-    Never,
-    UkDelay,
-    PostReform,
-}
-
-impl OldStylePolicy {
-    fn show_old_style(self, jdn: Jdnum) -> bool {
-        self != OldStylePolicy::Never
-            && REFORM1582_JDN <= jdn
-            && (jdn < UNITED_KINGDOM || self == OldStylePolicy::PostReform)
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-enum Argument {
-    CalendarDate(Date),
-    Jdn(Jdnum),
-}
-
-impl FromStr for Argument {
-    type Err = ArgumentParseError;
-
-    fn from_str(s: &str) -> Result<Argument, ArgumentParseError> {
-        if s.match_indices('-').any(|(i, _)| i > 0) {
-            Ok(Argument::CalendarDate(Calendar::REFORM1582.parse_date(s)?))
-        } else {
-            Ok(Argument::Jdn(s.parse::<Jdnum>()?))
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, Error, PartialEq)]
-enum ArgumentParseError {
-    #[error(transparent)]
-    CalendarDate(#[from] ParseDateError),
-    #[error(transparent)]
-    Jdn(#[from] ParseIntError),
-}
-
-fn main() -> Result<(), Error> {
-    Command::from_parser(Parser::from_env())?.run();
-    Ok(())
+fn main() -> anyhow::Result<()> {
+    Command::from_parser(Parser::from_env())?.run()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use julian::Month;
     use rstest::rstest;
-    use OldStylePolicy::*;
 
     #[rstest]
     #[case(vec!["julian", "-h"], Command::Help)]
     #[case(vec!["julian", "--help"], Command::Help)]
     #[case(vec!["julian", "--help", "2023-04-20"], Command::Help)]
-    #[case(vec!["julian", "2023-04-20", "-O", "-h"], Command::Help)]
+    #[case(vec!["julian", "2023-04-20", "-J", "-h"], Command::Help)]
     #[case(vec!["julian", "2023-04-20", "--help", "-V"], Command::Help)]
     #[case(vec!["julian", "-V"], Command::Version)]
     #[case(vec!["julian", "--version"], Command::Version)]
@@ -229,7 +169,7 @@ mod tests {
         Command::Run(
             Options {
                 ordinal: false,
-                ospolicy: Never,
+                julian: false,
                 verbose: false,
             },
             Vec::new(),
@@ -240,10 +180,10 @@ mod tests {
         Command::Run(
             Options {
                 ordinal: false,
-                ospolicy: Never,
+                julian: false,
                 verbose: false,
             },
-            vec![Argument::Jdn(123)],
+            vec!["123".into()],
         )
     )]
     #[case(
@@ -251,10 +191,10 @@ mod tests {
         Command::Run(
             Options {
                 ordinal: false,
-                ospolicy: Never,
+                julian: false,
                 verbose: false,
             },
-            vec![Argument::Jdn(-123)],
+            vec!["-123".into()],
         )
     )]
     #[case(
@@ -262,10 +202,10 @@ mod tests {
         Command::Run(
             Options {
                 ordinal: false,
-                ospolicy: Never,
+                julian: false,
                 verbose: true,
             },
-            vec![Argument::Jdn(-123)],
+            vec!["-123".into()],
         )
     )]
     #[case(
@@ -273,51 +213,18 @@ mod tests {
         Command::Run(
             Options {
                 ordinal: false,
-                ospolicy: Never,
+                julian: false,
                 verbose: true,
             },
-            vec![Argument::Jdn(-123)],
+            vec!["-123".into()],
         )
     )]
     #[case(
-        vec!["julian", "-O"],
+        vec!["julian", "-J"],
         Command::Run(
             Options {
                 ordinal: false,
-                ospolicy: PostReform,
-                verbose: false,
-            },
-            Vec::new(),
-        )
-    )]
-    #[case(
-        vec!["julian", "-o"],
-        Command::Run(
-            Options {
-                ordinal: false,
-                ospolicy: UkDelay,
-                verbose: false,
-            },
-            Vec::new(),
-        )
-    )]
-    #[case(
-        vec!["julian", "-o", "--old-style"],
-        Command::Run(
-            Options {
-                ordinal: false,
-                ospolicy: PostReform,
-                verbose: false,
-            },
-            Vec::new(),
-        )
-    )]
-    #[case(
-        vec!["julian", "-O", "--old-style-uk"],
-        Command::Run(
-            Options {
-                ordinal: false,
-                ospolicy: UkDelay,
+                julian: true,
                 verbose: false,
             },
             Vec::new(),
@@ -328,7 +235,7 @@ mod tests {
         Command::Run(
             Options {
                 ordinal: true,
-                ospolicy: Never,
+                julian: false,
                 verbose: false,
             },
             Vec::new(),
@@ -339,7 +246,7 @@ mod tests {
         Command::Run(
             Options {
                 ordinal: true,
-                ospolicy: Never,
+                julian: false,
                 verbose: false,
             },
             Vec::new(),
@@ -353,22 +260,21 @@ mod tests {
     #[test]
     fn run_default_options() {
         let opts = Options::default();
-        let cal = Calendar::REFORM1582;
         let dates = vec![
-            Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
-            Argument::Jdn(2440423),
-            Argument::CalendarDate(cal.at_ymd(1066, Month::October, 14).unwrap()),
-            Argument::Jdn(2110701),
-            Argument::CalendarDate(cal.at_ymd(1707, Month::April, 15).unwrap()),
-            Argument::Jdn(2344633),
+            "2023-04-20".into(),
+            "2440423".into(),
+            "1066-10-20".into(),
+            "2110701".into(),
+            "1707-04-15".into(),
+            "2344633".into(),
         ];
         assert_eq!(
-            opts.run(dates),
+            opts.run(dates).unwrap(),
             vec![
                 "2460055",
                 "1969-07-20",
                 "2110701",
-                "1066-10-14",
+                "1066-10-20",
                 "2344633",
                 "1707-04-15"
             ]
@@ -381,22 +287,21 @@ mod tests {
             verbose: true,
             ..Options::default()
         };
-        let cal = Calendar::REFORM1582;
         let dates = vec![
-            Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
-            Argument::Jdn(2440423),
-            Argument::CalendarDate(cal.at_ymd(1066, Month::October, 14).unwrap()),
-            Argument::Jdn(2110701),
-            Argument::CalendarDate(cal.at_ymd(1707, Month::April, 15).unwrap()),
-            Argument::Jdn(2344633),
+            "2023-04-20".into(),
+            "2440423".into(),
+            "1066-10-20".into(),
+            "2110701".into(),
+            "1707-04-15".into(),
+            "2344633".into(),
         ];
         assert_eq!(
-            opts.run(dates),
+            opts.run(dates).unwrap(),
             vec![
                 "2023-04-20 = 2460055",
                 "2440423 = 1969-07-20",
-                "1066-10-14 = 2110701",
-                "2110701 = 1066-10-14",
+                "1066-10-20 = 2110701",
+                "2110701 = 1066-10-20",
                 "1707-04-15 = 2344633",
                 "2344633 = 1707-04-15"
             ]
@@ -404,115 +309,56 @@ mod tests {
     }
 
     #[test]
-    fn run_old_style() {
+    fn run_julian() {
         let opts = Options {
-            ospolicy: PostReform,
+            julian: true,
             ..Options::default()
         };
-        let cal = Calendar::REFORM1582;
         let dates = vec![
-            Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
-            Argument::Jdn(2440423),
-            Argument::CalendarDate(cal.at_ymd(1066, Month::October, 14).unwrap()),
-            Argument::Jdn(2110701),
-            Argument::CalendarDate(cal.at_ymd(1707, Month::April, 15).unwrap()),
-            Argument::Jdn(2344633),
+            "2023-04-20".into(),
+            "2440423".into(),
+            "1066-10-14".into(),
+            "2110701".into(),
+            "1707-04-04".into(),
+            "2344633".into(),
         ];
         assert_eq!(
-            opts.run(dates),
+            opts.run(dates).unwrap(),
             vec![
-                "2460055",
-                "1969-07-20 [O.S. 1969-07-07]",
+                "2460068",
+                "1969-07-07",
                 "2110701",
                 "1066-10-14",
                 "2344633",
-                "1707-04-15 [O.S. 1707-04-04]"
+                "1707-04-04"
             ]
         );
     }
 
     #[test]
-    fn run_old_style_uk() {
+    fn run_julian_verbose() {
         let opts = Options {
-            ospolicy: UkDelay,
-            ..Options::default()
-        };
-        let cal = Calendar::REFORM1582;
-        let dates = vec![
-            Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
-            Argument::Jdn(2440423),
-            Argument::CalendarDate(cal.at_ymd(1066, Month::October, 14).unwrap()),
-            Argument::Jdn(2110701),
-            Argument::CalendarDate(cal.at_ymd(1707, Month::April, 15).unwrap()),
-            Argument::Jdn(2344633),
-        ];
-        assert_eq!(
-            opts.run(dates),
-            vec![
-                "2460055",
-                "1969-07-20",
-                "2110701",
-                "1066-10-14",
-                "2344633",
-                "1707-04-15 [O.S. 1707-04-04]"
-            ]
-        );
-    }
-
-    #[test]
-    fn run_old_style_verbose() {
-        let opts = Options {
-            ospolicy: PostReform,
+            julian: true,
             verbose: true,
             ..Options::default()
         };
-        let cal = Calendar::REFORM1582;
         let dates = vec![
-            Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
-            Argument::Jdn(2440423),
-            Argument::CalendarDate(cal.at_ymd(1066, Month::October, 14).unwrap()),
-            Argument::Jdn(2110701),
-            Argument::CalendarDate(cal.at_ymd(1707, Month::April, 15).unwrap()),
-            Argument::Jdn(2344633),
+            "2023-04-20".into(),
+            "2440423".into(),
+            "1066-10-14".into(),
+            "2110701".into(),
+            "1707-04-04".into(),
+            "2344633".into(),
         ];
         assert_eq!(
-            opts.run(dates),
+            opts.run(dates).unwrap(),
             vec![
-                "2023-04-20 [O.S. 2023-04-07] = 2460055",
-                "2440423 = 1969-07-20 [O.S. 1969-07-07]",
+                "2023-04-20 = 2460068",
+                "2440423 = 1969-07-07",
                 "1066-10-14 = 2110701",
                 "2110701 = 1066-10-14",
-                "1707-04-15 [O.S. 1707-04-04] = 2344633",
-                "2344633 = 1707-04-15 [O.S. 1707-04-04]"
-            ]
-        );
-    }
-
-    #[test]
-    fn run_old_style_uk_verbose() {
-        let opts = Options {
-            ospolicy: UkDelay,
-            verbose: true,
-            ..Options::default()
-        };
-        let cal = Calendar::REFORM1582;
-        let dates = vec![
-            Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
-            Argument::Jdn(2440423),
-            Argument::CalendarDate(cal.at_ymd(1066, Month::October, 14).unwrap()),
-            Argument::Jdn(2110701),
-            Argument::CalendarDate(cal.at_ymd(1707, Month::April, 15).unwrap()),
-            Argument::Jdn(2344633),
-        ];
-        assert_eq!(
-            opts.run(dates),
-            vec![
-                "2023-04-20 = 2460055",
-                "2440423 = 1969-07-20",
-                "1066-10-14 = 2110701",
-                "2110701 = 1066-10-14",
-                "1707-04-15 [O.S. 1707-04-04] = 2344633",
-                "2344633 = 1707-04-15 [O.S. 1707-04-04]"
+                "1707-04-04 = 2344633",
+                "2344633 = 1707-04-04"
             ]
         );
     }
@@ -523,11 +369,8 @@ mod tests {
             ordinal: true,
             ..Options::default()
         };
-        let dates = vec![
-            Argument::CalendarDate(Calendar::REFORM1582.at_ymd(2023, Month::April, 20).unwrap()),
-            Argument::Jdn(2440423),
-        ];
-        assert_eq!(opts.run(dates), vec!["2460055", "1969-201"]);
+        let dates = vec!["2023-110".into(), "2440423".into()];
+        assert_eq!(opts.run(dates).unwrap(), vec!["2460055", "1969-201"]);
     }
 
     #[test]
@@ -537,41 +380,37 @@ mod tests {
             verbose: true,
             ..Options::default()
         };
-        let dates = vec![
-            Argument::CalendarDate(Calendar::REFORM1582.at_ymd(2023, Month::April, 20).unwrap()),
-            Argument::Jdn(2440423),
-        ];
+        let dates = vec!["2023-110".into(), "2440423".into()];
         assert_eq!(
-            opts.run(dates),
+            opts.run(dates).unwrap(),
             vec!["2023-110 = 2460055", "2440423 = 1969-201"]
         );
     }
 
     #[test]
-    fn run_old_style_verbose_ordinal() {
+    fn run_julian_verbose_ordinal() {
         let opts = Options {
-            ospolicy: PostReform,
+            julian: true,
             verbose: true,
             ordinal: true,
         };
-        let cal = Calendar::REFORM1582;
         let dates = vec![
-            Argument::CalendarDate(cal.at_ymd(2023, Month::April, 20).unwrap()),
-            Argument::Jdn(2440423),
-            Argument::CalendarDate(cal.at_ymd(1066, Month::October, 14).unwrap()),
-            Argument::Jdn(2110701),
-            Argument::CalendarDate(cal.at_ymd(1707, Month::April, 15).unwrap()),
-            Argument::Jdn(2344633),
+            "2023-04-20".into(),
+            "2440423".into(),
+            "1066-10-14".into(),
+            "2110701".into(),
+            "1707-04-04".into(),
+            "2344633".into(),
         ];
         assert_eq!(
-            opts.run(dates),
+            opts.run(dates).unwrap(),
             vec![
-                "2023-110 [O.S. 2023-097] = 2460055",
-                "2440423 = 1969-201 [O.S. 1969-188]",
+                "2023-110 = 2460068",
+                "2440423 = 1969-188",
                 "1066-287 = 2110701",
                 "2110701 = 1066-287",
-                "1707-105 [O.S. 1707-094] = 2344633",
-                "2344633 = 1707-105 [O.S. 1707-094]"
+                "1707-094 = 2344633",
+                "2344633 = 1707-094"
             ]
         );
     }
