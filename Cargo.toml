@@ -15,6 +15,7 @@ exclude = ["/.*"]
 anyhow = { version = "1.0.71", optional = true }
 chrono = { version = "0.4.24", optional = true, default-features = false }
 csv = { version = "1.2.1", optional = true }
+lexopt = { version = "0.3.0", optional = true }
 serde = { version = "1.0.162", features = ["derive"], optional = true }
 thiserror = "1.0.40"
 
@@ -24,11 +25,17 @@ rstest = { version = "0.17.0", default-features = false }
 rstest_reuse = "0.5.0"
 
 [features]
+default = ["cli"]
+cli = ["dep:lexopt"]
 gentests = ["dep:anyhow", "dep:csv", "dep:serde"]
 
 [[bin]]
 name = "gentests"
 required-features = ["gentests"]
+
+[[bin]]
+name = "julian"
+required-features = ["cli"]
 
 [package.metadata.docs.rs]
 all-features = true
