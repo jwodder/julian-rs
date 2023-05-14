@@ -7,6 +7,7 @@ use thiserror::Error;
 #[derive(Debug, Eq, PartialEq)]
 enum Command {
     Run(Options, Vec<String>),
+    Countries,
     Help,
     Version,
 }
@@ -17,6 +18,7 @@ impl Command {
         let mut args = Vec::new();
         while let Some(arg) = parser.next()? {
             match arg {
+                Arg::Short('C') | Arg::Long("countries") => return Ok(Command::Countries),
                 Arg::Short('h') | Arg::Long("help") => return Ok(Command::Help),
                 Arg::Short('V') | Arg::Long("version") => return Ok(Command::Version),
                 Arg::Short('J') | Arg::Long("julian") => opts.calendar = Calendar::JULIAN,
@@ -56,12 +58,25 @@ impl Command {
                     println!("{ln}");
                 }
             }
+            Command::Countries => {
+                println!("Code  Country         Reformation  Last Julian  First Gregorian");
+                for (code, (country, reform)) in national_reformations() {
+                    let cal = Calendar::reforming(reform).unwrap();
+                    let last_julian = cal.last_julian_date().unwrap();
+                    let first_gregorian = cal.first_gregorian_date().unwrap();
+                    println!(
+                        "{code}    {country:<14}  JDN {reform}  {last_julian}   {first_gregorian}"
+                    );
+                }
+            }
             Command::Help => {
                 println!("Usage: julian [<options>] [<date> ...]");
                 println!();
                 println!("Convert Julian day numbers to & from calendar dates");
                 println!();
                 println!("Options:");
+                println!("  -C, --countries   List the country codes accepted by the --reformation option");
+                println!();
                 println!(
                     "  -J, --julian      Read & write dates in the Julian calendar instead of the"
                 );
@@ -82,6 +97,12 @@ impl Command {
                     "                    Gregorian calendar is first observed on the date with the"
                 );
                 println!("                    given Julian day number");
+                println!();
+                println!("                    A two-letter country code may be given in place of a JDN in");
+                println!(
+                    "                    order to use the calendar reformation as observed in that"
+                );
+                println!("                    country.");
                 println!();
                 println!("  -s, --style       Mark dates in reforming calendars as \"O.S.\" (Old Style) or");
                 println!("                    \"N.S.\" (New Style)");
@@ -205,7 +226,7 @@ fn parse_reformation(s: &str) -> Result<Calendar, ReformationError> {
         let key = s.to_ascii_uppercase();
         national_reformations()
             .get(key.as_str())
-            .copied()
+            .map(|pair| pair.1)
             .ok_or(ReformationError::CountryCode)?
     } else {
         s.parse::<Jdnum>().map_err(|_| ReformationError::Jdn)?
@@ -223,42 +244,42 @@ enum ReformationError {
     Reforming(#[from] ReformingError),
 }
 
-fn national_reformations() -> BTreeMap<&'static str, Jdnum> {
+fn national_reformations() -> BTreeMap<&'static str, (&'static str, Jdnum)> {
     BTreeMap::from([
-        ("AL", ncal::ALBANIA),
-        ("AT", ncal::AUSTRIA),
-        ("AU", ncal::AUSTRALIA),
-        ("BE", ncal::BELGIUM),
-        ("BG", ncal::BULGARIA),
-        ("CA", ncal::CANADA),
-        ("CH", ncal::SWITZERLAND),
-        ("CN", ncal::CHINA),
-        ("CZ", ncal::CZECH_REPUBLIC),
-        ("DE", ncal::GERMANY),
-        ("DK", ncal::DENMARK),
-        ("ES", ncal::SPAIN),
-        ("FI", ncal::FINLAND),
-        ("FR", ncal::FRANCE),
-        ("GB", ncal::UNITED_KINGDOM),
-        ("GR", ncal::GREECE),
-        ("HU", ncal::HUNGARY),
-        ("IS", ncal::ICELAND),
-        ("IT", ncal::ITALY),
-        ("JP", ncal::JAPAN),
-        ("LI", ncal::LITHUANIA),
-        ("LU", ncal::LUXEMBOURG),
-        ("LV", ncal::LATVIA),
-        ("NL", ncal::NETHERLANDS),
-        ("NO", ncal::NORWAY),
-        ("PL", ncal::POLAND),
-        ("PT", ncal::PORTUGAL),
-        ("RO", ncal::ROMANIA),
-        ("RU", ncal::RUSSIA),
-        ("SI", ncal::SLOVENIA),
-        ("SE", ncal::SWEDEN),
-        ("TR", ncal::TURKEY),
-        ("US", ncal::UNITED_STATES),
-        ("YU", ncal::YUGOSLAVIA),
+        ("AL", ("Albania", ncal::ALBANIA)),
+        ("AT", ("Austria", ncal::AUSTRIA)),
+        ("AU", ("Australia", ncal::AUSTRALIA)),
+        ("BE", ("Belgium", ncal::BELGIUM)),
+        ("BG", ("Bulgaria", ncal::BULGARIA)),
+        ("CA", ("Canada", ncal::CANADA)),
+        ("CH", ("Switzerland", ncal::SWITZERLAND)),
+        ("CN", ("China", ncal::CHINA)),
+        ("CZ", ("Czech Republic", ncal::CZECH_REPUBLIC)),
+        ("DE", ("Germany", ncal::GERMANY)),
+        ("DK", ("Denmark", ncal::DENMARK)),
+        ("ES", ("Spain", ncal::SPAIN)),
+        ("FI", ("Finland", ncal::FINLAND)),
+        ("FR", ("France", ncal::FRANCE)),
+        ("GB", ("United Kingdom", ncal::UNITED_KINGDOM)),
+        ("GR", ("Greece", ncal::GREECE)),
+        ("HU", ("Hungary", ncal::HUNGARY)),
+        ("IS", ("Iceland", ncal::ICELAND)),
+        ("IT", ("Italy", ncal::ITALY)),
+        ("JP", ("Japan", ncal::JAPAN)),
+        ("LI", ("Lithuania", ncal::LITHUANIA)),
+        ("LU", ("Luxembourg", ncal::LUXEMBOURG)),
+        ("LV", ("Latvia", ncal::LATVIA)),
+        ("NL", ("Netherlands", ncal::NETHERLANDS)),
+        ("NO", ("Norway", ncal::NORWAY)),
+        ("PL", ("Poland", ncal::POLAND)),
+        ("PT", ("Portugal", ncal::PORTUGAL)),
+        ("RO", ("Romania", ncal::ROMANIA)),
+        ("RU", ("Russia", ncal::RUSSIA)),
+        ("SI", ("Slovnia", ncal::SLOVENIA)),
+        ("SE", ("Sweden", ncal::SWEDEN)),
+        ("TR", ("Turkey", ncal::TURKEY)),
+        ("US", ("United States", ncal::UNITED_STATES)),
+        ("YU", ("Yugoslavia", ncal::YUGOSLAVIA)),
     ])
 }
 
