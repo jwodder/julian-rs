@@ -1,0 +1,109 @@
+.TH JULIAN 1 2023-05-14
+.SH NAME
+julian \- Convert Julian day numbers to & from calendar dates
+.SH SYNOPSIS
+.B julian
+.RI [ options ]
+.RI [ "date ..." ]
+.SH DESCRIPTION
+When invoked without arguments, the
+.B julian
+command displays the current date in the proleptic Gregorian calendar & UTC
+timezone along with the corresponding Julian day number.
+.PP
+When
+.B julian
+is invoked with one or more arguments,
+any calendar date arguments (in the form "YYYY-MM-DD" or "YYYY-JJJ")
+are converted to Julian day numbers,
+and any integer arguments are treated as Julian day numbers
+and converted to calendar dates.
+By default, dates are read & written using the proleptic Gregorian calendar,
+but this can be changed with the
+.B \-\-julian
+or
+.B \-\-reformation
+option.
+.PP
+.B julian
+uses astronomical year numbering,
+where 1 BC (the year immediately before AD 1) is denoted on input & output as year 0 (displayed as "0000"),
+and the year before that (normally called 2 BC) is denoted -1 (displayed as "-0001").
+In addition, the start of the year is always taken as being on January 1,
+even though not all users of the Julian calendar throughout history have followed this convention.
+.SH OPTIONS
+.TP
+\fB\-C\fR, \fB\-\-countries\fR
+List the country codes recognized by the
+.B --reformation
+option.
+The output is a table with the following columns:
+.RS
+.TP
+"Code"
+the two-letter country code accepted by
+.B --reformation
+.TP
+"Country"
+the country's English name (or a common variation thereof)
+.TP
+"Reformation"
+the Julian day number of the date on which the country first observed the Gregorian calendar
+.TP
+"Last Julian"
+the Old Style calendar date of the day before the reformation
+.TP
+"First Gregorian"
+the New Style calendar date of the day of the reformation
+.RE
+.IP
+The database of country reformations dates is drawn from the Debian version of "ncal.c" as of 2023-04-26,
+so blame Debian for any historical inaccuracies.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Display a summary of the command-line options and exit
+.TP
+\fB\-J\fR, \fB\-\-julian\fR
+Read & write dates using the proleptic Julian calendar
+.TP
+\fB\-o\fR, \fB\-\-ordinal\fR
+Output calendar dates in the form "YYYY-JJJ",
+where the part after the hyphen is the day of the year from 001 to 366 (the ordinal date)
+.TP
+\fB\-q\fR, \fB\-\-quiet\fR
+Do not print the input value before each output value.
+Do not print "JDN" before Julian day numbers.
+.TP
+\fB\-R\fR \fIjdn\fR, \fB\-\-reformation\fR \fIjdn\fR
+Read & write dates using a reforming calendar
+in which the Gregorian calendar is first observed on the date with the given Julian day number.
+.IP
+A two-letter country code (case insensitive) may be given in place of a JDN in
+order to use the calendar reformation as it was observed in that country.
+Run
+.B julian --countries
+to get a list of recognized country codes and their corresponding dates.
+.TP
+\fB\-s\fR, \fB\-\-style\fR
+Mark dates in reforming calendars as "O.S." (Old Style) or "N.S." (New Style)".
+Has no effect when
+.B --reformation
+is not given or when
+.B --ordinal
+is given.
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Show the program version and exit
+.SH AUTHOR
+John T. Wodder II
+.RI < julian-rs@varonathe.org >
+.SH LICENSE
+.B julian
+is distributed under the terms of the MIT license.  See the
+.I LICENSE
+file in the source repository for more information.
+.SH SEE ALSO
+.BR ncal (1)
+.PP
+Source code, issue tracker, and additional information can be found on GitHub at
+.RI < https://github.com/jwodder/julian-rs >.

@@ -75,7 +75,7 @@ Julian day number.
 When `julian` is invoked with one or more arguments, any calendar date
 arguments (in the form "YYYY-MM-DD" or "YYYY-JJJ") are converted to Julian day
 numbers, and any integer arguments are treated as Julian day numbers and
-converted to calendar dates.  By defaults, dates are read & written using the
+converted to calendar dates.  By default, dates are read & written using the
 proleptic Gregorian calendar, but this can be changed with the `--julian` or
 `--reformation` option.
 
@@ -106,6 +106,8 @@ Options
     version of `ncal.c` as of 2023-04-26][src], so blame Debian for any
     historical inaccuracies.
 
+- `-h`, `--help` — Display a summary of the command-line options and exit
+
 - `-J`, `--julian` — Read & write dates using the proleptic Julian calendar
 
 - `-o`, `--ordinal` — Output calendar dates in the form "YYYY-JJJ", where the
@@ -126,7 +128,9 @@ Options
 
 - `-s`, `--style` — Mark dates in reforming calendars as "O.S." (Old Style) or
   "N.S." (New Style)".  Has no effect when `-R`/`--reformation` is not given or
-  when `--ordinal` is given.
+  when `-o`/`--ordinal` is given.
+
+- `-V`, `--version` — Show the program version and exit
 
 [yzero]: https://en.wikipedia.org/wiki/Astronomical_year_numbering
 [NYD]: https://en.wikipedia.org/wiki/Julian_calendar#New_Year's_Day
