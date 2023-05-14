@@ -115,34 +115,12 @@ impl Options {
         let mut output = Vec::with_capacity(args.len());
         if args.is_empty() {
             let (now, _) = self.calendar.now().unwrap();
-            let jd = now.julian_day_number();
-            if !self.quiet {
-                output.push(format!("{now} = {jd}"));
-            } else {
-                output.push(jd.to_string());
-            }
+            output.push(self.date_to_jdn(now));
         } else {
             for arg in args {
                 match self.parse_arg(arg)? {
-                    Argument::Date(when) => {
-                        let jdn = when.julian_day_number();
-                        let mut s = String::new();
-                        if !self.quiet {
-                            self.fmt_date(&mut s, when);
-                            write!(&mut s, " = JDN ").unwrap();
-                        }
-                        write!(&mut s, "{jdn}").unwrap();
-                        output.push(s);
-                    }
-                    Argument::Jdn(jdn) => {
-                        let when = self.calendar.at_jdn(jdn);
-                        let mut s = String::new();
-                        if !self.quiet {
-                            write!(&mut s, "JDN {jdn} = ").unwrap();
-                        }
-                        self.fmt_date(&mut s, when);
-                        output.push(s);
-                    }
+                    Argument::Date(when) => output.push(self.date_to_jdn(when)),
+                    Argument::Jdn(jdn) => output.push(self.jdn_to_date(jdn)),
                 }
             }
         }
@@ -167,6 +145,27 @@ impl Options {
                 }),
             }
         }
+    }
+
+    fn date_to_jdn(&self, when: Date) -> String {
+        let jdn = when.julian_day_number();
+        let mut s = String::new();
+        if !self.quiet {
+            self.fmt_date(&mut s, when);
+            write!(&mut s, " = JDN ").unwrap();
+        }
+        write!(&mut s, "{jdn}").unwrap();
+        s
+    }
+
+    fn jdn_to_date(&self, jdn: Jdnum) -> String {
+        let when = self.calendar.at_jdn(jdn);
+        let mut s = String::new();
+        if !self.quiet {
+            write!(&mut s, "JDN {jdn} = ").unwrap();
+        }
+        self.fmt_date(&mut s, when);
+        s
     }
 
     fn fmt_date(&self, s: &mut String, when: Date) {
