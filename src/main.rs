@@ -22,6 +22,7 @@ impl Command {
                 Arg::Short('h') | Arg::Long("help") => return Ok(Command::Help),
                 Arg::Short('V') | Arg::Long("version") => return Ok(Command::Version),
                 Arg::Short('j') | Arg::Long("julian") => opts.calendar = Calendar::JULIAN,
+                Arg::Short('J') | Arg::Long("json") => opts.json = true,
                 Arg::Short('o') | Arg::Long("ordinal") => opts.ordinal = true,
                 Arg::Short('q') | Arg::Long("quiet") => opts.quiet = true,
                 Arg::Short('r') | Arg::Long("reformation") => {
@@ -82,6 +83,8 @@ impl Command {
                 );
                 println!("                    Gregorian");
                 println!();
+                println!("  -J, --json        Output JSON");
+                println!();
                 println!(
                     "  -o, --ordinal     Output calendar dates in the form \"YYYY-JJJ\", where the"
                 );
@@ -123,6 +126,7 @@ impl Command {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Options {
     calendar: Calendar,
+    json: bool,
     ordinal: bool,
     quiet: bool,
     style: bool,
@@ -132,6 +136,7 @@ impl Default for Options {
     fn default() -> Options {
         Options {
             calendar: Calendar::GREGORIAN,
+            json: false,
             ordinal: false,
             quiet: false,
             style: false,
@@ -142,6 +147,9 @@ impl Default for Options {
 impl Options {
     fn run(&self, args: Vec<String>) -> Result<Vec<String>, lexopt::Error> {
         let mut output = Vec::with_capacity(args.len());
+        if self.json {
+            output.push(json_start(self.calendar));
+        }
         if args.is_empty() {
             let (now, _) = self.calendar.now().unwrap();
             output.push(self.date_to_jdn(now));
@@ -151,6 +159,17 @@ impl Options {
                     Argument::Date(when) => output.push(self.date_to_jdn(when)),
                     Argument::Jdn(jdn) => output.push(self.jdn_to_date(jdn)),
                 }
+            }
+        }
+        if self.json {
+            let length = output.len();
+            if length > 2 {
+                for obj in output.get_mut(1..(length - 1)).unwrap() {
+                    obj.push(',');
+                }
+            }
+            if let Some(obj) = output.last_mut() {
+                obj.push_str("\n    ]\n}");
             }
         }
         Ok(output)
@@ -177,6 +196,9 @@ impl Options {
     }
 
     fn date_to_jdn(&self, when: Date) -> String {
+        if self.json {
+            return date2json(when);
+        }
         let jdn = when.julian_day_number();
         let mut s = String::new();
         if !self.quiet {
@@ -189,6 +211,9 @@ impl Options {
 
     fn jdn_to_date(&self, jdn: Jdnum) -> String {
         let when = self.calendar.at_jdn(jdn);
+        if self.json {
+            return date2json(when);
+        }
         let mut s = String::new();
         if !self.quiet {
             write!(&mut s, "JDN {jdn} = ").unwrap();
@@ -285,9 +310,68 @@ fn national_reformations() -> BTreeMap<&'static str, (&'static str, Jdnum)> {
     ])
 }
 
+fn json_start(cal: Calendar) -> String {
+    let mut s = String::new();
+    writeln!(&mut s, "{{").unwrap();
+    writeln!(&mut s, "    \"calendar\": {{").unwrap();
+    write!(
+        &mut s,
+        "{:8}\"type\": \"{}\"",
+        "",
+        if cal == Calendar::JULIAN {
+            "julian"
+        } else if cal == Calendar::GREGORIAN {
+            "gregorian"
+        } else {
+            "reforming"
+        }
+    )
+    .unwrap();
+    if let Some(reform) = cal.reformation() {
+        writeln!(&mut s, ",").unwrap();
+        write!(&mut s, "{:8}\"reformation\": {}", "", reform).unwrap();
+    }
+    writeln!(&mut s).unwrap();
+    writeln!(&mut s, "    }},").unwrap();
+    write!(&mut s, "    \"dates\": [").unwrap();
+    s
+}
+
+fn date2json(when: Date) -> String {
+    let mut s = String::new();
+    writeln!(&mut s, "{:8}{{", "").unwrap();
+    writeln!(
+        &mut s,
+        "{:12}\"julian_day_number\": {},",
+        "",
+        when.julian_day_number()
+    )
+    .unwrap();
+    writeln!(&mut s, "{:12}\"year\": {},", "", when.year()).unwrap();
+    writeln!(&mut s, "{:12}\"month\": {},", "", when.month().number()).unwrap();
+    writeln!(&mut s, "{:12}\"day\": {},", "", when.day()).unwrap();
+    writeln!(&mut s, "{:12}\"ordinal\": {},", "", when.ordinal()).unwrap();
+    writeln!(&mut s, "{:12}\"display\": \"{}\",", "", when).unwrap();
+    write!(&mut s, "{:12}\"ordinal_display\": \"{:#}\"", "", when).unwrap();
+    if when.calendar().is_reforming() {
+        writeln!(&mut s, ",").unwrap();
+        write!(
+            &mut s,
+            "{:12}\"old_style\": {}",
+            "",
+            if when.is_julian() { "true" } else { "false" }
+        )
+        .unwrap();
+    }
+    writeln!(&mut s).unwrap();
+    write!(&mut s, "{:8}}}", "").unwrap();
+    s
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use indoc::indoc;
     use rstest::rstest;
 
     #[rstest]
@@ -315,6 +399,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::GREGORIAN,
+                json: false,
                 ordinal: false,
                 quiet: false,
                 style: false,
@@ -327,6 +412,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::GREGORIAN,
+                json: false,
                 ordinal: false,
                 quiet: false,
                 style: false,
@@ -339,6 +425,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::GREGORIAN,
+                json: false,
                 ordinal: false,
                 quiet: false,
                 style: false,
@@ -351,6 +438,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::GREGORIAN,
+                json: false,
                 ordinal: false,
                 quiet: true,
                 style: false,
@@ -363,6 +451,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::GREGORIAN,
+                json: false,
                 ordinal: false,
                 quiet: true,
                 style: false,
@@ -375,6 +464,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::JULIAN,
+                json: false,
                 ordinal: false,
                 quiet: false,
                 style: false,
@@ -387,6 +477,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::GREGORIAN,
+                json: false,
                 ordinal: true,
                 quiet: false,
                 style: false,
@@ -399,6 +490,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::GREGORIAN,
+                json: false,
                 ordinal: true,
                 quiet: false,
                 style: false,
@@ -411,6 +503,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::GREGORIAN,
+                json: false,
                 ordinal: false,
                 quiet: false,
                 style: true,
@@ -423,6 +516,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::GREGORIAN,
+                json: false,
                 ordinal: false,
                 quiet: false,
                 style: true,
@@ -435,6 +529,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::GREGORIAN,
+                json: false,
                 ordinal: false,
                 quiet: true,
                 style: false,
@@ -447,6 +542,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::GREGORIAN,
+                json: false,
                 ordinal: false,
                 quiet: true,
                 style: false,
@@ -459,6 +555,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::reforming(2299162).unwrap(),
+                json: false,
                 ordinal: false,
                 quiet: false,
                 style: false,
@@ -471,6 +568,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::reforming(2299162).unwrap(),
+                json: false,
                 ordinal: false,
                 quiet: false,
                 style: false,
@@ -483,6 +581,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::reforming(ncal::UNITED_KINGDOM).unwrap(),
+                json: false,
                 ordinal: false,
                 quiet: false,
                 style: false,
@@ -495,6 +594,7 @@ mod tests {
         Command::Run(
             Options {
                 calendar: Calendar::reforming(ncal::UNITED_KINGDOM).unwrap(),
+                json: false,
                 ordinal: false,
                 quiet: false,
                 style: false,
@@ -912,6 +1012,314 @@ mod tests {
                 "1707-105 = JDN 2344633",
                 "JDN 2344633 = 1707-105"
             ]
+        );
+    }
+
+    #[test]
+    fn run_json() {
+        let opts = Options {
+            json: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            "2023-04-20".into(),
+            "2023-134".into(),
+            "2440423".into(),
+            "1066-10-20".into(),
+            "2110701".into(),
+            "1707-04-15".into(),
+            "2344633".into(),
+        ];
+        assert_eq!(
+            opts.run(dates).unwrap().join("\n"),
+            indoc! {r#"{
+                "calendar": {
+                    "type": "gregorian"
+                },
+                "dates": [
+                    {
+                        "julian_day_number": 2460055,
+                        "year": 2023,
+                        "month": 4,
+                        "day": 20,
+                        "ordinal": 110,
+                        "display": "2023-04-20",
+                        "ordinal_display": "2023-110"
+                    },
+                    {
+                        "julian_day_number": 2460079,
+                        "year": 2023,
+                        "month": 5,
+                        "day": 14,
+                        "ordinal": 134,
+                        "display": "2023-05-14",
+                        "ordinal_display": "2023-134"
+                    },
+                    {
+                        "julian_day_number": 2440423,
+                        "year": 1969,
+                        "month": 7,
+                        "day": 20,
+                        "ordinal": 201,
+                        "display": "1969-07-20",
+                        "ordinal_display": "1969-201"
+                    },
+                    {
+                        "julian_day_number": 2110701,
+                        "year": 1066,
+                        "month": 10,
+                        "day": 20,
+                        "ordinal": 293,
+                        "display": "1066-10-20",
+                        "ordinal_display": "1066-293"
+                    },
+                    {
+                        "julian_day_number": 2110701,
+                        "year": 1066,
+                        "month": 10,
+                        "day": 20,
+                        "ordinal": 293,
+                        "display": "1066-10-20",
+                        "ordinal_display": "1066-293"
+                    },
+                    {
+                        "julian_day_number": 2344633,
+                        "year": 1707,
+                        "month": 4,
+                        "day": 15,
+                        "ordinal": 105,
+                        "display": "1707-04-15",
+                        "ordinal_display": "1707-105"
+                    },
+                    {
+                        "julian_day_number": 2344633,
+                        "year": 1707,
+                        "month": 4,
+                        "day": 15,
+                        "ordinal": 105,
+                        "display": "1707-04-15",
+                        "ordinal_display": "1707-105"
+                    }
+                ]
+            }"#}
+        );
+    }
+
+    #[test]
+    fn run_json_julian() {
+        let opts = Options {
+            calendar: Calendar::JULIAN,
+            json: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            "2023-04-20".into(),
+            "2023-134".into(),
+            "2440423".into(),
+            "1066-10-14".into(),
+            "2110701".into(),
+            "1707-04-04".into(),
+            "2344633".into(),
+        ];
+        assert_eq!(
+            opts.run(dates).unwrap().join("\n"),
+            indoc! {r#"{
+                "calendar": {
+                    "type": "julian"
+                },
+                "dates": [
+                    {
+                        "julian_day_number": 2460068,
+                        "year": 2023,
+                        "month": 4,
+                        "day": 20,
+                        "ordinal": 110,
+                        "display": "2023-04-20",
+                        "ordinal_display": "2023-110"
+                    },
+                    {
+                        "julian_day_number": 2460092,
+                        "year": 2023,
+                        "month": 5,
+                        "day": 14,
+                        "ordinal": 134,
+                        "display": "2023-05-14",
+                        "ordinal_display": "2023-134"
+                    },
+                    {
+                        "julian_day_number": 2440423,
+                        "year": 1969,
+                        "month": 7,
+                        "day": 7,
+                        "ordinal": 188,
+                        "display": "1969-07-07",
+                        "ordinal_display": "1969-188"
+                    },
+                    {
+                        "julian_day_number": 2110701,
+                        "year": 1066,
+                        "month": 10,
+                        "day": 14,
+                        "ordinal": 287,
+                        "display": "1066-10-14",
+                        "ordinal_display": "1066-287"
+                    },
+                    {
+                        "julian_day_number": 2110701,
+                        "year": 1066,
+                        "month": 10,
+                        "day": 14,
+                        "ordinal": 287,
+                        "display": "1066-10-14",
+                        "ordinal_display": "1066-287"
+                    },
+                    {
+                        "julian_day_number": 2344633,
+                        "year": 1707,
+                        "month": 4,
+                        "day": 4,
+                        "ordinal": 94,
+                        "display": "1707-04-04",
+                        "ordinal_display": "1707-094"
+                    },
+                    {
+                        "julian_day_number": 2344633,
+                        "year": 1707,
+                        "month": 4,
+                        "day": 4,
+                        "ordinal": 94,
+                        "display": "1707-04-04",
+                        "ordinal_display": "1707-094"
+                    }
+                ]
+            }"#}
+        );
+    }
+
+    #[test]
+    fn run_json_reforming() {
+        let opts = Options {
+            calendar: Calendar::reforming(ncal::UNITED_KINGDOM).unwrap(),
+            json: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            "2023-04-20".into(),
+            "2023-134".into(),
+            "2440423".into(),
+            "1066-10-14".into(),
+            "2110701".into(),
+            "1707-04-04".into(),
+            "2344633".into(),
+        ];
+        assert_eq!(
+            opts.run(dates).unwrap().join("\n"),
+            indoc! {r#"{
+                "calendar": {
+                    "type": "reforming",
+                    "reformation": 2361222
+                },
+                "dates": [
+                    {
+                        "julian_day_number": 2460055,
+                        "year": 2023,
+                        "month": 4,
+                        "day": 20,
+                        "ordinal": 110,
+                        "display": "2023-04-20",
+                        "ordinal_display": "2023-110",
+                        "old_style": false
+                    },
+                    {
+                        "julian_day_number": 2460079,
+                        "year": 2023,
+                        "month": 5,
+                        "day": 14,
+                        "ordinal": 134,
+                        "display": "2023-05-14",
+                        "ordinal_display": "2023-134",
+                        "old_style": false
+                    },
+                    {
+                        "julian_day_number": 2440423,
+                        "year": 1969,
+                        "month": 7,
+                        "day": 20,
+                        "ordinal": 201,
+                        "display": "1969-07-20",
+                        "ordinal_display": "1969-201",
+                        "old_style": false
+                    },
+                    {
+                        "julian_day_number": 2110701,
+                        "year": 1066,
+                        "month": 10,
+                        "day": 14,
+                        "ordinal": 287,
+                        "display": "1066-10-14",
+                        "ordinal_display": "1066-287",
+                        "old_style": true
+                    },
+                    {
+                        "julian_day_number": 2110701,
+                        "year": 1066,
+                        "month": 10,
+                        "day": 14,
+                        "ordinal": 287,
+                        "display": "1066-10-14",
+                        "ordinal_display": "1066-287",
+                        "old_style": true
+                    },
+                    {
+                        "julian_day_number": 2344633,
+                        "year": 1707,
+                        "month": 4,
+                        "day": 4,
+                        "ordinal": 94,
+                        "display": "1707-04-04",
+                        "ordinal_display": "1707-094",
+                        "old_style": true
+                    },
+                    {
+                        "julian_day_number": 2344633,
+                        "year": 1707,
+                        "month": 4,
+                        "day": 4,
+                        "ordinal": 94,
+                        "display": "1707-04-04",
+                        "ordinal_display": "1707-094",
+                        "old_style": true
+                    }
+                ]
+            }"#}
+        );
+    }
+
+    #[test]
+    fn run_json_one_arg() {
+        let opts = Options {
+            json: true,
+            ..Options::default()
+        };
+        let dates = vec!["2023-04-20".into()];
+        assert_eq!(
+            opts.run(dates).unwrap().join("\n"),
+            indoc! {r#"{
+                "calendar": {
+                    "type": "gregorian"
+                },
+                "dates": [
+                    {
+                        "julian_day_number": 2460055,
+                        "year": 2023,
+                        "month": 4,
+                        "day": 20,
+                        "ordinal": 110,
+                        "display": "2023-04-20",
+                        "ordinal_display": "2023-110"
+                    }
+                ]
+            }"#}
         );
     }
 }

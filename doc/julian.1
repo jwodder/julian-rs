@@ -1,6 +1,6 @@
 .TH JULIAN 1 2023-05-14
 .SH NAME
-julian \- Convert Julian day numbers to & from calendar dates
+julian \- convert Julian day numbers to & from calendar dates
 .SH SYNOPSIS
 .B julian
 .RI [ options ]
@@ -14,7 +14,7 @@ timezone along with the corresponding Julian day number.
 When
 .B julian
 is invoked with one or more arguments,
-any calendar date arguments (in the form "YYYY-MM-DD" or "YYYY-JJJ")
+any calendar date arguments (in the form "YYYY\-MM\-DD" or "YYYY\-JJJ")
 are converted to Julian day numbers,
 and any integer arguments are treated as Julian day numbers
 and converted to calendar dates.
@@ -66,8 +66,14 @@ Display a summary of the command-line options and exit
 \fB\-j\fR, \fB\-\-julian\fR
 Read & write dates using the proleptic Julian calendar
 .TP
+\fB\-J\fR, \fB\-\-json\fR
+Output JSON.
+See
+.B JSON OUTPUT
+below for more information.
+.TP
 \fB\-o\fR, \fB\-\-ordinal\fR
-Output calendar dates in the form "YYYY-JJJ",
+Output calendar dates in the form "YYYY\-JJJ",
 where the part after the hyphen is the day of the year from 001 to 366 (the ordinal date)
 .TP
 \fB\-q\fR, \fB\-\-quiet\fR
@@ -94,6 +100,63 @@ is given.
 .TP
 \fB\-V\fR, \fB\-\-version\fR
 Show the program version and exit
+.SH JSON OUTPUT
+When
+.B julian
+is invoked with the
+.B --json
+option,
+it outputs a JSON breakdown of the chosen calendar and input & output values.
+The output structure is an object with two keys, "calendar" and "dates".
+.TP
+"calendar"
+Denotes the type of calendar selected for the
+.B julian
+invocation.
+This is an object that always contains at least one key, "type",
+the value of which is "gregorian" (for the default proleptic Gregorian calendar),
+"julian" (for the proleptic Julian calendar),
+or "reforming" (for a reforming calendar).
+When "type" is "reforming",
+there will be an additional field, "reformation",
+whose value is the Julian day number of the date on which the calendar first follows the Gregorian calendar.
+.TP
+"dates"
+A list of objects, one per argument
+(or, if no arguments were given, one object for the current date).
+Each object contains the following fields
+describing the date indicated by the argument,
+regardless of whether the argument was a calendar date or a Julian day number:
+.RS
+.TP
+"julian_day_number"
+the date's Julian day number
+.TP
+"year"
+the date's year
+.TP
+"month"
+the number (1\(en12) of the date's month
+.TP
+"day"
+the date's day-of-month (1\(en31)
+.TP
+"ordinal"
+the date's one-based day-of-year ordinal (1\(en366)
+.TP
+"display"
+the date in "YYYY\-MM\-DD" form
+.TP
+"ordinal_display"
+the date in "YYYY\-JJJ" form
+.TP
+"old_style"
+This field is only present if the calendar in use is a reforming calendar.
+It is
+.I true
+if the date occurs before the calendar reformation,
+.I false
+otherwise.
 .SH AUTHOR
 John T. Wodder II
 .RI < julian-rs@varonathe.org >

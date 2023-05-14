@@ -110,6 +110,9 @@ Options
 
 - `-j`, `--julian` — Read & write dates using the proleptic Julian calendar
 
+- `-J`, `--json` — Output JSON.  See [JSON Output](#json-output) below for more
+  information.
+
 - `-o`, `--ordinal` — Output calendar dates in the form "YYYY-JJJ", where the
   part after the hyphen is the day of the year from 001 to 366 (the ordinal
   date)
@@ -135,3 +138,35 @@ Options
 [yzero]: https://en.wikipedia.org/wiki/Astronomical_year_numbering
 [NYD]: https://en.wikipedia.org/wiki/Julian_calendar#New_Year's_Day
 [src]: https://salsa.debian.org/meskes/bsdmainutils/-/blob/70ff77b0f084de4a14d79bed935e1958020f43dc/usr.bin/ncal/ncal.c
+
+JSON Output
+-----------
+
+When `julian` is invoked with the `-J`/`--json` option, it outputs a JSON
+breakdown of the chosen calendar and input & output values.  The output
+structure is an object with two keys, `"calendar"` and `"dates"`.
+
+- `"calendar"` — Denotes the type of calendar selected for the `julian`
+  invocation.  This is an object that always contains at least one key,
+  `"type"`, the value of which is `"gregorian"` (for the default proleptic
+  Gregorian calendar), `"julian"` (for the proleptic Julian calendar), or
+  `"reforming"` (for a reforming calendar).  When `"type"` is `"reforming"`,
+  there will be an additional field, `"reformation"`, whose value is the Julian
+  day number of the date on which the calendar first follows the Gregorian
+  calendar.
+
+- `"dates"` — A list of objects, one per argument (or, if no arguments were
+  given, one object for the current date).  Each object contains the following
+  fields describing the date indicated by the argument, regardless of whether
+  the argument was a calendar date or a Julian day number:
+
+    - `"julian_day_number"` — the date's Julian day number
+    - `"year"` — the date's year
+    - `"month"` — the number (1-12) of the date's month
+    - `"day"` — the date's day-of-month (1-31)
+    - `"ordinal"` — the date's one-based day-of-year ordinal (1-366)
+    - `"display"` — the date in "YYYY-MM-DD" form
+    - `"ordinal_display"` — the date in "YYYY-JJJ" form
+    - `"old_style"` — This field is only present if the calendar in use is a
+      reforming calendar.  It is `true` if the date occurs before the calendar
+      reformation, `false` otherwise.
