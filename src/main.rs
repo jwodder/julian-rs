@@ -294,8 +294,17 @@ mod tests {
     #[case(vec!["julian", "--help", "2023-04-20"], Command::Help)]
     #[case(vec!["julian", "2023-04-20", "-J", "-h"], Command::Help)]
     #[case(vec!["julian", "2023-04-20", "--help", "-V"], Command::Help)]
+    #[case(vec!["julian", "2023-04-20", "-C"], Command::Countries)]
     #[case(vec!["julian", "-V"], Command::Version)]
     #[case(vec!["julian", "--version"], Command::Version)]
+    #[case(vec!["julian", "-V", "-h"], Command::Version)]
+    #[case(vec!["julian", "-V", "-C"], Command::Version)]
+    #[case(vec!["julian", "-C"], Command::Countries)]
+    #[case(vec!["julian", "--countries"], Command::Countries)]
+    #[case(vec!["julian", "-C", "-h"], Command::Countries)]
+    #[case(vec!["julian", "--countries", "-V"], Command::Countries)]
+    #[case(vec!["julian", "-h", "-C"], Command::Help)]
+    #[case(vec!["julian", "-h", "-V"], Command::Help)]
     #[case(vec!["julian", "--version", "2460055"], Command::Version)]
     #[case(vec!["julian", "2460055", "--ordinal", "--version"], Command::Version)]
     #[case(vec!["julian", "2460055", "--version", "-h"], Command::Version)]
@@ -395,9 +404,128 @@ mod tests {
             Vec::new(),
         )
     )]
+    #[case(
+        vec!["julian", "-s"],
+        Command::Run(
+            Options {
+                calendar: Calendar::GREGORIAN,
+                ordinal: false,
+                quiet: false,
+                style: true,
+            },
+            Vec::new(),
+        )
+    )]
+    #[case(
+        vec!["julian", "--style"],
+        Command::Run(
+            Options {
+                calendar: Calendar::GREGORIAN,
+                ordinal: false,
+                quiet: false,
+                style: true,
+            },
+            Vec::new(),
+        )
+    )]
+    #[case(
+        vec!["julian", "-q"],
+        Command::Run(
+            Options {
+                calendar: Calendar::GREGORIAN,
+                ordinal: false,
+                quiet: true,
+                style: false,
+            },
+            Vec::new(),
+        )
+    )]
+    #[case(
+        vec!["julian", "--quiet"],
+        Command::Run(
+            Options {
+                calendar: Calendar::GREGORIAN,
+                ordinal: false,
+                quiet: true,
+                style: false,
+            },
+            Vec::new(),
+        )
+    )]
+    #[case(
+        vec!["julian", "-R", "2299162"],
+        Command::Run(
+            Options {
+                calendar: Calendar::reforming(2299162).unwrap(),
+                ordinal: false,
+                quiet: false,
+                style: false,
+            },
+            Vec::new(),
+        )
+    )]
+    #[case(
+        vec!["julian", "--reformation", "2299162", "1582-10-02"],
+        Command::Run(
+            Options {
+                calendar: Calendar::reforming(2299162).unwrap(),
+                ordinal: false,
+                quiet: false,
+                style: false,
+            },
+            vec!["1582-10-02".into()],
+        )
+    )]
+    #[case(
+        vec!["julian", "-R", "gb"],
+        Command::Run(
+            Options {
+                calendar: Calendar::reforming(ncal::UNITED_KINGDOM).unwrap(),
+                ordinal: false,
+                quiet: false,
+                style: false,
+            },
+            Vec::new(),
+        )
+    )]
+    #[case(
+        vec!["julian", "-R", "GB"],
+        Command::Run(
+            Options {
+                calendar: Calendar::reforming(ncal::UNITED_KINGDOM).unwrap(),
+                ordinal: false,
+                quiet: false,
+                style: false,
+            },
+            Vec::new(),
+        )
+    )]
     fn cli_parser(#[case] argv: Vec<&str>, #[case] cmd: Command) {
         let parser = Parser::from_iter(argv);
         assert_eq!(Command::from_parser(parser).unwrap(), cmd);
+    }
+
+    #[rstest]
+    #[case("2299161", 2299161)]
+    #[case("ch", ncal::SWITZERLAND)]
+    #[case("CH", ncal::SWITZERLAND)]
+    #[case("Ch", ncal::SWITZERLAND)]
+    #[case("cH", ncal::SWITZERLAND)]
+    fn test_parse_reformation(#[case] optarg: &str, #[case] reform: Jdnum) {
+        let cal = parse_reformation(optarg).unwrap();
+        assert!(cal.is_reforming());
+        assert_eq!(cal.reformation().unwrap(), reform);
+    }
+
+    #[rstest]
+    #[case("0")]
+    #[case("uk")]
+    #[case("Italy")]
+    #[case("1582")]
+    #[case("1830691")]
+    #[case("2147439589")]
+    fn test_parse_reformation_err(#[case] optarg: &str) {
+        assert!(parse_reformation(optarg).is_err());
     }
 
     #[test]
@@ -447,6 +575,33 @@ mod tests {
                 "1066-10-20",
                 "2344633",
                 "1707-04-15"
+            ]
+        );
+    }
+
+    #[test]
+    fn run_style() {
+        let opts = Options {
+            style: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            "2023-04-20".into(),
+            "2440423".into(),
+            "1066-10-20".into(),
+            "2110701".into(),
+            "1707-04-15".into(),
+            "2344633".into(),
+        ];
+        assert_eq!(
+            opts.run(dates).unwrap(),
+            vec![
+                "2023-04-20 = JDN 2460055",
+                "JDN 2440423 = 1969-07-20",
+                "1066-10-20 = JDN 2110701",
+                "JDN 2110701 = 1066-10-20",
+                "1707-04-15 = JDN 2344633",
+                "JDN 2344633 = 1707-04-15"
             ]
         );
     }
@@ -502,6 +657,146 @@ mod tests {
                 "1066-10-14",
                 "2344633",
                 "1707-04-04"
+            ]
+        );
+    }
+
+    #[test]
+    fn run_julian_style() {
+        let opts = Options {
+            calendar: Calendar::JULIAN,
+            style: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            "2023-04-20".into(),
+            "2440423".into(),
+            "1066-10-14".into(),
+            "2110701".into(),
+            "1707-04-04".into(),
+            "2344633".into(),
+        ];
+        assert_eq!(
+            opts.run(dates).unwrap(),
+            vec![
+                "2023-04-20 = JDN 2460068",
+                "JDN 2440423 = 1969-07-07",
+                "1066-10-14 = JDN 2110701",
+                "JDN 2110701 = 1066-10-14",
+                "1707-04-04 = JDN 2344633",
+                "JDN 2344633 = 1707-04-04"
+            ]
+        );
+    }
+
+    #[test]
+    fn run_reforming() {
+        let opts = Options {
+            calendar: Calendar::REFORM1582,
+            ..Options::default()
+        };
+        let dates = vec![
+            "2023-04-20".into(),
+            "2440423".into(),
+            "1066-10-14".into(),
+            "2110701".into(),
+            "1707-04-15".into(),
+            "2344633".into(),
+        ];
+        assert_eq!(
+            opts.run(dates).unwrap(),
+            vec![
+                "2023-04-20 = JDN 2460055",
+                "JDN 2440423 = 1969-07-20",
+                "1066-10-14 = JDN 2110701",
+                "JDN 2110701 = 1066-10-14",
+                "1707-04-15 = JDN 2344633",
+                "JDN 2344633 = 1707-04-15"
+            ]
+        );
+    }
+
+    #[test]
+    fn run_reforming_quiet() {
+        let opts = Options {
+            calendar: Calendar::REFORM1582,
+            quiet: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            "2023-04-20".into(),
+            "2440423".into(),
+            "1066-10-14".into(),
+            "2110701".into(),
+            "1707-04-15".into(),
+            "2344633".into(),
+        ];
+        assert_eq!(
+            opts.run(dates).unwrap(),
+            vec![
+                "2460055",
+                "1969-07-20",
+                "2110701",
+                "1066-10-14",
+                "2344633",
+                "1707-04-15"
+            ]
+        );
+    }
+
+    #[test]
+    fn run_reforming_style() {
+        let opts = Options {
+            calendar: Calendar::REFORM1582,
+            style: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            "2023-04-20".into(),
+            "2440423".into(),
+            "1066-10-14".into(),
+            "2110701".into(),
+            "1707-04-15".into(),
+            "2344633".into(),
+        ];
+        assert_eq!(
+            opts.run(dates).unwrap(),
+            vec![
+                "2023-04-20 N.S. = JDN 2460055",
+                "JDN 2440423 = 1969-07-20 N.S.",
+                "1066-10-14 O.S. = JDN 2110701",
+                "JDN 2110701 = 1066-10-14 O.S.",
+                "1707-04-15 N.S. = JDN 2344633",
+                "JDN 2344633 = 1707-04-15 N.S."
+            ]
+        );
+    }
+
+    #[test]
+    fn run_reforming_quiet_style() {
+        let opts = Options {
+            calendar: Calendar::REFORM1582,
+            quiet: true,
+            style: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            "2023-04-20".into(),
+            "2440423".into(),
+            "1066-10-14".into(),
+            "2110701".into(),
+            "1707-04-15".into(),
+            "2344633".into(),
+        ];
+        assert_eq!(
+            opts.run(dates).unwrap(),
+            vec![
+                "2460055",
+                "1969-07-20 N.S.",
+                "2110701",
+                "1066-10-14 O.S.",
+                "2344633",
+                "1707-04-15 N.S."
             ]
         );
     }
