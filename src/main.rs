@@ -883,4 +883,35 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn run_reforming_ordinal_style() {
+        let opts = Options {
+            calendar: Calendar::REFORM1582,
+            style: true,
+            ordinal: true,
+            ..Options::default()
+        };
+        let dates = vec![
+            "2023-04-20".into(),
+            "2023-134".into(),
+            "2440423".into(),
+            "1066-10-14".into(),
+            "2110701".into(),
+            "1707-04-15".into(),
+            "2344633".into(),
+        ];
+        assert_eq!(
+            opts.run(dates).unwrap(),
+            vec![
+                "2023-110 = JDN 2460055",
+                "2023-134 = JDN 2460079",
+                "JDN 2440423 = 1969-201",
+                "1066-287 = JDN 2110701",
+                "JDN 2110701 = 1066-287",
+                "1707-105 = JDN 2344633",
+                "JDN 2344633 = 1707-105"
+            ]
+        );
+    }
 }
