@@ -1,5 +1,10 @@
 v0.3.0 (in development)
 -----------------------
+- Added a `julian` binary for converting Julian day numbers to & from calendar
+  dates
+    - `julian` now has a `cli` feature enabled by default that adds the
+      dependencies needed by the binary.  Library users are advised to disable
+      default features so as not to pull these in.
 
 v0.2.0 (2023-05-13)
 -------------------
