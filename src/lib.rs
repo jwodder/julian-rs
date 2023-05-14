@@ -12,8 +12,11 @@
 //! Features
 //! ========
 //!
-//! The `julian` crate has the following optional features.  None of them are
-//! enabled by default.
+//! The `julian` crate has the following optional features:
+//!
+//! - `cli` — Adds dependencies needed by the `julian` binary.  This is enabled
+//!   by default, but if you are using `julian` as a library, it is recommended
+//!   that you remove it by disabling default features.
 //!
 //! - `chrono` — Enables converting values of certain `julian` types to the
 //!   corresponding [`chrono`](https://crates.io/crates/chrono) types and *vice
@@ -92,8 +95,8 @@
 //! February in every fourth year.  "Proleptic" means that this system is
 //! extended backwards before its historical introduction, including pretending
 //! that [early inaccuracies in applying the leap year rule][leap-error] never
-//! happened.  If you wish to determine the exact date of an event recorded
-//! before AD 8, you will need to consult external sources.
+//! happened.  If you wish to determine the actual Julian day number of an
+//! event recorded before AD 8, you may need to consult external sources.
 //!
 //! However, the Julian calendar's rule for inserting leap years proved
 //! insufficiently accurate to the solar year, causing the dates of the
@@ -148,7 +151,6 @@
 //! [jdn]: https://en.wikipedia.org/wiki/Julian_day
 //! [yzero]: https://en.wikipedia.org/wiki/Astronomical_year_numbering
 //! [NYD]: https://en.wikipedia.org/wiki/Julian_calendar#New_Year's_Day
-//! [ordinal dates]: https://en.wikipedia.org/wiki/Ordinal_date
 //! [julian]: https://en.wikipedia.org/wiki/Proleptic_Julian_calendar
 //! [leap-error]: https://en.wikipedia.org/wiki/Julian_calendar#Leap_year_error
 //! [gregorian]: https://en.wikipedia.org/wiki/Proleptic_Gregorian_calendar

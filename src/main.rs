@@ -82,14 +82,16 @@ impl Command {
                 );
                 println!("                    Gregorian");
                 println!();
-                println!("  -o, --ordinal     Output calendar dates in the form \"YYYY-DDD\"");
-                println!();
                 println!(
-                    "                    The part after the hyphen is the day of the year from 001"
+                    "  -o, --ordinal     Output calendar dates in the form \"YYYY-JJJ\", where the"
                 );
-                println!("                    to 366 (the ordinal date).");
+                println!(
+                    "                    part after the hyphen is the day of the year from 001 to"
+                );
+                println!("                    366 (the ordinal date)");
                 println!();
-                println!("  -q, --quiet       Do not print the input date before each output date");
+                println!("  -q, --quiet       Do not print the input value before each output value.  Do");
+                println!("                    not print \"JDN\" before Julian day numbers.");
                 println!();
                 println!("  -R <jdn>, --reformation <jdn>");
                 println!("                    Read & write dates using a reforming calendar in which the");
@@ -100,9 +102,9 @@ impl Command {
                 println!();
                 println!("                    A two-letter country code may be given in place of a JDN in");
                 println!(
-                    "                    order to use the calendar reformation as observed in that"
+                    "                    order to use the calendar reformation as it was observed in"
                 );
-                println!("                    country.");
+                println!("                    that country.");
                 println!();
                 println!("  -s, --style       Mark dates in reforming calendars as \"O.S.\" (Old Style) or");
                 println!("                    \"N.S.\" (New Style)");
