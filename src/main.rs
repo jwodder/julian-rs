@@ -20,7 +20,7 @@ impl Command {
                 Arg::Short('V') | Arg::Long("version") => return Ok(Command::Version),
                 Arg::Short('J') | Arg::Long("julian") => opts.julian = true,
                 Arg::Short('o') | Arg::Long("ordinal") => opts.ordinal = true,
-                Arg::Short('v') | Arg::Long("verbose") => opts.verbose = true,
+                Arg::Short('q') | Arg::Long("quiet") => opts.quiet = true,
                 Arg::Short(c) if c.is_ascii_digit() => {
                     let mut s = String::from_iter(['-', c]);
                     if let Some(v) = parser.optional_value() {
@@ -60,7 +60,7 @@ impl Command {
                 );
                 println!("                    to 366 (the ordinal date).");
                 println!();
-                println!("  -v, --verbose     Print the input date before each output date");
+                println!("  -q, --quiet       Do not print the input date before each output date");
                 println!();
                 println!("  -h, --help        Display this help message and exit");
                 println!("  -V, --version     Show the program version and exit");
@@ -75,9 +75,9 @@ impl Command {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct Options {
-    ordinal: bool,
     julian: bool,
-    verbose: bool,
+    ordinal: bool,
+    quiet: bool,
 }
 
 impl Options {
@@ -86,7 +86,7 @@ impl Options {
         if args.is_empty() {
             let (now, _) = Calendar::GREGORIAN.now().unwrap();
             let jd = now.julian_day_number();
-            if self.verbose {
+            if !self.quiet {
                 output.push(format!("{now} = {jd}"));
             } else {
                 output.push(jd.to_string());
@@ -104,7 +104,7 @@ impl Options {
                         .with_context(|| format!("Invalid calendar date: {arg}"))?;
                     let jdn = when.julian_day_number();
                     let mut s = String::new();
-                    if self.verbose {
+                    if !self.quiet {
                         self.fmt_date(&mut s, when);
                         write!(&mut s, " = ").unwrap();
                     }
@@ -116,7 +116,7 @@ impl Options {
                         .with_context(|| format!("Invalid Julian day number: {arg}"))?;
                     let when = cal.at_jdn(jdn);
                     let mut s = String::new();
-                    if self.verbose {
+                    if !self.quiet {
                         write!(&mut s, "{jdn} = ").unwrap();
                     }
                     self.fmt_date(&mut s, when);
@@ -160,9 +160,9 @@ mod tests {
         vec!["julian"],
         Command::Run(
             Options {
-                ordinal: false,
                 julian: false,
-                verbose: false,
+                ordinal: false,
+                quiet: false,
             },
             Vec::new(),
         )
@@ -171,9 +171,9 @@ mod tests {
         vec!["julian", "123"],
         Command::Run(
             Options {
-                ordinal: false,
                 julian: false,
-                verbose: false,
+                ordinal: false,
+                quiet: false,
             },
             vec!["123".into()],
         )
@@ -182,31 +182,31 @@ mod tests {
         vec!["julian", "-123"],
         Command::Run(
             Options {
-                ordinal: false,
                 julian: false,
-                verbose: false,
+                ordinal: false,
+                quiet: false,
             },
             vec!["-123".into()],
         )
     )]
     #[case(
-        vec!["julian", "-v", "-123"],
+        vec!["julian", "-q", "-123"],
         Command::Run(
             Options {
-                ordinal: false,
                 julian: false,
-                verbose: true,
+                ordinal: false,
+                quiet: true,
             },
             vec!["-123".into()],
         )
     )]
     #[case(
-        vec!["julian", "-123", "-v"],
+        vec!["julian", "-123", "-q"],
         Command::Run(
             Options {
-                ordinal: false,
                 julian: false,
-                verbose: true,
+                ordinal: false,
+                quiet: true,
             },
             vec!["-123".into()],
         )
@@ -215,20 +215,20 @@ mod tests {
         vec!["julian", "-J"],
         Command::Run(
             Options {
-                ordinal: false,
                 julian: true,
-                verbose: false,
+                ordinal: false,
+                quiet: false,
             },
             Vec::new(),
         )
     )]
     #[case(
-        vec!["julian", "-j"],
+        vec!["julian", "-o"],
         Command::Run(
             Options {
-                ordinal: true,
                 julian: false,
-                verbose: false,
+                ordinal: true,
+                quiet: false,
             },
             Vec::new(),
         )
@@ -237,9 +237,9 @@ mod tests {
         vec!["julian", "--ordinal"],
         Command::Run(
             Options {
-                ordinal: true,
                 julian: false,
-                verbose: false,
+                ordinal: true,
+                quiet: false,
             },
             Vec::new(),
         )
@@ -263,20 +263,20 @@ mod tests {
         assert_eq!(
             opts.run(dates).unwrap(),
             vec![
-                "2460055",
-                "1969-07-20",
-                "2110701",
-                "1066-10-20",
-                "2344633",
-                "1707-04-15"
+                "2023-04-20 = 2460055",
+                "2440423 = 1969-07-20",
+                "1066-10-20 = 2110701",
+                "2110701 = 1066-10-20",
+                "1707-04-15 = 2344633",
+                "2344633 = 1707-04-15"
             ]
         );
     }
 
     #[test]
-    fn run_verbose() {
+    fn run_quiet() {
         let opts = Options {
-            verbose: true,
+            quiet: true,
             ..Options::default()
         };
         let dates = vec![
@@ -290,12 +290,12 @@ mod tests {
         assert_eq!(
             opts.run(dates).unwrap(),
             vec![
-                "2023-04-20 = 2460055",
-                "2440423 = 1969-07-20",
-                "1066-10-20 = 2110701",
-                "2110701 = 1066-10-20",
-                "1707-04-15 = 2344633",
-                "2344633 = 1707-04-15"
+                "2460055",
+                "1969-07-20",
+                "2110701",
+                "1066-10-20",
+                "2344633",
+                "1707-04-15"
             ]
         );
     }
@@ -304,34 +304,6 @@ mod tests {
     fn run_julian() {
         let opts = Options {
             julian: true,
-            ..Options::default()
-        };
-        let dates = vec![
-            "2023-04-20".into(),
-            "2440423".into(),
-            "1066-10-14".into(),
-            "2110701".into(),
-            "1707-04-04".into(),
-            "2344633".into(),
-        ];
-        assert_eq!(
-            opts.run(dates).unwrap(),
-            vec![
-                "2460068",
-                "1969-07-07",
-                "2110701",
-                "1066-10-14",
-                "2344633",
-                "1707-04-04"
-            ]
-        );
-    }
-
-    #[test]
-    fn run_julian_verbose() {
-        let opts = Options {
-            julian: true,
-            verbose: true,
             ..Options::default()
         };
         let dates = vec![
@@ -356,20 +328,37 @@ mod tests {
     }
 
     #[test]
-    fn run_ordinal() {
+    fn run_julian_quiet() {
         let opts = Options {
-            ordinal: true,
+            julian: true,
+            quiet: true,
             ..Options::default()
         };
-        let dates = vec!["2023-110".into(), "2440423".into()];
-        assert_eq!(opts.run(dates).unwrap(), vec!["2460055", "1969-201"]);
+        let dates = vec![
+            "2023-04-20".into(),
+            "2440423".into(),
+            "1066-10-14".into(),
+            "2110701".into(),
+            "1707-04-04".into(),
+            "2344633".into(),
+        ];
+        assert_eq!(
+            opts.run(dates).unwrap(),
+            vec![
+                "2460068",
+                "1969-07-07",
+                "2110701",
+                "1066-10-14",
+                "2344633",
+                "1707-04-04"
+            ]
+        );
     }
 
     #[test]
-    fn run_ordinal_verbose() {
+    fn run_ordinal() {
         let opts = Options {
             ordinal: true,
-            verbose: true,
             ..Options::default()
         };
         let dates = vec!["2023-110".into(), "2440423".into()];
@@ -380,11 +369,22 @@ mod tests {
     }
 
     #[test]
-    fn run_julian_verbose_ordinal() {
+    fn run_ordinal_quiet() {
+        let opts = Options {
+            ordinal: true,
+            quiet: true,
+            ..Options::default()
+        };
+        let dates = vec!["2023-110".into(), "2440423".into()];
+        assert_eq!(opts.run(dates).unwrap(), vec!["2460055", "1969-201"]);
+    }
+
+    #[test]
+    fn run_julian_ordinal() {
         let opts = Options {
             julian: true,
-            verbose: true,
             ordinal: true,
+            ..Options::default()
         };
         let dates = vec![
             "2023-04-20".into(),
