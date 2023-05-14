@@ -83,8 +83,13 @@ struct Options {
 impl Options {
     fn run(&self, args: Vec<String>) -> anyhow::Result<Vec<String>> {
         let mut output = Vec::with_capacity(args.len());
+        let cal = if self.julian {
+            Calendar::JULIAN
+        } else {
+            Calendar::GREGORIAN
+        };
         if args.is_empty() {
-            let (now, _) = Calendar::GREGORIAN.now().unwrap();
+            let (now, _) = cal.now().unwrap();
             let jd = now.julian_day_number();
             if !self.quiet {
                 output.push(format!("{now} = {jd}"));
@@ -92,11 +97,6 @@ impl Options {
                 output.push(jd.to_string());
             }
         } else {
-            let cal = if self.julian {
-                Calendar::JULIAN
-            } else {
-                Calendar::GREGORIAN
-            };
             for arg in args {
                 if arg.match_indices('-').any(|(i, _)| i > 0) {
                     let when = cal
