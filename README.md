@@ -89,8 +89,8 @@ throughout history have followed this convention][NYD].
 Options
 -------
 
-- `-C`, `--countries` — List the country codes recognized by the
-  `-R`/`--reformation` option.  The output is a table with the following
+- `-c`, `--countries` — List the country codes recognized by the
+  `-r`/`--reformation` option.  The output is a table with the following
   columns:
 
     - "Code" — the two-letter country code accepted by `--reformation`
@@ -108,7 +108,7 @@ Options
 
 - `-h`, `--help` — Display a summary of the command-line options and exit
 
-- `-J`, `--julian` — Read & write dates using the proleptic Julian calendar
+- `-j`, `--julian` — Read & write dates using the proleptic Julian calendar
 
 - `-o`, `--ordinal` — Output calendar dates in the form "YYYY-JJJ", where the
   part after the hyphen is the day of the year from 001 to 366 (the ordinal
@@ -117,7 +117,7 @@ Options
 - `-q`, `--quiet` — Do not print the input value before each output value.  Do
   not print "JDN" before Julian day numbers.
 
-- `-R <jdn>`, `--reformation <jdn>` — Read & write dates using a reforming
+- `-r <jdn>`, `--reformation <jdn>` — Read & write dates using a reforming
   calendar in which the Gregorian calendar is first observed on the date with
   the given Julian day number
 
@@ -127,7 +127,7 @@ Options
     codes and their corresponding dates.
 
 - `-s`, `--style` — Mark dates in reforming calendars as "O.S." (Old Style) or
-  "N.S." (New Style)".  Has no effect when `-R`/`--reformation` is not given or
+  "N.S." (New Style)".  Has no effect when `-r`/`--reformation` is not given or
   when `-o`/`--ordinal` is given.
 
 - `-V`, `--version` — Show the program version and exit

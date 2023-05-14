@@ -18,13 +18,13 @@ impl Command {
         let mut args = Vec::new();
         while let Some(arg) = parser.next()? {
             match arg {
-                Arg::Short('C') | Arg::Long("countries") => return Ok(Command::Countries),
+                Arg::Short('c') | Arg::Long("countries") => return Ok(Command::Countries),
                 Arg::Short('h') | Arg::Long("help") => return Ok(Command::Help),
                 Arg::Short('V') | Arg::Long("version") => return Ok(Command::Version),
-                Arg::Short('J') | Arg::Long("julian") => opts.calendar = Calendar::JULIAN,
+                Arg::Short('j') | Arg::Long("julian") => opts.calendar = Calendar::JULIAN,
                 Arg::Short('o') | Arg::Long("ordinal") => opts.ordinal = true,
                 Arg::Short('q') | Arg::Long("quiet") => opts.quiet = true,
-                Arg::Short('R') | Arg::Long("reformation") => {
+                Arg::Short('r') | Arg::Long("reformation") => {
                     let optarg = parser.value()?.string()?;
                     match parse_reformation(&optarg) {
                         Ok(cal) => opts.calendar = cal,
@@ -75,10 +75,10 @@ impl Command {
                 println!("Convert Julian day numbers to & from calendar dates");
                 println!();
                 println!("Options:");
-                println!("  -C, --countries   List the country codes accepted by the --reformation option");
+                println!("  -c, --countries   List the country codes accepted by the --reformation option");
                 println!();
                 println!(
-                    "  -J, --julian      Read & write dates in the Julian calendar instead of the"
+                    "  -j, --julian      Read & write dates in the Julian calendar instead of the"
                 );
                 println!("                    Gregorian");
                 println!();
@@ -93,7 +93,7 @@ impl Command {
                 println!("  -q, --quiet       Do not print the input value before each output value.  Do");
                 println!("                    not print \"JDN\" before Julian day numbers.");
                 println!();
-                println!("  -R <jdn>, --reformation <jdn>");
+                println!("  -r <jdn>, --reformation <jdn>");
                 println!("                    Read & write dates using a reforming calendar in which the");
                 println!(
                     "                    Gregorian calendar is first observed on the date with the"
@@ -294,18 +294,18 @@ mod tests {
     #[case(vec!["julian", "-h"], Command::Help)]
     #[case(vec!["julian", "--help"], Command::Help)]
     #[case(vec!["julian", "--help", "2023-04-20"], Command::Help)]
-    #[case(vec!["julian", "2023-04-20", "-J", "-h"], Command::Help)]
+    #[case(vec!["julian", "2023-04-20", "-j", "-h"], Command::Help)]
     #[case(vec!["julian", "2023-04-20", "--help", "-V"], Command::Help)]
-    #[case(vec!["julian", "2023-04-20", "-C"], Command::Countries)]
+    #[case(vec!["julian", "2023-04-20", "-c"], Command::Countries)]
     #[case(vec!["julian", "-V"], Command::Version)]
     #[case(vec!["julian", "--version"], Command::Version)]
     #[case(vec!["julian", "-V", "-h"], Command::Version)]
-    #[case(vec!["julian", "-V", "-C"], Command::Version)]
-    #[case(vec!["julian", "-C"], Command::Countries)]
+    #[case(vec!["julian", "-V", "-c"], Command::Version)]
+    #[case(vec!["julian", "-c"], Command::Countries)]
     #[case(vec!["julian", "--countries"], Command::Countries)]
-    #[case(vec!["julian", "-C", "-h"], Command::Countries)]
+    #[case(vec!["julian", "-c", "-h"], Command::Countries)]
     #[case(vec!["julian", "--countries", "-V"], Command::Countries)]
-    #[case(vec!["julian", "-h", "-C"], Command::Help)]
+    #[case(vec!["julian", "-h", "-c"], Command::Help)]
     #[case(vec!["julian", "-h", "-V"], Command::Help)]
     #[case(vec!["julian", "--version", "2460055"], Command::Version)]
     #[case(vec!["julian", "2460055", "--ordinal", "--version"], Command::Version)]
@@ -371,7 +371,7 @@ mod tests {
         )
     )]
     #[case(
-        vec!["julian", "-J"],
+        vec!["julian", "-j"],
         Command::Run(
             Options {
                 calendar: Calendar::JULIAN,
@@ -455,7 +455,7 @@ mod tests {
         )
     )]
     #[case(
-        vec!["julian", "-R", "2299162"],
+        vec!["julian", "-r", "2299162"],
         Command::Run(
             Options {
                 calendar: Calendar::reforming(2299162).unwrap(),
@@ -479,7 +479,7 @@ mod tests {
         )
     )]
     #[case(
-        vec!["julian", "-R", "gb"],
+        vec!["julian", "-r", "gb"],
         Command::Run(
             Options {
                 calendar: Calendar::reforming(ncal::UNITED_KINGDOM).unwrap(),
@@ -491,7 +491,7 @@ mod tests {
         )
     )]
     #[case(
-        vec!["julian", "-R", "GB"],
+        vec!["julian", "-r", "GB"],
         Command::Run(
             Options {
                 calendar: Calendar::reforming(ncal::UNITED_KINGDOM).unwrap(),
