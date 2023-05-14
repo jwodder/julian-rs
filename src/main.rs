@@ -1,4 +1,3 @@
-use anyhow::Context;
 use julian::{ncal, Calendar, Date, Jdnum, ReformingError};
 use lexopt::{Arg, Parser, ValueExt};
 use std::collections::BTreeMap;
@@ -49,7 +48,7 @@ impl Command {
         Ok(Command::Run(opts, args))
     }
 
-    fn run(self) -> anyhow::Result<()> {
+    fn run(self) -> Result<(), lexopt::Error> {
         match self {
             Command::Run(opts, args) => {
                 for ln in opts.run(args)? {
@@ -112,7 +111,7 @@ impl Default for Options {
 }
 
 impl Options {
-    fn run(&self, args: Vec<String>) -> anyhow::Result<Vec<String>> {
+    fn run(&self, args: Vec<String>) -> Result<Vec<String>, lexopt::Error> {
         let mut output = Vec::with_capacity(args.len());
         if args.is_empty() {
             let (now, _) = self.calendar.now().unwrap();
@@ -124,34 +123,50 @@ impl Options {
             }
         } else {
             for arg in args {
-                if arg.match_indices('-').any(|(i, _)| i > 0) {
-                    let when = self
-                        .calendar
-                        .parse_date(&arg)
-                        .with_context(|| format!("Invalid calendar date: {arg}"))?;
-                    let jdn = when.julian_day_number();
-                    let mut s = String::new();
-                    if !self.quiet {
+                match self.parse_arg(arg)? {
+                    Argument::Date(when) => {
+                        let jdn = when.julian_day_number();
+                        let mut s = String::new();
+                        if !self.quiet {
+                            self.fmt_date(&mut s, when);
+                            write!(&mut s, " = JDN ").unwrap();
+                        }
+                        write!(&mut s, "{jdn}").unwrap();
+                        output.push(s);
+                    }
+                    Argument::Jdn(jdn) => {
+                        let when = self.calendar.at_jdn(jdn);
+                        let mut s = String::new();
+                        if !self.quiet {
+                            write!(&mut s, "JDN {jdn} = ").unwrap();
+                        }
                         self.fmt_date(&mut s, when);
-                        write!(&mut s, " = JDN ").unwrap();
+                        output.push(s);
                     }
-                    write!(&mut s, "{jdn}").unwrap();
-                    output.push(s);
-                } else {
-                    let jdn = arg
-                        .parse::<Jdnum>()
-                        .with_context(|| format!("Invalid Julian day number: {arg}"))?;
-                    let when = self.calendar.at_jdn(jdn);
-                    let mut s = String::new();
-                    if !self.quiet {
-                        write!(&mut s, "JDN {jdn} = ").unwrap();
-                    }
-                    self.fmt_date(&mut s, when);
-                    output.push(s);
                 }
             }
         }
         Ok(output)
+    }
+
+    fn parse_arg(&self, s: String) -> Result<Argument, lexopt::Error> {
+        if s.match_indices('-').any(|(i, _)| i > 0) {
+            match self.calendar.parse_date(&s) {
+                Ok(d) => Ok(Argument::Date(d)),
+                Err(e) => Err(lexopt::Error::ParsingFailed {
+                    value: s,
+                    error: Box::new(e),
+                }),
+            }
+        } else {
+            match s.parse::<Jdnum>() {
+                Ok(jdn) => Ok(Argument::Jdn(jdn)),
+                Err(e) => Err(lexopt::Error::ParsingFailed {
+                    value: s,
+                    error: Box::new(e),
+                }),
+            }
+        }
     }
 
     fn fmt_date(&self, s: &mut String, when: Date) {
@@ -163,7 +178,13 @@ impl Options {
     }
 }
 
-fn main() -> anyhow::Result<()> {
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum Argument {
+    Date(Date),
+    Jdn(Jdnum),
+}
+
+fn main() -> Result<(), lexopt::Error> {
     Command::from_parser(Parser::from_env())?.run()
 }
 

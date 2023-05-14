@@ -27,7 +27,7 @@ rstest_reuse = "0.5.0"
 
 [features]
 default = ["cli"]
-cli = ["dep:anyhow", "dep:lexopt"]
+cli = ["dep:lexopt"]
 gentests = ["dep:anyhow", "dep:csv", "dep:serde"]
 
 [[bin]]
