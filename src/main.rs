@@ -1,7 +1,9 @@
 use anyhow::Context;
-use julian::{Calendar, Date, Jdnum};
+use julian::{ncal, Calendar, Date, Jdnum, ReformingError};
 use lexopt::{Arg, Parser, ValueExt};
+use std::collections::BTreeMap;
 use std::fmt::Write;
+use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq)]
 enum Command {
@@ -18,9 +20,21 @@ impl Command {
             match arg {
                 Arg::Short('h') | Arg::Long("help") => return Ok(Command::Help),
                 Arg::Short('V') | Arg::Long("version") => return Ok(Command::Version),
-                Arg::Short('J') | Arg::Long("julian") => opts.julian = true,
+                Arg::Short('J') | Arg::Long("julian") => opts.calendar = Calendar::JULIAN,
                 Arg::Short('o') | Arg::Long("ordinal") => opts.ordinal = true,
                 Arg::Short('q') | Arg::Long("quiet") => opts.quiet = true,
+                Arg::Short('R') | Arg::Long("reformation") => {
+                    let optarg = parser.value()?.string()?;
+                    match parse_reformation(&optarg) {
+                        Ok(cal) => opts.calendar = cal,
+                        Err(e) => {
+                            return Err(lexopt::Error::ParsingFailed {
+                                value: optarg,
+                                error: Box::new(e),
+                            });
+                        }
+                    }
+                }
                 Arg::Short(c) if c.is_ascii_digit() => {
                     let mut s = String::from_iter(['-', c]);
                     if let Some(v) = parser.optional_value() {
@@ -62,6 +76,13 @@ impl Command {
                 println!();
                 println!("  -q, --quiet       Do not print the input date before each output date");
                 println!();
+                println!("  -R <jdn>, --reformation <jdn>");
+                println!("                    Read & write dates using a reforming calendar in which the");
+                println!(
+                    "                    Gregorian calendar is first observed on the date with the"
+                );
+                println!("                    given Julian day number");
+                println!();
                 println!("  -h, --help        Display this help message and exit");
                 println!("  -V, --version     Show the program version and exit");
             }
@@ -73,23 +94,28 @@ impl Command {
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct Options {
-    julian: bool,
+    calendar: Calendar,
     ordinal: bool,
     quiet: bool,
+}
+
+impl Default for Options {
+    fn default() -> Options {
+        Options {
+            calendar: Calendar::GREGORIAN,
+            ordinal: false,
+            quiet: false,
+        }
+    }
 }
 
 impl Options {
     fn run(&self, args: Vec<String>) -> anyhow::Result<Vec<String>> {
         let mut output = Vec::with_capacity(args.len());
-        let cal = if self.julian {
-            Calendar::JULIAN
-        } else {
-            Calendar::GREGORIAN
-        };
         if args.is_empty() {
-            let (now, _) = cal.now().unwrap();
+            let (now, _) = self.calendar.now().unwrap();
             let jd = now.julian_day_number();
             if !self.quiet {
                 output.push(format!("{now} = {jd}"));
@@ -99,7 +125,8 @@ impl Options {
         } else {
             for arg in args {
                 if arg.match_indices('-').any(|(i, _)| i > 0) {
-                    let when = cal
+                    let when = self
+                        .calendar
                         .parse_date(&arg)
                         .with_context(|| format!("Invalid calendar date: {arg}"))?;
                     let jdn = when.julian_day_number();
@@ -114,7 +141,7 @@ impl Options {
                     let jdn = arg
                         .parse::<Jdnum>()
                         .with_context(|| format!("Invalid Julian day number: {arg}"))?;
-                    let when = cal.at_jdn(jdn);
+                    let when = self.calendar.at_jdn(jdn);
                     let mut s = String::new();
                     if !self.quiet {
                         write!(&mut s, "JDN {jdn} = ").unwrap();
@@ -140,6 +167,68 @@ fn main() -> anyhow::Result<()> {
     Command::from_parser(Parser::from_env())?.run()
 }
 
+fn parse_reformation(s: &str) -> Result<Calendar, ReformationError> {
+    let reformation = if s.chars().all(char::is_alphabetic) {
+        let key = s.to_ascii_uppercase();
+        national_reformations()
+            .get(key.as_str())
+            .copied()
+            .ok_or(ReformationError::CountryCode)?
+    } else {
+        s.parse::<Jdnum>().map_err(|_| ReformationError::Jdn)?
+    };
+    Ok(Calendar::reforming(reformation)?)
+}
+
+#[derive(Clone, Debug, Error, Eq, PartialEq)]
+enum ReformationError {
+    #[error("unrecognized county code")]
+    CountryCode,
+    #[error("invalid number")]
+    Jdn,
+    #[error(transparent)]
+    Reforming(#[from] ReformingError),
+}
+
+fn national_reformations() -> BTreeMap<&'static str, Jdnum> {
+    BTreeMap::from([
+        ("AL", ncal::ALBANIA),
+        ("AT", ncal::AUSTRIA),
+        ("AU", ncal::AUSTRALIA),
+        ("BE", ncal::BELGIUM),
+        ("BG", ncal::BULGARIA),
+        ("CA", ncal::CANADA),
+        ("CH", ncal::SWITZERLAND),
+        ("CN", ncal::CHINA),
+        ("CZ", ncal::CZECH_REPUBLIC),
+        ("DE", ncal::GERMANY),
+        ("DK", ncal::DENMARK),
+        ("ES", ncal::SPAIN),
+        ("FI", ncal::FINLAND),
+        ("FR", ncal::FRANCE),
+        ("GB", ncal::UNITED_KINGDOM),
+        ("GR", ncal::GREECE),
+        ("HU", ncal::HUNGARY),
+        ("IS", ncal::ICELAND),
+        ("IT", ncal::ITALY),
+        ("JP", ncal::JAPAN),
+        ("LI", ncal::LITHUANIA),
+        ("LU", ncal::LUXEMBOURG),
+        ("LV", ncal::LATVIA),
+        ("NL", ncal::NETHERLANDS),
+        ("NO", ncal::NORWAY),
+        ("PL", ncal::POLAND),
+        ("PT", ncal::PORTUGAL),
+        ("RO", ncal::ROMANIA),
+        ("RU", ncal::RUSSIA),
+        ("SI", ncal::SLOVENIA),
+        ("SE", ncal::SWEDEN),
+        ("TR", ncal::TURKEY),
+        ("US", ncal::UNITED_STATES),
+        ("YU", ncal::YUGOSLAVIA),
+    ])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -160,7 +249,7 @@ mod tests {
         vec!["julian"],
         Command::Run(
             Options {
-                julian: false,
+                calendar: Calendar::GREGORIAN,
                 ordinal: false,
                 quiet: false,
             },
@@ -171,7 +260,7 @@ mod tests {
         vec!["julian", "123"],
         Command::Run(
             Options {
-                julian: false,
+                calendar: Calendar::GREGORIAN,
                 ordinal: false,
                 quiet: false,
             },
@@ -182,7 +271,7 @@ mod tests {
         vec!["julian", "-123"],
         Command::Run(
             Options {
-                julian: false,
+                calendar: Calendar::GREGORIAN,
                 ordinal: false,
                 quiet: false,
             },
@@ -193,7 +282,7 @@ mod tests {
         vec!["julian", "-q", "-123"],
         Command::Run(
             Options {
-                julian: false,
+                calendar: Calendar::GREGORIAN,
                 ordinal: false,
                 quiet: true,
             },
@@ -204,7 +293,7 @@ mod tests {
         vec!["julian", "-123", "-q"],
         Command::Run(
             Options {
-                julian: false,
+                calendar: Calendar::GREGORIAN,
                 ordinal: false,
                 quiet: true,
             },
@@ -215,7 +304,7 @@ mod tests {
         vec!["julian", "-J"],
         Command::Run(
             Options {
-                julian: true,
+                calendar: Calendar::JULIAN,
                 ordinal: false,
                 quiet: false,
             },
@@ -226,7 +315,7 @@ mod tests {
         vec!["julian", "-o"],
         Command::Run(
             Options {
-                julian: false,
+                calendar: Calendar::GREGORIAN,
                 ordinal: true,
                 quiet: false,
             },
@@ -237,7 +326,7 @@ mod tests {
         vec!["julian", "--ordinal"],
         Command::Run(
             Options {
-                julian: false,
+                calendar: Calendar::GREGORIAN,
                 ordinal: true,
                 quiet: false,
             },
@@ -303,7 +392,7 @@ mod tests {
     #[test]
     fn run_julian() {
         let opts = Options {
-            julian: true,
+            calendar: Calendar::JULIAN,
             ..Options::default()
         };
         let dates = vec![
@@ -330,7 +419,7 @@ mod tests {
     #[test]
     fn run_julian_quiet() {
         let opts = Options {
-            julian: true,
+            calendar: Calendar::JULIAN,
             quiet: true,
             ..Options::default()
         };
@@ -382,7 +471,7 @@ mod tests {
     #[test]
     fn run_julian_ordinal() {
         let opts = Options {
-            julian: true,
+            calendar: Calendar::JULIAN,
             ordinal: true,
             ..Options::default()
         };
