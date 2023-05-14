@@ -34,6 +34,7 @@ impl Command {
                         }
                     }
                 }
+                Arg::Short('s') | Arg::Long("style") => opts.style = true,
                 Arg::Short(c) if c.is_ascii_digit() => {
                     let mut s = String::from_iter(['-', c]);
                     if let Some(v) = parser.optional_value() {
@@ -82,6 +83,9 @@ impl Command {
                 );
                 println!("                    given Julian day number");
                 println!();
+                println!("  -s, --style       Mark dates in reforming calendars as \"O.S.\" (Old Style) or");
+                println!("                    \"N.S.\" (New Style)");
+                println!();
                 println!("  -h, --help        Display this help message and exit");
                 println!("  -V, --version     Show the program version and exit");
             }
@@ -98,6 +102,7 @@ struct Options {
     calendar: Calendar,
     ordinal: bool,
     quiet: bool,
+    style: bool,
 }
 
 impl Default for Options {
@@ -106,6 +111,7 @@ impl Default for Options {
             calendar: Calendar::GREGORIAN,
             ordinal: false,
             quiet: false,
+            style: false,
         }
     }
 }
@@ -173,6 +179,13 @@ impl Options {
             write!(s, "{when:#}").unwrap();
         } else {
             write!(s, "{when}").unwrap();
+            if self.style && when.calendar().is_reforming() {
+                if when.is_julian() {
+                    write!(s, " O.S.").unwrap();
+                } else {
+                    write!(s, " N.S.").unwrap();
+                }
+            }
         }
     }
 }
@@ -272,6 +285,7 @@ mod tests {
                 calendar: Calendar::GREGORIAN,
                 ordinal: false,
                 quiet: false,
+                style: false,
             },
             Vec::new(),
         )
@@ -283,6 +297,7 @@ mod tests {
                 calendar: Calendar::GREGORIAN,
                 ordinal: false,
                 quiet: false,
+                style: false,
             },
             vec!["123".into()],
         )
@@ -294,6 +309,7 @@ mod tests {
                 calendar: Calendar::GREGORIAN,
                 ordinal: false,
                 quiet: false,
+                style: false,
             },
             vec!["-123".into()],
         )
@@ -305,6 +321,7 @@ mod tests {
                 calendar: Calendar::GREGORIAN,
                 ordinal: false,
                 quiet: true,
+                style: false,
             },
             vec!["-123".into()],
         )
@@ -316,6 +333,7 @@ mod tests {
                 calendar: Calendar::GREGORIAN,
                 ordinal: false,
                 quiet: true,
+                style: false,
             },
             vec!["-123".into()],
         )
@@ -327,6 +345,7 @@ mod tests {
                 calendar: Calendar::JULIAN,
                 ordinal: false,
                 quiet: false,
+                style: false,
             },
             Vec::new(),
         )
@@ -338,6 +357,7 @@ mod tests {
                 calendar: Calendar::GREGORIAN,
                 ordinal: true,
                 quiet: false,
+                style: false,
             },
             Vec::new(),
         )
@@ -349,6 +369,7 @@ mod tests {
                 calendar: Calendar::GREGORIAN,
                 ordinal: true,
                 quiet: false,
+                style: false,
             },
             Vec::new(),
         )
