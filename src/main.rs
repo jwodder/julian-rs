@@ -434,6 +434,19 @@ mod tests {
         )
     )]
     #[case(
+        vec!["julian", "-1", "23"],
+        Command::Run(
+            Options {
+                calendar: Calendar::GREGORIAN,
+                json: false,
+                ordinal: false,
+                quiet: false,
+                style: false,
+            },
+            vec!["-1".into(), "23".into()],
+        )
+    )]
+    #[case(
         vec!["julian", "-q", "-123"],
         Command::Run(
             Options {
