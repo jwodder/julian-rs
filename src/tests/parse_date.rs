@@ -399,42 +399,54 @@ fn empty() {
 fn hyphen_hyphen_start() {
     use std::num::IntErrorKind::InvalidDigit;
     let r = Calendar::REFORM1582.parse_date("--12-23-56");
-    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &InvalidDigit);
+    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) => {
+        assert_eq!(e.kind(), &InvalidDigit);
+    });
 }
 
 #[test]
 fn too_large_year() {
     use std::num::IntErrorKind::PosOverflow;
     let r = Calendar::REFORM1582.parse_date("999999999999-01-01");
-    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &PosOverflow);
+    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) => {
+        assert_eq!(e.kind(), &PosOverflow);
+    });
 }
 
 #[test]
 fn too_small_year() {
     use std::num::IntErrorKind::NegOverflow;
     let r = Calendar::REFORM1582.parse_date("-999999999999-01-01");
-    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &NegOverflow);
+    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) => {
+        assert_eq!(e.kind(), &NegOverflow);
+    });
 }
 
 #[test]
 fn too_large_month() {
     use std::num::IntErrorKind::PosOverflow;
     let r = Calendar::REFORM1582.parse_date("2023-999999999999-01");
-    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &PosOverflow);
+    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) => {
+        assert_eq!(e.kind(), &PosOverflow);
+    });
 }
 
 #[test]
 fn too_large_day() {
     use std::num::IntErrorKind::PosOverflow;
     let r = Calendar::REFORM1582.parse_date("2023-04-999999999999");
-    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &PosOverflow);
+    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) => {
+        assert_eq!(e.kind(), &PosOverflow);
+    });
 }
 
 #[test]
 fn too_large_ordinal() {
     use std::num::IntErrorKind::PosOverflow;
     let r = Calendar::REFORM1582.parse_date("2023-999999999999");
-    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) if e.kind() == &PosOverflow);
+    assert_matches!(r, Err(ParseDateError::ParseInt(ref e)) => {
+        assert_eq!(e.kind(), &PosOverflow);
+    });
 }
 
 #[test]
