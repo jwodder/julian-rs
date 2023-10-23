@@ -62,9 +62,14 @@ impl Command {
             Command::Countries => {
                 println!("Code  Country         Reformation  Last Julian  First Gregorian");
                 for (code, (country, reform)) in national_reformations() {
-                    let cal = Calendar::reforming(reform).unwrap();
-                    let last_julian = cal.last_julian_date().unwrap();
-                    let first_gregorian = cal.first_gregorian_date().unwrap();
+                    let cal = Calendar::reforming(reform)
+                        .expect("ncal reformation date should be valid reformation date");
+                    let last_julian = cal
+                        .last_julian_date()
+                        .expect("reforming calendar should have last Julian date");
+                    let first_gregorian = cal
+                        .first_gregorian_date()
+                        .expect("reforming calendar should have first Gregorian date");
                     println!(
                         "{code}    {country:<14}  JDN {reform}  {last_julian}   {first_gregorian}"
                     );
@@ -146,12 +151,15 @@ impl Default for Options {
 
 impl Options {
     fn run(&self, args: Vec<String>) -> Result<Vec<String>, lexopt::Error> {
-        let mut output = Vec::with_capacity(args.len());
+        let mut output = Vec::with_capacity(args.len() + 2);
         if self.json {
             output.push(json_start(self.calendar));
         }
         if args.is_empty() {
-            let (now, _) = self.calendar.now().unwrap();
+            let (now, _) = self
+                .calendar
+                .now()
+                .expect("JDN for system time should fit in i32");
             output.push(self.date_to_jdn(now));
         } else {
             for arg in args {
@@ -164,7 +172,10 @@ impl Options {
         if self.json {
             let length = output.len();
             if length > 2 {
-                for obj in output.get_mut(1..(length - 1)).unwrap() {
+                for obj in output
+                    .get_mut(1..(length - 1))
+                    .expect("slicing Vec from 1 to length-1 should work")
+                {
                     obj.push(',');
                 }
             }

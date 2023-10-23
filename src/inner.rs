@@ -356,7 +356,8 @@ pub(crate) fn gregorian2jdn(year: i32, ordinal: u32) -> Option<Jdnum> {
     )?;
     let year_days = mul(ydiff, COMMON_YEAR_LENGTH)?;
     // Add 38 (JDN of -4712-01-01 N.S.)
-    let offset = Jdnum::try_from(ordinal - 1).unwrap() + 38;
+    let offset =
+        Jdnum::try_from(ordinal - 1).expect("ordinal minus one should fix in Jdnum type") + 38;
     add(add(year_days, offset)?, leap_days)
 }
 
@@ -378,7 +379,10 @@ fn decompose_julian(days: Jdnum) -> (i32, u32) {
     }
     year += ordinal.div_euclid(LEAP_YEAR_LENGTH);
     ordinal %= LEAP_YEAR_LENGTH;
-    (year, u32::try_from(ordinal + 1).unwrap())
+    (
+        year,
+        u32::try_from(ordinal + 1).expect("ordinal plus one should fit in u32"),
+    )
 }
 
 /// Given a (possibly negative) number of years and a one-based positive day of
@@ -392,7 +396,10 @@ fn compose_julian(years: i32, ordinal: u32) -> Option<Jdnum> {
     let leap_days = add(years, JULIAN_LEAP_CYCLE_YEARS - 1)?.div_euclid(JULIAN_LEAP_CYCLE_YEARS);
     add(
         common_days,
-        add(leap_days, Jdnum::try_from(ordinal - 1).unwrap())?,
+        add(
+            leap_days,
+            Jdnum::try_from(ordinal - 1).expect("ordinal minus one should fix in Jdnum type"),
+        )?,
     )
 }
 

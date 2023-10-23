@@ -565,7 +565,9 @@ impl Calendar {
                 ordinal -= gap.ordinal_gap;
             }
         }
-        let (month, day, day_ordinal) = self.ordinal2ymddo(year, ordinal).unwrap();
+        let (month, day, day_ordinal) = self
+            .ordinal2ymddo(year, ordinal)
+            .expect("ordinal should be within range for year");
         Date {
             calendar: *self,
             year,
@@ -1383,7 +1385,11 @@ impl MonthShape {
     /// ```
     pub fn nth_date(&self, day_ordinal: u32) -> Option<Date> {
         let day = self.nth_day(day_ordinal)?;
-        Some(self.calendar.at_ymd(self.year, self.month, day).unwrap())
+        Some(
+            self.calendar
+                .at_ymd(self.year, self.month, day)
+                .expect("day should be within range for month"),
+        )
     }
 
     /// Returns the range of days of the month that were skipped by a calendar
@@ -1982,10 +1988,11 @@ impl<T: chrono::Datelike> From<T> for Date {
         Calendar::GREGORIAN
             .at_ymd(
                 date.year(),
-                Month::try_from(date.month()).unwrap(),
+                Month::try_from(date.month())
+                    .expect("chrono month value should be within range for Month"),
                 date.day(),
             )
-            .unwrap()
+            .expect("chrono date should be valid for proleptic Gregorian calendar")
     }
 }
 
@@ -2410,7 +2417,11 @@ impl Iterator for MonthIter {
     type Item = Month;
 
     fn next(&mut self) -> Option<Month> {
-        Some(u32::from(self.0.next()?).try_into().unwrap())
+        Some(
+            u32::from(self.0.next()?)
+                .try_into()
+                .expect("inner iterator item should be valid month number"),
+        )
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -2424,7 +2435,11 @@ impl ExactSizeIterator for MonthIter {}
 
 impl DoubleEndedIterator for MonthIter {
     fn next_back(&mut self) -> Option<Month> {
-        Some(u32::from(self.0.next_back()?).try_into().unwrap())
+        Some(
+            u32::from(self.0.next_back()?)
+                .try_into()
+                .expect("inner iterator item should be valid month number"),
+        )
     }
 }
 
@@ -2489,7 +2504,8 @@ impl Weekday {
 
     /// Returns the weekday for the given Julian day number
     pub fn for_jdn(jdn: Jdnum) -> Weekday {
-        Weekday::try_from(jdn.rem_euclid(7) + 1).unwrap()
+        Weekday::try_from(jdn.rem_euclid(7) + 1)
+            .expect("JDN computation should produce valid weekday number")
     }
 
     /// Returns the day of the week before this one.  Returns `None` for
@@ -2816,7 +2832,8 @@ pub fn system2jdn(t: SystemTime) -> Result<(Jdnum, u32), ArithmeticError> {
 pub fn unix2jdn(unix_time: i64) -> Result<(Jdnum, u32), ArithmeticError> {
     let jd = Jdnum::try_from(unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JDN as i64))
         .map_err(|_| ArithmeticError)?;
-    let secs = u32::try_from(unix_time.rem_euclid(SECONDS_IN_DAY)).unwrap();
+    let secs = u32::try_from(unix_time.rem_euclid(SECONDS_IN_DAY))
+        .expect("Unix time modulo seconds in day should fit in u32");
     Ok((jd, secs))
 }
 
