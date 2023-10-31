@@ -1,7 +1,7 @@
 use julian::{ncal, Calendar, Date, Jdnum, ReformingError};
 use lexopt::{Arg, Parser, ValueExt};
 use std::collections::BTreeMap;
-use std::fmt::Write;
+use std::fmt::{self, Write};
 use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -153,19 +153,28 @@ impl Options {
     fn run(&self, args: Vec<String>) -> Result<Vec<String>, lexopt::Error> {
         let mut output = Vec::with_capacity(args.len() + 2);
         if self.json {
-            output.push(json_start(self.calendar));
+            output.push(json_start(self.calendar).expect("formatting a String should not fail"));
         }
         if args.is_empty() {
             let (now, _) = self
                 .calendar
                 .now()
                 .expect("JDN for system time should fit in i32");
-            output.push(self.date_to_jdn(now));
+            output.push(
+                self.date_to_jdn(now)
+                    .expect("formatting a String should not fail"),
+            );
         } else {
             for arg in args {
                 match self.parse_arg(arg)? {
-                    Argument::Date(when) => output.push(self.date_to_jdn(when)),
-                    Argument::Jdn(jdn) => output.push(self.jdn_to_date(jdn)),
+                    Argument::Date(when) => output.push(
+                        self.date_to_jdn(when)
+                            .expect("formatting a String should not fail"),
+                    ),
+                    Argument::Jdn(jdn) => output.push(
+                        self.jdn_to_date(jdn)
+                            .expect("formatting a String should not fail"),
+                    ),
                 }
             }
         }
@@ -206,46 +215,47 @@ impl Options {
         }
     }
 
-    fn date_to_jdn(&self, when: Date) -> String {
+    fn date_to_jdn(&self, when: Date) -> Result<String, fmt::Error> {
         if self.json {
             return date2json(when);
         }
         let jdn = when.julian_day_number();
         let mut s = String::new();
         if !self.quiet {
-            self.fmt_date(&mut s, when);
-            write!(&mut s, " = JDN ").unwrap();
+            self.fmt_date(&mut s, when)?;
+            write!(&mut s, " = JDN ")?;
         }
-        write!(&mut s, "{jdn}").unwrap();
-        s
+        write!(&mut s, "{jdn}")?;
+        Ok(s)
     }
 
-    fn jdn_to_date(&self, jdn: Jdnum) -> String {
+    fn jdn_to_date(&self, jdn: Jdnum) -> Result<String, fmt::Error> {
         let when = self.calendar.at_jdn(jdn);
         if self.json {
             return date2json(when);
         }
         let mut s = String::new();
         if !self.quiet {
-            write!(&mut s, "JDN {jdn} = ").unwrap();
+            write!(&mut s, "JDN {jdn} = ")?;
         }
-        self.fmt_date(&mut s, when);
-        s
+        self.fmt_date(&mut s, when)?;
+        Ok(s)
     }
 
-    fn fmt_date(&self, s: &mut String, when: Date) {
+    fn fmt_date(&self, s: &mut String, when: Date) -> Result<(), fmt::Error> {
         if self.ordinal {
-            write!(s, "{when:#}").unwrap();
+            write!(s, "{when:#}")?;
         } else {
-            write!(s, "{when}").unwrap();
+            write!(s, "{when}")?;
             if self.style && when.calendar().is_reforming() {
                 if when.is_julian() {
-                    write!(s, " O.S.").unwrap();
+                    write!(s, " O.S.")?;
                 } else {
-                    write!(s, " N.S.").unwrap();
+                    write!(s, " N.S.")?;
                 }
             }
         }
+        Ok(())
     }
 }
 
@@ -321,10 +331,10 @@ fn national_reformations() -> BTreeMap<&'static str, (&'static str, Jdnum)> {
     ])
 }
 
-fn json_start(cal: Calendar) -> String {
+fn json_start(cal: Calendar) -> Result<String, fmt::Error> {
     let mut s = String::new();
-    writeln!(&mut s, "{{").unwrap();
-    writeln!(&mut s, "    \"calendar\": {{").unwrap();
+    writeln!(&mut s, "{{")?;
+    writeln!(&mut s, "    \"calendar\": {{")?;
     write!(
         &mut s,
         "{:8}\"type\": \"{}\"",
@@ -336,47 +346,44 @@ fn json_start(cal: Calendar) -> String {
         } else {
             "reforming"
         }
-    )
-    .unwrap();
+    )?;
     if let Some(reform) = cal.reformation() {
-        writeln!(&mut s, ",").unwrap();
-        write!(&mut s, "{:8}\"reformation\": {}", "", reform).unwrap();
+        writeln!(&mut s, ",")?;
+        write!(&mut s, "{:8}\"reformation\": {}", "", reform)?;
     }
-    writeln!(&mut s).unwrap();
-    writeln!(&mut s, "    }},").unwrap();
-    write!(&mut s, "    \"dates\": [").unwrap();
-    s
+    writeln!(&mut s)?;
+    writeln!(&mut s, "    }},")?;
+    write!(&mut s, "    \"dates\": [")?;
+    Ok(s)
 }
 
-fn date2json(when: Date) -> String {
+fn date2json(when: Date) -> Result<String, fmt::Error> {
     let mut s = String::new();
-    writeln!(&mut s, "{:8}{{", "").unwrap();
+    writeln!(&mut s, "{:8}{{", "")?;
     writeln!(
         &mut s,
         "{:12}\"julian_day_number\": {},",
         "",
         when.julian_day_number()
-    )
-    .unwrap();
-    writeln!(&mut s, "{:12}\"year\": {},", "", when.year()).unwrap();
-    writeln!(&mut s, "{:12}\"month\": {},", "", when.month().number()).unwrap();
-    writeln!(&mut s, "{:12}\"day\": {},", "", when.day()).unwrap();
-    writeln!(&mut s, "{:12}\"ordinal\": {},", "", when.ordinal()).unwrap();
-    writeln!(&mut s, "{:12}\"display\": \"{}\",", "", when).unwrap();
-    write!(&mut s, "{:12}\"ordinal_display\": \"{:#}\"", "", when).unwrap();
+    )?;
+    writeln!(&mut s, "{:12}\"year\": {},", "", when.year())?;
+    writeln!(&mut s, "{:12}\"month\": {},", "", when.month().number())?;
+    writeln!(&mut s, "{:12}\"day\": {},", "", when.day())?;
+    writeln!(&mut s, "{:12}\"ordinal\": {},", "", when.ordinal())?;
+    writeln!(&mut s, "{:12}\"display\": \"{}\",", "", when)?;
+    write!(&mut s, "{:12}\"ordinal_display\": \"{:#}\"", "", when)?;
     if when.calendar().is_reforming() {
-        writeln!(&mut s, ",").unwrap();
+        writeln!(&mut s, ",")?;
         write!(
             &mut s,
             "{:12}\"old_style\": {}",
             "",
             if when.is_julian() { "true" } else { "false" }
-        )
-        .unwrap();
+        )?;
     }
-    writeln!(&mut s).unwrap();
-    write!(&mut s, "{:8}}}", "").unwrap();
-    s
+    writeln!(&mut s)?;
+    write!(&mut s, "{:8}}}", "")?;
+    Ok(s)
 }
 
 #[cfg(test)]
