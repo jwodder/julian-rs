@@ -182,7 +182,7 @@ pub mod ncal;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
-use std::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator};
+use std::iter::FusedIterator;
 use std::num::ParseIntError;
 use std::ops::RangeInclusive;
 use std::str::FromStr;
