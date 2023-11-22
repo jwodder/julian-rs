@@ -1,5 +1,5 @@
-v0.4.0 (in development)
------------------------
+v0.4.0 (2023-11-22)
+-------------------
 - Increased MSRV to 1.65
 - `Days`, `Dates`, `Later`, `Earlier`, `AndLater`, and `AndEarlier` now
   implement `Clone`, `Debug`, `Eq`, and `PartialEq`
