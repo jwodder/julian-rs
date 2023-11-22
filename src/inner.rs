@@ -260,12 +260,11 @@ pub(crate) enum DayInYear {
     Date { month: Month, day: u32 },
 }
 
-pub fn scan<P: FnMut(char) -> bool>(s: &str, mut predicate: P) -> (&str, &str) {
+pub(crate) fn scan<P: FnMut(char) -> bool>(s: &str, mut predicate: P) -> (&str, &str) {
     let boundary = s
         .char_indices()
         .find(move |&(_, ch)| !predicate(ch))
-        .map(|(i, _)| i)
-        .unwrap_or_else(|| s.len());
+        .map_or_else(|| s.len(), |(i, _)| i);
     s.split_at(boundary)
 }
 
@@ -391,7 +390,10 @@ fn decompose_julian(days: Jdnum) -> (i32, u32) {
 ///
 /// Returns `None` on arithmetic underflow/overflow.
 fn compose_julian(years: i32, ordinal: u32) -> Option<Jdnum> {
-    debug_assert!(ordinal > 0);
+    debug_assert!(
+        ordinal > 0,
+        "compose_julian: ordinal must be greater than zero"
+    );
     let common_days = mul(years, COMMON_YEAR_LENGTH)?;
     let leap_days = add(years, JULIAN_LEAP_CYCLE_YEARS - 1)?.div_euclid(JULIAN_LEAP_CYCLE_YEARS);
     add(
@@ -421,8 +423,11 @@ fn mul(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
 // There is no need to check division, as it only fails with a divisor of zero
 // or negative one, which we're not using.
 
-pub(crate) fn cmp_range<T: Ord>(value: T, lower: T, upper: T) -> RangeOrdering {
-    assert!(lower <= upper);
+pub(crate) fn cmp_range<T: Ord + std::fmt::Debug>(value: T, lower: T, upper: T) -> RangeOrdering {
+    assert!(
+        lower <= upper,
+        "cmp_range: expected lower <= upper; got lower={lower:?}, upper={upper:?}"
+    );
     match (value.cmp(&lower), value.cmp(&upper)) {
         (Ordering::Less, _) => RangeOrdering::Less,
         (Ordering::Equal, Ordering::Less) => RangeOrdering::EqLower,

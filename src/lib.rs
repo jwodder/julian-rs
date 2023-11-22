@@ -538,7 +538,7 @@ impl Calendar {
         })
     }
 
-    /// Returns the date of the calendar with the given Julian day number.
+    /// Returns the date with the given Julian day number under the calendar.
     ///
     /// # Example
     ///
@@ -565,9 +565,9 @@ impl Calendar {
                 ordinal -= gap.ordinal_gap;
             }
         }
-        let (month, day, day_ordinal) = self
-            .ordinal2ymddo(year, ordinal)
-            .expect("ordinal should be within range for year");
+        let Ok((month, day, day_ordinal)) = self.ordinal2ymddo(year, ordinal) else {
+            unreachable!("ordinal should be within range for year");
+        };
         Date {
             calendar: *self,
             year,
@@ -870,7 +870,7 @@ impl Calendar {
                             u32::from(year % 100 == 0 && year % 400 != 0 && k.is_leap());
                         length - gap.ordinal_gap - correction
                     } else {
-                        debug_assert!(year == gap.pre_reform.year);
+                        debug_assert!(year == gap.pre_reform.year, "A reform year that is not the post-reform year should equal the pre-reform year, but year={year:?} != gap.pre_reform.year={:?}", gap.pre_reform.year);
                         gap.pre_reform.ordinal
                     }
                 }
@@ -1385,11 +1385,10 @@ impl MonthShape {
     /// ```
     pub fn nth_date(&self, day_ordinal: u32) -> Option<Date> {
         let day = self.nth_day(day_ordinal)?;
-        Some(
-            self.calendar
-                .at_ymd(self.year, self.month, day)
-                .expect("day should be within range for month"),
-        )
+        let Ok(date) = self.calendar.at_ymd(self.year, self.month, day) else {
+            unreachable!("day should be within range for month");
+        };
+        Some(date)
     }
 
     /// Returns the range of days of the month that were skipped by a calendar
@@ -1406,6 +1405,7 @@ impl MonthShape {
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// assert_eq!(shape.gap(), Some(5..=14));
     /// ```
+    #[allow(clippy::range_minus_one)]
     pub fn gap(&self) -> Option<RangeInclusive<u32>> {
         use inner::MonthShape::*;
         match self.inner {
@@ -1498,6 +1498,7 @@ pub enum MonthKind {
 /// An iterator over the days of a month.
 ///
 /// A `Days` instance can be acquired by calling [`MonthShape::days()`].
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Days {
     month_shape: MonthShape,
     inner: RangeInclusive<u32>,
@@ -1537,6 +1538,7 @@ impl DoubleEndedIterator for Days {
 /// An iterator over the [`Date`s][Date] within a month.
 ///
 /// A `Dates` instance can be acquired by calling [`MonthShape::dates()`].
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Dates {
     month_shape: MonthShape,
     inner: RangeInclusive<u32>,
@@ -1968,7 +1970,7 @@ impl fmt::Display for Date {
     /// and day of month) by default.  Selecting the alternate form with `{:#}`
     /// instead produces a string of the form `YYYY-JJJ` (year and day of
     /// year).
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:04}-", self.year())?;
         if f.alternate() {
             write!(f, "{:03}", self.ordinal())?;
@@ -2031,6 +2033,7 @@ pub struct TryFromDateError;
 ///
 /// A `Later` iterator will stop yielding after it reaches 5874898-06-03 N.S.
 /// (5874777-10-17 O.S.).
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Later {
     date: Option<Date>,
 }
@@ -2058,6 +2061,7 @@ impl FusedIterator for Later {}
 ///
 /// An `Earlier` iterator will stop yielding after it reaches -5884323-05-15
 /// N.S. (-5884202-03-16 O.S.).
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Earlier {
     date: Option<Date>,
 }
@@ -2085,6 +2089,7 @@ impl FusedIterator for Earlier {}
 ///
 /// An `AndLater` iterator will stop yielding after it reaches 5874898-06-03
 /// N.S. (5874777-10-17 O.S.).
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AndLater {
     date: Option<Date>,
 }
@@ -2113,6 +2118,7 @@ impl FusedIterator for AndLater {}
 ///
 /// An `AndEarlier` iterator will stop yielding after it reaches -5884323-05-15
 /// N.S. (-5884202-03-16 O.S.).
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AndEarlier {
     date: Option<Date>,
 }
@@ -2250,7 +2256,7 @@ impl fmt::Display for Month {
     /// A `Month` is displayed as its English name by default.  Selecting the
     /// alternate form with `{:#}` instead produces just the first three
     /// letters of the English name.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if f.alternate() {
             write!(f, "{}", self.short_name())
         } else {
@@ -2504,8 +2510,10 @@ impl Weekday {
 
     /// Returns the weekday for the given Julian day number
     pub fn for_jdn(jdn: Jdnum) -> Weekday {
-        Weekday::try_from(jdn.rem_euclid(7) + 1)
-            .expect("JDN computation should produce valid weekday number")
+        match Weekday::try_from(jdn.rem_euclid(7) + 1) {
+            Ok(wd) => wd,
+            Err(_) => unreachable!("JDN computation should produce valid weekday number"),
+        }
     }
 
     /// Returns the day of the week before this one.  Returns `None` for
@@ -2543,7 +2551,7 @@ impl fmt::Display for Weekday {
     /// A `Weekday` is displayed as its English name by default.  Selecting the
     /// alternate form with `{:#}` instead produces just the first three
     /// letters of the English name.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if f.alternate() {
             write!(f, "{}", self.short_name())
         } else {
@@ -2832,8 +2840,9 @@ pub fn system2jdn(t: SystemTime) -> Result<(Jdnum, u32), ArithmeticError> {
 pub fn unix2jdn(unix_time: i64) -> Result<(Jdnum, u32), ArithmeticError> {
     let jd = Jdnum::try_from(unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JDN as i64))
         .map_err(|_| ArithmeticError)?;
-    let secs = u32::try_from(unix_time.rem_euclid(SECONDS_IN_DAY))
-        .expect("Unix time modulo seconds in day should fit in u32");
+    let Ok(secs) = u32::try_from(unix_time.rem_euclid(SECONDS_IN_DAY)) else {
+        unreachable!("Unix time modulo seconds in day should fit in u32");
+    };
     Ok((jd, secs))
 }
 

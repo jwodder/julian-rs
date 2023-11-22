@@ -62,7 +62,7 @@ struct Date<'a> {
     ordinal: u16,
 }
 
-impl<'a> Date<'a> {
+impl Date<'_> {
     fn assert<W: Write>(&self, mut out: W) -> io::Result<()> {
         writeln!(out, "        assert_eq!(date.year(), {});", self.year)?;
         writeln!(
