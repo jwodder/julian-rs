@@ -165,7 +165,6 @@ fn main() -> anyhow::Result<()> {
 fn make_jdn_tests(inpath: PathBuf, outpath: PathBuf) -> anyhow::Result<()> {
     eprintln!("Loading {} ...", inpath.display());
     let jdn_records = csv::ReaderBuilder::new()
-        .comment(Some(b'#'))
         .from_path(&inpath)
         .with_context(|| format!("Failed to read {}", inpath.display()))?
         .deserialize()
@@ -300,7 +299,6 @@ fn make_jdn_tests(inpath: PathBuf, outpath: PathBuf) -> anyhow::Result<()> {
 fn make_reforming_tests(inpath: PathBuf, outpath: PathBuf) -> anyhow::Result<()> {
     eprintln!("Loading {} ...", inpath.display());
     let reforming_records = csv::ReaderBuilder::new()
-        .comment(Some(b'#'))
         .from_path(&inpath)
         .with_context(|| format!("Failed to read {}", inpath.display()))?
         .deserialize()

@@ -1,72 +1,60 @@
-reformation,jdn,year,month,day,ordinal,day_ordinal
-# Month with a gap:
-2299161,2299159,1582,October,3,276,3
-2299161,2299160,1582,October,4,277,4
-2299161,2299161,1582,October,15,278,5
-2299161,2299162,1582,October,16,279,6
-2299161,2299178,1582,November,1,295,1
-# Reformation before a leap day:
-2299620,2299618,1584,January,5,5,5
-2299620,2299619,1584,January,6,6,6
-2299620,2299620,1584,January,17,7,7
-2299620,2299621,1584,January,18,8,8
-2299620,2299663,1584,February,29,50,29
-2299620,2299664,1584,March,1,51,1
-# Tailless month followed by headless month after a leap day:
-2310076,2309900,1612,February,29,60,29
-2310076,2310074,1612,August,21,234,21
-2310076,2310075,1612,August,22,235,22
-2310076,2310076,1612,September,2,236,1
-2310076,2310077,1612,September,3,237,2
-2310076,2310105,1612,October,1,265,1
-# Gap in February before Julian-only leap day:
-2342018,2342016,1700,February,3,34,3
-2342018,2342017,1700,February,4,35,4
-2342018,2342018,1700,February,15,36,5
-2342018,2342019,1700,February,16,37,6
-2342018,2342032,1700,March,1,50,1
-# Tailless month + Julian-only leap day skipped by reformation:
-2342032,2342030,1700,February,17,48,17
-2342032,2342031,1700,February,18,49,18
-2342032,2342032,1700,March,1,50,1
-2342032,2342033,1700,March,2,51,2
-# Reformation after a Julian-only leap day:
-2342304,2342042,1700,February,29,60,29
-2342304,2342302,1700,November,15,320,15
-2342304,2342303,1700,November,16,321,16
-2342304,2342304,1700,November,28,322,17
-2342304,2342305,1700,November,29,323,18
-# Tailless year followed by headless year:
-2344534,2344532,1706,December,24,358,24
-2344534,2344533,1706,December,25,359,25
-2344534,2344534,1707,January,6,1,1
-2344534,2344535,1707,January,7,2,2
-# Headless month:
-2421639,2421637,1918,January,30,30,30
-2421639,2421638,1918,January,31,31,31
-2421639,2421639,1918,February,14,32,1
-2421639,2421640,1918,February,15,33,2
-2421639,2421654,1918,March,1,47,1
-# Headless leap year:
-2460316,2460314,2023,December,22,356,22
-2460316,2460315,2023,December,23,357,23
-2460316,2460316,2024,January,6,1,1
-2460316,2460317,2024,January,7,2,2
-2460316,2460370,2024,February,29,55,29
-2460316,2460371,2024,March,1,56,1
-# Tailless leap year:
-2460682,2460383,2024,February,29,60,29
-2460682,2460680,2024,December,22,357,22
-2460682,2460681,2024,December,23,358,23
-2460682,2460682,2025,January,6,1,1
-2460682,2460683,2025,January,7,2,2
-# Skipped month:
-3145930,3145928,3901,January,30,30,30
-3145930,3145929,3901,January,31,31,31
-3145930,3145930,3901,March,1,32,1
-3145930,3145931,3901,March,2,33,2
-# Skipped year:
-19582149,19582147,48900,December,30,365,30
-19582149,19582148,48900,December,31,366,31
-19582149,19582149,48902,January,1,1,1
-19582149,19582150,48902,January,2,2,2
+reformation,jdn,year,month,day,ordinal,day_ordinal,description
+2299161,2299159,1582,October,3,276,3,Month with a gap
+2299161,2299160,1582,October,4,277,4,Month with a gap
+2299161,2299161,1582,October,15,278,5,Month with a gap
+2299161,2299162,1582,October,16,279,6,Month with a gap
+2299161,2299178,1582,November,1,295,1,Month with a gap
+2299620,2299618,1584,January,5,5,5,Reformation before a leap day
+2299620,2299619,1584,January,6,6,6,Reformation before a leap day
+2299620,2299620,1584,January,17,7,7,Reformation before a leap day
+2299620,2299621,1584,January,18,8,8,Reformation before a leap day
+2299620,2299663,1584,February,29,50,29,Reformation before a leap day
+2299620,2299664,1584,March,1,51,1,Reformation before a leap day
+2310076,2309900,1612,February,29,60,29,Tailless month followed by headless month after a leap day
+2310076,2310074,1612,August,21,234,21,Tailless month followed by headless month after a leap day
+2310076,2310075,1612,August,22,235,22,Tailless month followed by headless month after a leap day
+2310076,2310076,1612,September,2,236,1,Tailless month followed by headless month after a leap day
+2310076,2310077,1612,September,3,237,2,Tailless month followed by headless month after a leap day
+2310076,2310105,1612,October,1,265,1,Tailless month followed by headless month after a leap day
+2342018,2342016,1700,February,3,34,3,Gap in February before Julian-only leap day
+2342018,2342017,1700,February,4,35,4,Gap in February before Julian-only leap day
+2342018,2342018,1700,February,15,36,5,Gap in February before Julian-only leap day
+2342018,2342019,1700,February,16,37,6,Gap in February before Julian-only leap day
+2342018,2342032,1700,March,1,50,1,Gap in February before Julian-only leap day
+2342032,2342030,1700,February,17,48,17,Tailless month + Julian-only leap day skipped by reformation
+2342032,2342031,1700,February,18,49,18,Tailless month + Julian-only leap day skipped by reformation
+2342032,2342032,1700,March,1,50,1,Tailless month + Julian-only leap day skipped by reformation
+2342032,2342033,1700,March,2,51,2,Tailless month + Julian-only leap day skipped by reformation
+2342304,2342042,1700,February,29,60,29,Reformation after a Julian-only leap day
+2342304,2342302,1700,November,15,320,15,Reformation after a Julian-only leap day
+2342304,2342303,1700,November,16,321,16,Reformation after a Julian-only leap day
+2342304,2342304,1700,November,28,322,17,Reformation after a Julian-only leap day
+2342304,2342305,1700,November,29,323,18,Reformation after a Julian-only leap day
+2344534,2344532,1706,December,24,358,24,Tailless year followed by headless year
+2344534,2344533,1706,December,25,359,25,Tailless year followed by headless year
+2344534,2344534,1707,January,6,1,1,Tailless year followed by headless year
+2344534,2344535,1707,January,7,2,2,Tailless year followed by headless year
+2421639,2421637,1918,January,30,30,30,Headless month
+2421639,2421638,1918,January,31,31,31,Headless month
+2421639,2421639,1918,February,14,32,1,Headless month
+2421639,2421640,1918,February,15,33,2,Headless month
+2421639,2421654,1918,March,1,47,1,Headless month
+2460316,2460314,2023,December,22,356,22,Headless leap year
+2460316,2460315,2023,December,23,357,23,Headless leap year
+2460316,2460316,2024,January,6,1,1,Headless leap year
+2460316,2460317,2024,January,7,2,2,Headless leap year
+2460316,2460370,2024,February,29,55,29,Headless leap year
+2460316,2460371,2024,March,1,56,1,Headless leap year
+2460682,2460383,2024,February,29,60,29,Tailless leap year
+2460682,2460680,2024,December,22,357,22,Tailless leap year
+2460682,2460681,2024,December,23,358,23,Tailless leap year
+2460682,2460682,2025,January,6,1,1,Tailless leap year
+2460682,2460683,2025,January,7,2,2,Tailless leap year
+3145930,3145928,3901,January,30,30,30,Skipped month
+3145930,3145929,3901,January,31,31,31,Skipped month
+3145930,3145930,3901,March,1,32,1,Skipped month
+3145930,3145931,3901,March,2,33,2,Skipped month
+19582149,19582147,48900,December,30,365,30,Skipped year
+19582149,19582148,48900,December,31,366,31,Skipped year
+19582149,19582149,48902,January,1,1,1,Skipped year
+19582149,19582150,48902,January,2,2,2,Skipped year
