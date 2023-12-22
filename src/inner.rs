@@ -289,8 +289,12 @@ pub(crate) fn jdn2julian(jd: Jdnum) -> (i32, u32) {
 /// corresponding Julian day number.
 ///
 /// Returns None on arithmetic underflow/overflow.
-pub(crate) fn julian2jdn(year: i32, ordinal: u32) -> Option<Jdnum> {
-    compose_julian(sub(year, JDN0_YEAR)?, ordinal)
+pub(crate) const fn julian2jdn(year: i32, ordinal: u32) -> Option<Jdnum> {
+    // Use a match because `?` isn't allowed in const fn's.
+    match year.checked_sub(JDN0_YEAR) {
+        Some(years) => compose_julian(years, ordinal),
+        None => None,
+    }
 }
 
 /// Converts a Julian day number to the corresponding year and day of year in
