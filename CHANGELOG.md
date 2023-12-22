@@ -1,3 +1,8 @@
+v0.5.0 (in development)
+-----------------------
+- **Breaking:** Moved error types to `errors` module
+- **Breaking:** Moved iterator types to `iter` module
+
 v0.4.0 (2023-11-22)
 -------------------
 - Increased MSRV to 1.65

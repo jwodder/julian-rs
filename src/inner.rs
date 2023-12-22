@@ -1,4 +1,4 @@
-use super::{Jdnum, Month, ParseDateError, COMMON_YEAR_LENGTH, LEAP_YEAR_LENGTH};
+use super::{errors::ParseDateError, Jdnum, Month, COMMON_YEAR_LENGTH, LEAP_YEAR_LENGTH};
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 

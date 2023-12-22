@@ -1,5 +1,5 @@
 #![cfg(feature = "chrono")]
-use crate::{Calendar, Date, Month, TryFromDateError, Weekday};
+use crate::{errors::TryFromDateError, Calendar, Date, Month, Weekday};
 use chrono::{naive::NaiveDate, Datelike};
 
 #[test]

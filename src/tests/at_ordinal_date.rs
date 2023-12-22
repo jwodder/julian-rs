@@ -1,4 +1,4 @@
-use crate::{Calendar, DateError, Month};
+use crate::{errors::DateError, Calendar, Month};
 use rstest::rstest;
 
 #[rstest]

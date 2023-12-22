@@ -176,17 +176,18 @@
 #[cfg(test)]
 extern crate rstest_reuse;
 
+pub mod errors;
 mod inner;
+pub mod iter;
 pub mod ncal;
+use crate::errors::*;
+use crate::iter::*;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
-use std::iter::FusedIterator;
-use std::num::ParseIntError;
 use std::ops::RangeInclusive;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
-use thiserror::Error;
 
 /// Type used for Julian day numbers in this crate
 pub type Jdnum = i32;
@@ -1494,86 +1495,6 @@ pub enum MonthKind {
     Gapped,
 }
 
-/// An iterator over the days of a month.
-///
-/// A `Days` instance can be acquired by calling [`MonthShape::days()`].
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Days {
-    month_shape: MonthShape,
-    inner: RangeInclusive<u32>,
-}
-
-impl Days {
-    fn new(month_shape: MonthShape) -> Self {
-        Days {
-            month_shape,
-            inner: 1..=(month_shape.len()),
-        }
-    }
-}
-
-impl Iterator for Days {
-    type Item = u32;
-
-    fn next(&mut self) -> Option<u32> {
-        self.month_shape.nth_day(self.inner.next()?)
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
-}
-
-impl FusedIterator for Days {}
-
-impl ExactSizeIterator for Days {}
-
-impl DoubleEndedIterator for Days {
-    fn next_back(&mut self) -> Option<u32> {
-        self.month_shape.nth_day(self.inner.next_back()?)
-    }
-}
-
-/// An iterator over the [`Date`s][Date] within a month.
-///
-/// A `Dates` instance can be acquired by calling [`MonthShape::dates()`].
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Dates {
-    month_shape: MonthShape,
-    inner: RangeInclusive<u32>,
-}
-
-impl Dates {
-    fn new(month_shape: MonthShape) -> Self {
-        Dates {
-            month_shape,
-            inner: 1..=(month_shape.len()),
-        }
-    }
-}
-
-impl Iterator for Dates {
-    type Item = Date;
-
-    fn next(&mut self) -> Option<Date> {
-        self.month_shape.nth_date(self.inner.next()?)
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
-}
-
-impl FusedIterator for Dates {}
-
-impl ExactSizeIterator for Dates {}
-
-impl DoubleEndedIterator for Dates {
-    fn next_back(&mut self) -> Option<Date> {
-        self.month_shape.nth_date(self.inner.next_back()?)
-    }
-}
-
 /// A date (year, month, and day of month) in a certain calendar.
 ///
 /// Instances of `Date` can be constructed through various methods of
@@ -2018,129 +1939,10 @@ impl TryFrom<Date> for chrono::naive::NaiveDate {
     }
 }
 
-#[cfg(feature = "chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
-/// Error returned when converting a [`Date`] to a [`chrono::naive::NaiveDate`]
-/// fails due to the source date being outside the range of the target type.
-#[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
-#[error("date out of range for chrono::naive::NaiveDate")]
-pub struct TryFromDateError;
-
-/// Iterator over calendar dates later than a given date.
-///
-/// A `Later` instance is acquired by calling [`Date::later()`].
-///
-/// A `Later` iterator will stop yielding after it reaches 5874898-06-03 N.S.
-/// (5874777-10-17 O.S.).
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Later {
-    date: Option<Date>,
-}
-
-impl Later {
-    fn new(date: Date) -> Later {
-        Later { date: Some(date) }
-    }
-}
-
-impl Iterator for Later {
-    type Item = Date;
-
-    fn next(&mut self) -> Option<Date> {
-        self.date = self.date.and_then(|d| d.succ());
-        self.date
-    }
-}
-
-impl FusedIterator for Later {}
-
-/// Iterator over calendar dates earlier than a given date.
-///
-/// An `Earlier` instance is acquired by calling [`Date::earlier()`].
-///
-/// An `Earlier` iterator will stop yielding after it reaches -5884323-05-15
-/// N.S. (-5884202-03-16 O.S.).
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Earlier {
-    date: Option<Date>,
-}
-
-impl Earlier {
-    fn new(date: Date) -> Earlier {
-        Earlier { date: Some(date) }
-    }
-}
-
-impl Iterator for Earlier {
-    type Item = Date;
-
-    fn next(&mut self) -> Option<Date> {
-        self.date = self.date.and_then(|d| d.pred());
-        self.date
-    }
-}
-
-impl FusedIterator for Earlier {}
-
-/// Iterator over calendar dates equal to or later than a given date.
-///
-/// An `AndLater` instance is acquired by calling [`Date::and_later()`].
-///
-/// An `AndLater` iterator will stop yielding after it reaches 5874898-06-03
-/// N.S. (5874777-10-17 O.S.).
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct AndLater {
-    date: Option<Date>,
-}
-
-impl AndLater {
-    fn new(date: Date) -> AndLater {
-        AndLater { date: Some(date) }
-    }
-}
-
-impl Iterator for AndLater {
-    type Item = Date;
-
-    fn next(&mut self) -> Option<Date> {
-        let date = self.date?;
-        self.date = date.succ();
-        Some(date)
-    }
-}
-
-impl FusedIterator for AndLater {}
-
-/// Iterator over calendar dates equal to or earlier than a given date.
-///
-/// An `AndEarlier` instance is acquired by calling [`Date::and_earlier()`].
-///
-/// An `AndEarlier` iterator will stop yielding after it reaches -5884323-05-15
-/// N.S. (-5884202-03-16 O.S.).
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct AndEarlier {
-    date: Option<Date>,
-}
-
-impl AndEarlier {
-    fn new(date: Date) -> AndEarlier {
-        AndEarlier { date: Some(date) }
-    }
-}
-
-impl Iterator for AndEarlier {
-    type Item = Date;
-
-    fn next(&mut self) -> Option<Date> {
-        let date = self.date?;
-        self.date = date.pred();
-        Some(date)
-    }
-}
-
-impl FusedIterator for AndEarlier {}
-
 /// An enumeration of the twelve months of "Julian-style" years.
+///
+/// An iterator over the months of the year is available as
+/// [`iter::MonthIter`].
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Month {
     January = 1,
@@ -2289,11 +2091,6 @@ impl FromStr for Month {
     }
 }
 
-/// Error returned when parsing a month fails
-#[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
-#[error("invalid month name")]
-pub struct ParseMonthError;
-
 macro_rules! impl_month_try_from {
     ($($t:ty),* $(,)?) => {
       $(
@@ -2330,11 +2127,6 @@ macro_rules! impl_month_try_from {
 }
 
 impl_month_try_from!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
-
-/// Error returned when converting a number to a month fails
-#[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
-#[error("value out of range for month number; must be from 1 through 12")]
-pub struct TryIntoMonthError;
 
 #[cfg(feature = "chrono")]
 #[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
@@ -2377,74 +2169,6 @@ impl From<Month> for chrono::Month {
             Month::November => chrono::Month::November,
             Month::December => chrono::Month::December,
         }
-    }
-}
-
-/// Iterator over the months of the year in order.
-///
-/// # Example
-///
-/// ```
-/// use julian::{Month, MonthIter};
-///
-/// let mut iter = MonthIter::new();
-/// assert_eq!(iter.next(), Some(Month::January));
-/// assert_eq!(iter.next(), Some(Month::February));
-/// assert_eq!(iter.next(), Some(Month::March));
-/// assert_eq!(iter.next(), Some(Month::April));
-/// assert_eq!(iter.next(), Some(Month::May));
-/// assert_eq!(iter.next(), Some(Month::June));
-/// assert_eq!(iter.next(), Some(Month::July));
-/// assert_eq!(iter.next(), Some(Month::August));
-/// assert_eq!(iter.next(), Some(Month::September));
-/// assert_eq!(iter.next(), Some(Month::October));
-/// assert_eq!(iter.next(), Some(Month::November));
-/// assert_eq!(iter.next(), Some(Month::December));
-/// assert_eq!(iter.next(), None);
-/// ```
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct MonthIter(RangeInclusive<u16>);
-
-impl MonthIter {
-    /// Construct a new `MonthIter`
-    pub fn new() -> MonthIter {
-        MonthIter(1..=12)
-    }
-}
-
-impl Default for MonthIter {
-    fn default() -> MonthIter {
-        MonthIter::new()
-    }
-}
-
-impl Iterator for MonthIter {
-    type Item = Month;
-
-    fn next(&mut self) -> Option<Month> {
-        Some(
-            u32::from(self.0.next()?)
-                .try_into()
-                .expect("inner iterator item should be valid month number"),
-        )
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
-    }
-}
-
-impl FusedIterator for MonthIter {}
-
-impl ExactSizeIterator for MonthIter {}
-
-impl DoubleEndedIterator for MonthIter {
-    fn next_back(&mut self) -> Option<Month> {
-        Some(
-            u32::from(self.0.next_back()?)
-                .try_into()
-                .expect("inner iterator item should be valid month number"),
-        )
     }
 }
 
@@ -2579,11 +2303,6 @@ impl FromStr for Weekday {
     }
 }
 
-/// Error returned when parsing a weekday fails
-#[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
-#[error("invalid weekday name")]
-pub struct ParseWeekdayError;
-
 macro_rules! impl_weekday_try_from {
     ($($t:ty),* $(,)?) => {
       $(
@@ -2617,11 +2336,6 @@ macro_rules! impl_weekday_try_from {
 
 impl_weekday_try_from!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
 
-/// Error returned when converting a number to a weekday fails
-#[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
-#[error("value out of range for weekday number; must be from 1 through 7")]
-pub struct TryIntoWeekdayError;
-
 #[cfg(feature = "chrono")]
 #[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
 impl From<chrono::Weekday> for Weekday {
@@ -2654,148 +2368,6 @@ impl From<Weekday> for chrono::Weekday {
             Weekday::Saturday => chrono::Weekday::Sat,
         }
     }
-}
-
-/// Error returned by [`Calendar::reforming()`] when given an invalid
-/// reformation date
-#[derive(Copy, Clone, Debug, Eq, Error, Hash, PartialEq)]
-pub enum ReformingError {
-    /// Returned if the reformation date would not cause the calendar to skip
-    /// forwards
-    #[error("reformation date would not cause calendar to advance")]
-    InvalidReformation,
-
-    /// Returned if an internal arithmetic operation encounters numeric
-    /// overflow or underflow
-    #[error("arithmetic overflow/underflow")]
-    Arithmetic,
-}
-
-/// Error returned by various date-construction methods on invalid input
-#[derive(Copy, Clone, Debug, Eq, Error, Hash, PartialEq)]
-pub enum DateError {
-    /// Returned if an internal arithmetic operation encounters numeric
-    /// overflow or underflow
-    #[error("arithmetic overflow/underflow")]
-    Arithmetic,
-
-    /// Returned by [`Calendar::at_ymd()`] if the given day of month value was
-    /// zero or greater than the last day of the given month for the given year
-    #[error("day {day} is outside of valid range {min_day}-{max_day} for {year:04} {month}")]
-    DayOutOfRange {
-        /// The year value supplied
-        year: i32,
-        /// The month value supplied
-        month: Month,
-        /// The invalid day of month supplied
-        day: u32,
-        /// The first valid day of the month
-        min_day: u32,
-        /// The last valid day of the month
-        max_day: u32,
-    },
-
-    /// Returned by [`Calendar::at_ordinal_date()`] if the given day of year
-    /// value was zero or greater than the length of the given year
-    #[error("day-of-year ordinal {ordinal} is outside of valid range 1-{max_ordinal} for year {year:04}")]
-    OrdinalOutOfRange {
-        /// The year value supplied
-        year: i32,
-        /// The invalid day of year value supplied
-        ordinal: u32,
-        /// The maximum valid day of year value
-        max_ordinal: u32,
-    },
-
-    /// Returned by [`Calendar::at_ymd()`] if the given date was skipped by a
-    /// calendar reformation
-    #[error("date {year:04}-{:02}-{day:02} was skipped by calendar reform", month.number())]
-    SkippedDate { year: i32, month: Month, day: u32 },
-}
-
-/// Error returned when an internal arithmetic operation encounters numeric
-/// overflow or underflow
-#[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
-#[error("arithmetic overflow/underflow")]
-pub struct ArithmeticError;
-
-impl From<ArithmeticError> for ReformingError {
-    fn from(_: ArithmeticError) -> ReformingError {
-        ReformingError::Arithmetic
-    }
-}
-
-impl From<ArithmeticError> for DateError {
-    fn from(_: ArithmeticError) -> DateError {
-        DateError::Arithmetic
-    }
-}
-
-/// Error returned by [`Calendar::parse_date()`] on an invalid input date
-/// string
-#[derive(Clone, Debug, Eq, Error, PartialEq)]
-pub enum ParseDateError {
-    /// Returned if the date specified by the date string does not occur in the
-    /// calendar
-    #[error("invalid calendar date: {0}")]
-    InvalidDate(#[from] DateError),
-
-    /// Returned if the month component of the date string had an invalid
-    /// numeric value (i.e., zero or greater than twelve)
-    #[error("invalid month number: {value}")]
-    InvalidMonth {
-        /// The invalid month number
-        value: u32,
-    },
-
-    /// Returned if the date string had extra trailing characters
-    #[error("trailing characters after date")]
-    Trailing,
-
-    /// Returned if a non-digit, non-sign character was encountered in the date
-    /// string while expecting a signed integer
-    #[error("expected signed integer, got {got:?}")]
-    InvalidIntStart {
-        /// The character encountered
-        got: char,
-    },
-
-    /// Returned if a non-digit was encountered in the date string while
-    /// expecting an unsigned integer
-    #[error("expected unsigned integer, got {got:?}")]
-    InvalidUIntStart {
-        /// The non-digit encountered
-        got: char,
-    },
-
-    /// Returned if the end of the date string was reached while expecting an
-    /// integer
-    #[error("expected integer, got end of input")]
-    EmptyInt,
-
-    /// Returned if a specific character was expected but a different one was
-    /// encountered instead
-    #[error("expected {expected:?}, got {got:?}")]
-    UnexpectedChar {
-        /// The expected character
-        expected: char,
-
-        /// The character encountered
-        got: char,
-    },
-
-    /// Returned if a specific character was expected but the end of the date
-    /// string was reached instead
-    #[error("expected {expected:?}, got end of input")]
-    UnexpectedEnd {
-        /// The expected character
-        expected: char,
-    },
-
-    /// Returned if a numeric component of the date string could not be parsed
-    /// as an integer
-    #[error("numeric parse error: {0}")]
-    ParseInt(#[from] ParseIntError),
 }
 
 /// Converts a [`std::time::SystemTime`] instance to the corresponding Julian
