@@ -448,9 +448,11 @@ impl Calendar {
     /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs while
     /// converting the time.  This can only happen if the timestamp is less
     /// than -185753453990400 or greater than 185331720383999.
-    pub fn at_unix_time(&self, unix_time: i64) -> Result<(Date, u32), ArithmeticError> {
-        let (jdn, secs) = unix2jdn(unix_time)?;
-        Ok((self.at_jdn(jdn), secs))
+    pub const fn at_unix_time(&self, unix_time: i64) -> Result<(Date, u32), ArithmeticError> {
+        match unix2jdn(unix_time) {
+            Ok((jdn, secs)) => Ok((self.at_jdn(jdn), secs)),
+            Err(e) => Err(e),
+        }
     }
 
     /// Returns the date of the calendar with the given year, month, and day of
