@@ -1777,8 +1777,10 @@ impl Date {
     /// let next_date = date.succ().unwrap();
     /// assert_eq!(next_date.to_string(), "1582-10-15");
     /// ```
-    pub fn succ(&self) -> Option<Date> {
-        let jdn = self.jdn.checked_add(1)?;
+    pub const fn succ(&self) -> Option<Date> {
+        let Some(jdn) = self.jdn.checked_add(1) else {
+            return None;
+        };
         let mut year = self.year;
         let mut ordinal = self.ordinal + 1;
         let (month, day, day_ordinal) = match self.calendar().ordinal2ymddo(year, ordinal) {
@@ -1787,7 +1789,10 @@ impl Date {
                 year = self.calendar().next_year_after(year);
                 ordinal = 1;
                 // Erroring here shouldn't happen, but just in case...
-                self.calendar().ordinal2ymddo(year, ordinal).ok()?
+                match self.calendar().ordinal2ymddo(year, ordinal) {
+                    Ok(mdo) => mdo,
+                    Err(_) => return None,
+                }
             }
             // This shouldn't happen, but just in case...
             _ => return None,
@@ -1816,8 +1821,10 @@ impl Date {
     /// let next_date = date.pred().unwrap();
     /// assert_eq!(next_date.to_string(), "1582-10-04");
     /// ```
-    pub fn pred(&self) -> Option<Date> {
-        let jdn = self.jdn.checked_sub(1)?;
+    pub const fn pred(&self) -> Option<Date> {
+        let Some(jdn) = self.jdn.checked_sub(1) else {
+            return None;
+        };
         let mut year = self.year;
         let ordinal = if self.ordinal > 1 {
             self.ordinal - 1
@@ -1826,7 +1833,9 @@ impl Date {
             self.calendar().year_length(year)
         };
         // Erroring here shouldn't happen, but just in case...
-        let (month, day, day_ordinal) = self.calendar().ordinal2ymddo(year, ordinal).ok()?;
+        let Ok((month, day, day_ordinal)) = self.calendar().ordinal2ymddo(year, ordinal) else {
+            return None;
+        };
         Some(Date {
             calendar: self.calendar,
             year,
