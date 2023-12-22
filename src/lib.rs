@@ -533,9 +533,15 @@ impl Calendar {
     /// while calculating the date's Julian day number.  This can only happen
     /// for dates before -5884323-135 (-5884202-075 O.S.) or after 5874898-154
     /// (5874777-290 O.S.).
-    pub fn at_ordinal_date(&self, year: i32, ordinal: u32) -> Result<Date, DateError> {
-        let (month, day, day_ordinal) = self.ordinal2ymddo(year, ordinal)?;
-        let jdn = self.get_jdn(year, ordinal)?;
+    pub const fn at_ordinal_date(&self, year: i32, ordinal: u32) -> Result<Date, DateError> {
+        let (month, day, day_ordinal) = match self.ordinal2ymddo(year, ordinal) {
+            Ok(mdo) => mdo,
+            Err(e) => return Err(e),
+        };
+        let jdn = match self.get_jdn(year, ordinal) {
+            Ok(jdn) => jdn,
+            Err(ArithmeticError) => return Err(DateError::Arithmetic),
+        };
         Ok(Date {
             calendar: *self,
             year,
