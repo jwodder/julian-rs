@@ -1688,7 +1688,7 @@ impl Date {
     /// let date = Calendar::GREGORIAN.at_ymd(2023, Month::May, 1).unwrap();
     /// assert_eq!(date.weekday(), Weekday::Monday);
     /// ```
-    pub fn weekday(&self) -> Weekday {
+    pub const fn weekday(&self) -> Weekday {
         Weekday::for_jdn(self.jdn)
     }
 
@@ -2305,10 +2305,10 @@ impl Weekday {
     }
 
     /// Returns the weekday for the given Julian day number
-    pub fn for_jdn(jdn: Jdnum) -> Weekday {
-        match Weekday::try_from(jdn.rem_euclid(7) + 1) {
-            Ok(wd) => wd,
-            Err(_) => unreachable!("JDN computation should produce valid weekday number"),
+    pub const fn for_jdn(jdn: Jdnum) -> Weekday {
+        match Weekday::try_from_const(jdn.rem_euclid(7) + 1) {
+            Some(wd) => wd,
+            None => unreachable!(),
         }
     }
 
@@ -2339,6 +2339,21 @@ impl Weekday {
             Friday => Some(Saturday),
             Saturday => Some(Sunday),
             Sunday => None,
+        }
+    }
+
+    /// [Private] Like `TryFrom<Jdnum>`, but const and returning an `Option`
+    const fn try_from_const(index: Jdnum) -> Option<Weekday> {
+        use Weekday::*;
+        match index {
+            1 => Some(Monday),
+            2 => Some(Tuesday),
+            3 => Some(Wednesday),
+            4 => Some(Thursday),
+            5 => Some(Friday),
+            6 => Some(Saturday),
+            7 => Some(Sunday),
+            _ => None,
         }
     }
 }
@@ -2390,17 +2405,7 @@ macro_rules! impl_weekday_try_from {
             /// Returns [`TryIntoWeekdayError`] if the given number is less
             /// than one or greater than seven.
             fn try_from(value: $t) -> Result<Weekday, TryIntoWeekdayError> {
-                use Weekday::*;
-                match value {
-                    1 => Ok(Monday),
-                    2 => Ok(Tuesday),
-                    3 => Ok(Wednesday),
-                    4 => Ok(Thursday),
-                    5 => Ok(Friday),
-                    6 => Ok(Saturday),
-                    7 => Ok(Sunday),
-                    _ => Err(TryIntoWeekdayError),
-                }
+                Jdnum::try_from(value).ok().and_then(Weekday::try_from_const).ok_or(TryIntoWeekdayError)
             }
         }
       )*
