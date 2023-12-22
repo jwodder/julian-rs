@@ -891,7 +891,7 @@ impl Calendar {
     /// Returns `None` if the month was completely skipped by a calendar
     /// reformation.  This can only happen for reformations of at least JDN
     /// 3145930 (3901-03-01 in the Gregorian calendar).
-    pub fn month_shape(&self, year: i32, month: Month) -> Option<MonthShape> {
+    pub const fn month_shape(&self, year: i32, month: Month) -> Option<MonthShape> {
         use inner::RangeOrdering::*;
         use Month::*;
         let length = match month {
@@ -900,7 +900,7 @@ impl Calendar {
                 if self.year_kind(year).is_leap() {
                     29
                 } else if let Some(gap) = self.gap() {
-                    if gap.cmp_year_month(year, February) == EqLower {
+                    if matches!(gap.cmp_year_month(year, February), EqLower) {
                         29
                     } else {
                         28
@@ -923,7 +923,7 @@ impl Calendar {
         let inshape = if let Some(gap) = self.gap() {
             match gap.cmp_year_month(year, month) {
                 EqLower | EqBoth => {
-                    if gap.kind == inner::GapKind::IntraMonth {
+                    if matches!(gap.kind, inner::GapKind::IntraMonth) {
                         inner::MonthShape::Gapped {
                             gap_start: gap.pre_reform.day + 1,
                             gap_end: gap.post_reform.day - 1,
