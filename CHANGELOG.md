@@ -2,6 +2,7 @@ v0.5.0 (in development)
 -----------------------
 - **Breaking:** Moved error types to `errors` module
 - **Breaking:** Moved iterator types to `iter` module
+- Most non-trait methods are now `const`
 
 v0.4.0 (2023-11-22)
 -------------------
