@@ -1033,20 +1033,24 @@ impl Calendar {
     /// # Errors
     ///
     /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs.
-    fn get_jdn(&self, year: i32, mut ordinal: u32) -> Result<Jdnum, ArithmeticError> {
+    const fn get_jdn(&self, year: i32, mut ordinal: u32) -> Result<Jdnum, ArithmeticError> {
         use inner::Calendar::*;
         if let Some(gap) = self.gap() {
             if year == gap.post_reform.year && ordinal >= gap.post_reform.ordinal {
                 ordinal += gap.ordinal_gap;
             }
         }
-        if self.0 == Julian
-            || matches!(self.0, Reforming {gap, ..} if (year, ordinal) < (gap.post_reform.year, gap.post_reform.ordinal))
+        let r = if matches!(self.0, Julian)
+            || matches!(self.0, Reforming {gap, ..} if year < gap.post_reform.year || (year == gap.post_reform.year && ordinal < gap.post_reform.ordinal))
         {
             inner::julian2jdn(year, ordinal)
         } else {
             inner::gregorian2jdn(year, ordinal)
-        }.ok_or(ArithmeticError)
+        };
+        match r {
+            Some(jdn) => Ok(jdn),
+            None => Err(ArithmeticError),
+        }
     }
 
     /// [Private] If this is a "reforming" calendar, returns the inner
