@@ -2058,6 +2058,11 @@ impl Month {
         }
     }
 
+    /// [Private] `const` equivalent of `==`
+    const fn eq(&self, other: Month) -> bool {
+        (*self as u32) == (other as u32)
+    }
+
     /// [Private] `const` equivalent of `<`
     const fn lt(&self, other: Month) -> bool {
         (*self as u32) < (other as u32)

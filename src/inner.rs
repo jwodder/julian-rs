@@ -93,36 +93,12 @@ pub(crate) struct ReformGap {
 }
 
 impl ReformGap {
-    #[allow(clippy::missing_assert_message)]
     pub(crate) const fn cmp_year(&self, year: i32) -> RangeOrdering {
-        let lower = self.pre_reform.year;
-        let upper = self.post_reform.year;
-        debug_assert!(lower <= upper);
-        if year < lower {
-            RangeOrdering::Less
-        } else if lower == year {
-            if year < upper {
-                RangeOrdering::EqLower
-            } else {
-                // debug_assert_eq! isn't const.
-                debug_assert!(year == upper);
-                RangeOrdering::EqBoth
-            }
-        } else {
-            debug_assert!(lower < year);
-            if year < upper {
-                RangeOrdering::Between
-            } else if year == upper {
-                RangeOrdering::EqUpper
-            } else {
-                debug_assert!(upper < year);
-                RangeOrdering::Greater
-            }
-        }
+        cmp_int_range(year, self.pre_reform.year, self.post_reform.year)
     }
 
-    pub(crate) fn cmp_year_month(&self, year: i32, month: Month) -> RangeOrdering {
-        cmp_range(
+    pub(crate) const fn cmp_year_month(&self, year: i32, month: Month) -> RangeOrdering {
+        cmp_ym_range(
             (year, month),
             (self.pre_reform.year, self.pre_reform.month),
             (self.post_reform.year, self.post_reform.month),
@@ -426,19 +402,89 @@ const fn compose_julian(years: i32, ordinal: u32) -> Option<Jdnum> {
     Some(common_days + (leap_days + ((ordinal - 1) as Jdnum)))
 }
 
-pub(crate) fn cmp_range<T: Ord + std::fmt::Debug>(value: T, lower: T, upper: T) -> RangeOrdering {
-    assert!(
-        lower <= upper,
-        "cmp_range: expected lower <= upper; got lower={lower:?}, upper={upper:?}"
+#[allow(clippy::missing_assert_message)]
+const fn cmp_int_range(value: i32, lower: i32, upper: i32) -> RangeOrdering {
+    debug_assert!(lower <= upper);
+    if value < lower {
+        RangeOrdering::Less
+    } else if lower == value {
+        if value < upper {
+            RangeOrdering::EqLower
+        } else {
+            // debug_assert_eq! isn't const.
+            debug_assert!(value == upper);
+            RangeOrdering::EqBoth
+        }
+    } else {
+        debug_assert!(lower < value);
+        if value < upper {
+            RangeOrdering::Between
+        } else if value == upper {
+            RangeOrdering::EqUpper
+        } else {
+            debug_assert!(upper < value);
+            RangeOrdering::Greater
+        }
+    }
+}
+
+#[allow(clippy::missing_assert_message)]
+const fn cmp_ym_range(
+    value: (i32, Month),
+    lower: (i32, Month),
+    upper: (i32, Month),
+) -> RangeOrdering {
+    let (year, month) = value;
+    let (lower_year, lower_month) = lower;
+    let (upper_year, upper_month) = upper;
+    debug_assert!(
+        lower_year < upper_year || (lower_year == upper_year && lower_month.le(upper_month))
     );
-    match (value.cmp(&lower), value.cmp(&upper)) {
-        (Ordering::Less, _) => RangeOrdering::Less,
-        (Ordering::Equal, Ordering::Less) => RangeOrdering::EqLower,
-        (Ordering::Equal, Ordering::Equal) => RangeOrdering::EqBoth,
-        (Ordering::Equal, Ordering::Greater) => unreachable!(),
-        (Ordering::Greater, Ordering::Less) => RangeOrdering::Between,
-        (Ordering::Greater, Ordering::Equal) => RangeOrdering::EqUpper,
-        (Ordering::Greater, Ordering::Greater) => RangeOrdering::Greater,
+    if year < lower_year {
+        RangeOrdering::Less
+    } else if lower_year == year {
+        if month.lt(lower_month) {
+            RangeOrdering::Less
+        } else if month.eq(lower_month) {
+            if year < upper_year || (year == upper_year && month.lt(upper_month)) {
+                RangeOrdering::EqLower
+            } else {
+                debug_assert!(year == upper_year && month.eq(upper_month));
+                RangeOrdering::EqBoth
+            }
+        } else {
+            debug_assert!(lower_month.lt(month));
+            if year < upper_year {
+                RangeOrdering::Between
+            } else {
+                debug_assert!(year == upper_year);
+                if month.lt(upper_month) {
+                    RangeOrdering::Between
+                } else if month.eq(upper_month) {
+                    RangeOrdering::EqUpper
+                } else {
+                    debug_assert!(upper_month.lt(month));
+                    RangeOrdering::Greater
+                }
+            }
+        }
+    } else {
+        debug_assert!(lower_year < year);
+        if year < upper_year {
+            RangeOrdering::Between
+        } else if year == upper_year {
+            if month.lt(upper_month) {
+                RangeOrdering::Between
+            } else if month.eq(upper_month) {
+                RangeOrdering::EqUpper
+            } else {
+                debug_assert!(upper_month.lt(month));
+                RangeOrdering::Greater
+            }
+        } else {
+            debug_assert!(upper_year < year);
+            RangeOrdering::Greater
+        }
     }
 }
 
@@ -622,25 +668,110 @@ mod tests {
     }
 
     #[test]
-    fn cmp_nontrivial_range() {
+    fn cmp_nontrivial_int_range() {
         use RangeOrdering::*;
-        assert_eq!(cmp_range(1, 5, 10), Less);
-        assert_eq!(cmp_range(4, 5, 10), Less);
-        assert_eq!(cmp_range(5, 5, 10), EqLower);
-        assert_eq!(cmp_range(6, 5, 10), Between);
-        assert_eq!(cmp_range(10, 5, 10), EqUpper);
-        assert_eq!(cmp_range(11, 5, 10), Greater);
-        assert_eq!(cmp_range(15, 5, 10), Greater);
+        assert_eq!(cmp_int_range(1, 5, 10), Less);
+        assert_eq!(cmp_int_range(4, 5, 10), Less);
+        assert_eq!(cmp_int_range(5, 5, 10), EqLower);
+        assert_eq!(cmp_int_range(6, 5, 10), Between);
+        assert_eq!(cmp_int_range(10, 5, 10), EqUpper);
+        assert_eq!(cmp_int_range(11, 5, 10), Greater);
+        assert_eq!(cmp_int_range(15, 5, 10), Greater);
     }
 
     #[test]
-    fn cmp_trivial_range() {
+    fn cmp_trivial_int_range() {
         use RangeOrdering::*;
-        assert_eq!(cmp_range(1, 7, 7), Less);
-        assert_eq!(cmp_range(6, 7, 7), Less);
-        assert_eq!(cmp_range(7, 7, 7), EqBoth);
-        assert_eq!(cmp_range(8, 7, 7), Greater);
-        assert_eq!(cmp_range(10, 7, 7), Greater);
+        assert_eq!(cmp_int_range(1, 7, 7), Less);
+        assert_eq!(cmp_int_range(6, 7, 7), Less);
+        assert_eq!(cmp_int_range(7, 7, 7), EqBoth);
+        assert_eq!(cmp_int_range(8, 7, 7), Greater);
+        assert_eq!(cmp_int_range(10, 7, 7), Greater);
+    }
+
+    #[rstest]
+    #[case(1999, Month::January, RangeOrdering::Less)]
+    #[case(1999, Month::April, RangeOrdering::Less)]
+    #[case(1999, Month::June, RangeOrdering::Less)]
+    #[case(1999, Month::August, RangeOrdering::Less)]
+    #[case(1999, Month::December, RangeOrdering::Less)]
+    #[case(2020, Month::January, RangeOrdering::Less)]
+    #[case(2020, Month::April, RangeOrdering::Less)]
+    #[case(2020, Month::July, RangeOrdering::Less)]
+    #[case(2020, Month::August, RangeOrdering::EqLower)]
+    #[case(2020, Month::September, RangeOrdering::Between)]
+    #[case(2020, Month::December, RangeOrdering::Between)]
+    #[case(2022, Month::January, RangeOrdering::Between)]
+    #[case(2022, Month::April, RangeOrdering::Between)]
+    #[case(2022, Month::June, RangeOrdering::Between)]
+    #[case(2022, Month::August, RangeOrdering::Between)]
+    #[case(2022, Month::December, RangeOrdering::Between)]
+    #[case(2023, Month::March, RangeOrdering::Between)]
+    #[case(2023, Month::April, RangeOrdering::EqUpper)]
+    #[case(2023, Month::June, RangeOrdering::Greater)]
+    #[case(2023, Month::July, RangeOrdering::Greater)]
+    #[case(2023, Month::August, RangeOrdering::Greater)]
+    #[case(2023, Month::September, RangeOrdering::Greater)]
+    #[case(2023, Month::December, RangeOrdering::Greater)]
+    #[case(2525, Month::January, RangeOrdering::Greater)]
+    #[case(2525, Month::April, RangeOrdering::Greater)]
+    #[case(2525, Month::June, RangeOrdering::Greater)]
+    #[case(2525, Month::August, RangeOrdering::Greater)]
+    #[case(2525, Month::December, RangeOrdering::Greater)]
+    fn cmp_multi_year_ym_range(#[case] year: i32, #[case] month: Month, #[case] r: RangeOrdering) {
+        assert_eq!(
+            cmp_ym_range((year, month), (2020, Month::August), (2023, Month::April)),
+            r
+        );
+    }
+
+    #[rstest]
+    #[case(2022, Month::February, RangeOrdering::Less)]
+    #[case(2022, Month::April, RangeOrdering::Less)]
+    #[case(2022, Month::June, RangeOrdering::Less)]
+    #[case(2022, Month::August, RangeOrdering::Less)]
+    #[case(2022, Month::December, RangeOrdering::Less)]
+    #[case(2023, Month::January, RangeOrdering::Less)]
+    #[case(2023, Month::March, RangeOrdering::Less)]
+    #[case(2023, Month::April, RangeOrdering::EqLower)]
+    #[case(2023, Month::May, RangeOrdering::Between)]
+    #[case(2023, Month::July, RangeOrdering::Between)]
+    #[case(2023, Month::August, RangeOrdering::EqUpper)]
+    #[case(2023, Month::September, RangeOrdering::Greater)]
+    #[case(2023, Month::December, RangeOrdering::Greater)]
+    #[case(2024, Month::January, RangeOrdering::Greater)]
+    #[case(2024, Month::April, RangeOrdering::Greater)]
+    #[case(2024, Month::June, RangeOrdering::Greater)]
+    #[case(2024, Month::August, RangeOrdering::Greater)]
+    #[case(2024, Month::October, RangeOrdering::Greater)]
+    fn cmp_single_year_ym_range(#[case] year: i32, #[case] month: Month, #[case] r: RangeOrdering) {
+        assert_eq!(
+            cmp_ym_range((year, month), (2023, Month::April), (2023, Month::August)),
+            r
+        );
+    }
+
+    #[rstest]
+    #[case(2022, Month::January, RangeOrdering::Less)]
+    #[case(2022, Month::June, RangeOrdering::Less)]
+    #[case(2022, Month::July, RangeOrdering::Less)]
+    #[case(2022, Month::August, RangeOrdering::Less)]
+    #[case(2022, Month::December, RangeOrdering::Less)]
+    #[case(2023, Month::January, RangeOrdering::Less)]
+    #[case(2023, Month::June, RangeOrdering::Less)]
+    #[case(2023, Month::July, RangeOrdering::EqBoth)]
+    #[case(2023, Month::August, RangeOrdering::Greater)]
+    #[case(2023, Month::October, RangeOrdering::Greater)]
+    #[case(2024, Month::January, RangeOrdering::Greater)]
+    #[case(2024, Month::June, RangeOrdering::Greater)]
+    #[case(2024, Month::July, RangeOrdering::Greater)]
+    #[case(2024, Month::August, RangeOrdering::Greater)]
+    #[case(2024, Month::December, RangeOrdering::Greater)]
+    fn cmp_trivial_ym_range(#[case] year: i32, #[case] month: Month, #[case] r: RangeOrdering) {
+        assert_eq!(
+            cmp_ym_range((year, month), (2023, Month::July), (2023, Month::July)),
+            r
+        );
     }
 
     #[test]
