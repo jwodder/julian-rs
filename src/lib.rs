@@ -1202,17 +1202,21 @@ impl MonthShape {
     /// assert!(shape.contains(31));
     /// assert!(!shape.contains(32));
     /// ```
-    pub fn contains(&self, day: u32) -> bool {
+    pub const fn contains(&self, day: u32) -> bool {
+        macro_rules! contains_day {
+            ($lower:expr, $upper:expr) => {
+                $lower <= day && day <= $upper
+            };
+        }
         use inner::MonthShape::*;
         match self.inner {
-            Normal { max_day } => (1..=max_day).contains(&day),
-            Headless { min_day, max_day } => (min_day..=max_day).contains(&day),
-            Tailless { max_day, .. } => (1..=max_day).contains(&day),
+            Normal { max_day } | Tailless { max_day, .. } => contains_day!(1, max_day),
+            Headless { min_day, max_day } => contains_day!(min_day, max_day),
             Gapped {
                 gap_start,
                 gap_end,
                 max_day,
-            } => (1..=max_day).contains(&day) && !(gap_start..=gap_end).contains(&day),
+            } => contains_day!(1, max_day) && !contains_day!(gap_start, gap_end),
         }
     }
 
