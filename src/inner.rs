@@ -186,11 +186,11 @@ pub(crate) struct DateParser<'a> {
 }
 
 impl<'a> DateParser<'a> {
-    pub(crate) fn new(data: &'a str) -> Self {
+    pub(crate) const fn new(data: &'a str) -> Self {
         DateParser { data }
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
+    pub(crate) const fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
 
@@ -268,11 +268,11 @@ pub(crate) fn scan<P: FnMut(char) -> bool>(s: &str, mut predicate: P) -> (&str, 
     s.split_at(boundary)
 }
 
-pub(crate) fn is_julian_leap_year(year: i32) -> bool {
+pub(crate) const fn is_julian_leap_year(year: i32) -> bool {
     year % JULIAN_LEAP_CYCLE_YEARS == 0
 }
 
-pub(crate) fn is_gregorian_leap_year(year: i32) -> bool {
+pub(crate) const fn is_gregorian_leap_year(year: i32) -> bool {
     year % JULIAN_LEAP_CYCLE_YEARS == 0 && (year % 100 != 0 || year % GREGORIAN_CYCLE_YEARS == 0)
 }
 
@@ -406,17 +406,17 @@ fn compose_julian(years: i32, ordinal: u32) -> Option<Jdnum> {
 }
 
 #[inline]
-fn add(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
+const fn add(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
     x.checked_add(y)
 }
 
 #[inline]
-fn sub(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
+const fn sub(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
     x.checked_sub(y)
 }
 
 #[inline]
-fn mul(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
+const fn mul(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
     x.checked_mul(y)
 }
 

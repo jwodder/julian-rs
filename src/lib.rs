@@ -250,26 +250,26 @@ pub enum YearKind {
 
 impl YearKind {
     /// Returns true if the year kind is `Common` or `ReformCommon`
-    pub fn is_common(&self) -> bool {
+    pub const fn is_common(&self) -> bool {
         use YearKind::*;
         matches!(self, Common | ReformCommon)
     }
 
     /// Returns true if the year kind is `Leap` or `ReformLeap`
-    pub fn is_leap(&self) -> bool {
+    pub const fn is_leap(&self) -> bool {
         use YearKind::*;
         matches!(self, Leap | ReformLeap)
     }
 
     /// Returns true if the year kind is `ReformCommon` or `ReformLeap`
-    pub fn is_reform(&self) -> bool {
+    pub const fn is_reform(&self) -> bool {
         use YearKind::*;
         matches!(self, ReformCommon | ReformLeap)
     }
 
     /// Returns true if the year kind is `Skipped`
-    pub fn is_skipped(&self) -> bool {
-        self == &YearKind::Skipped
+    pub const fn is_skipped(&self) -> bool {
+        matches!(self, YearKind::Skipped)
     }
 }
 
@@ -632,7 +632,7 @@ impl Calendar {
     /// assert!(Calendar::GREGORIAN.is_proleptic());
     /// assert!(!Calendar::REFORM1582.is_proleptic());
     /// ```
-    pub fn is_proleptic(&self) -> bool {
+    pub const fn is_proleptic(&self) -> bool {
         matches!(self.0, inner::Calendar::Julian | inner::Calendar::Gregorian)
     }
 
@@ -647,13 +647,13 @@ impl Calendar {
     /// assert!(!Calendar::GREGORIAN.is_reforming());
     /// assert!(Calendar::REFORM1582.is_reforming());
     /// ```
-    pub fn is_reforming(&self) -> bool {
+    pub const fn is_reforming(&self) -> bool {
         matches!(self.0, inner::Calendar::Reforming { .. })
     }
 
     /// If this is a "reforming" calendar, returns the Julian day number of the
     /// reformation (the first day on which the Gregorian calendar is used)
-    pub fn reformation(&self) -> Option<Jdnum> {
+    pub const fn reformation(&self) -> Option<Jdnum> {
         if let inner::Calendar::Reforming { reformation, .. } = self.0 {
             Some(reformation)
         } else {
@@ -675,7 +675,7 @@ impl Calendar {
     /// assert_eq!(date.month(), Month::October);
     /// assert_eq!(date.day(), 4);
     /// ```
-    pub fn last_julian_date(&self) -> Option<Date> {
+    pub const fn last_julian_date(&self) -> Option<Date> {
         if let inner::Calendar::Reforming { reformation, gap } = self.0 {
             Some(Date {
                 calendar: *self,
@@ -1031,7 +1031,7 @@ impl Calendar {
 
     /// [Private] If this is a "reforming" calendar, returns the inner
     /// `ReformGap` field.
-    fn gap(&self) -> Option<inner::ReformGap> {
+    const fn gap(&self) -> Option<inner::ReformGap> {
         match self.0 {
             inner::Calendar::Reforming { gap, .. } => Some(gap),
             _ => None,
@@ -1041,7 +1041,7 @@ impl Calendar {
     /// [Private] Returns the next year after `year`, skipping any skipped
     /// years.  `year` itself must not be a skipped year or else the result
     /// will be garbage.
-    fn next_year_after(&self, year: i32) -> i32 {
+    const fn next_year_after(&self, year: i32) -> i32 {
         if let Some(gap) = self.gap() {
             if year == gap.pre_reform.year && gap.post_reform.year > gap.pre_reform.year {
                 return gap.post_reform.year;
@@ -1053,7 +1053,7 @@ impl Calendar {
     /// [Private] Returns the year immediately before `year`, skipping any
     /// skipped years.  `year` itself must not be a skipped year or else the
     /// result will be garbage.
-    fn prev_year_before(&self, year: i32) -> i32 {
+    const fn prev_year_before(&self, year: i32) -> i32 {
         if let Some(gap) = self.gap() {
             if year == gap.post_reform.year && gap.post_reform.year > gap.pre_reform.year {
                 return gap.pre_reform.year;
@@ -1084,17 +1084,17 @@ pub struct MonthShape {
 
 impl MonthShape {
     /// Returns the [`Calendar`] to which the month shape belongs
-    pub fn calendar(&self) -> Calendar {
+    pub const fn calendar(&self) -> Calendar {
         self.calendar
     }
 
     /// Returns the year in which the month occurs
-    pub fn year(&self) -> i32 {
+    pub const fn year(&self) -> i32 {
         self.year
     }
 
     /// Returns the [`Month`] value for the month
-    pub fn month(&self) -> Month {
+    pub const fn month(&self) -> Month {
         self.month
     }
 
@@ -1111,7 +1111,7 @@ impl MonthShape {
     /// assert_eq!(shape.len(), 21);
     /// ```
     #[allow(clippy::len_without_is_empty)]
-    pub fn len(&self) -> u32 {
+    pub const fn len(&self) -> u32 {
         use inner::MonthShape::*;
         match self.inner {
             Normal { max_day } => max_day,
@@ -1172,7 +1172,7 @@ impl MonthShape {
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// assert_eq!(shape.first_day(), 1);
     /// ```
-    pub fn first_day(&self) -> u32 {
+    pub const fn first_day(&self) -> u32 {
         use inner::MonthShape::*;
         match self.inner {
             Headless { min_day, .. } => min_day,
@@ -1192,7 +1192,7 @@ impl MonthShape {
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// assert_eq!(shape.last_day(), 31);
     /// ```
-    pub fn last_day(&self) -> u32 {
+    pub const fn last_day(&self) -> u32 {
         use inner::MonthShape::*;
         match self.inner {
             Normal { max_day } => max_day,
@@ -1406,7 +1406,7 @@ impl MonthShape {
     /// assert_eq!(shape.gap(), Some(5..=14));
     /// ```
     #[allow(clippy::range_minus_one)]
-    pub fn gap(&self) -> Option<RangeInclusive<u32>> {
+    pub const fn gap(&self) -> Option<RangeInclusive<u32>> {
         use inner::MonthShape::*;
         match self.inner {
             Normal { .. } => None,
@@ -1432,7 +1432,7 @@ impl MonthShape {
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// assert_eq!(shape.kind(), MonthKind::Gapped);
     /// ```
-    pub fn kind(&self) -> MonthKind {
+    pub const fn kind(&self) -> MonthKind {
         use inner::MonthShape::*;
         match self.inner {
             Normal { .. } => MonthKind::Normal,
@@ -1458,12 +1458,12 @@ impl MonthShape {
     ///     25, 26, 27, 28, 29, 30, 31,
     /// ]);
     /// ```
-    pub fn days(&self) -> Days {
+    pub const fn days(&self) -> Days {
         Days::new(*self)
     }
 
     /// Returns an iterator over all [`Date`s][Date] within the month
-    pub fn dates(&self) -> Dates {
+    pub const fn dates(&self) -> Dates {
         Dates::new(*self)
     }
 }
@@ -1512,17 +1512,17 @@ pub struct Date {
 
 impl Date {
     /// Returns the [`Calendar`] to which the date belongs
-    pub fn calendar(&self) -> Calendar {
+    pub const fn calendar(&self) -> Calendar {
         self.calendar
     }
 
     /// Returns the date's year
-    pub fn year(&self) -> i32 {
+    pub const fn year(&self) -> i32 {
         self.year
     }
 
     /// Returns the date's month
-    pub fn month(&self) -> Month {
+    pub const fn month(&self) -> Month {
         self.month
     }
 
@@ -1544,7 +1544,7 @@ impl Date {
     /// let post_reform = cal.at_jdn(REFORM1582_JDN);
     /// assert_eq!(post_reform.day(), 15);
     /// ```
-    pub fn day(&self) -> u32 {
+    pub const fn day(&self) -> u32 {
         self.day
     }
 
@@ -1565,14 +1565,14 @@ impl Date {
     /// let post_reform = cal.at_jdn(REFORM1582_JDN);
     /// assert_eq!(post_reform.day_ordinal(), 5);
     /// ```
-    pub fn day_ordinal(&self) -> u32 {
+    pub const fn day_ordinal(&self) -> u32 {
         self.day_ordinal
     }
 
     /// Returns the zero-based ordinal number of the day within the month.
     /// This is the same as [`Date::day_ordinal()`], except starting from 0
     /// instead of 1.
-    pub fn day_ordinal0(&self) -> u32 {
+    pub const fn day_ordinal0(&self) -> u32 {
         self.day_ordinal - 1
     }
 
@@ -1604,14 +1604,14 @@ impl Date {
     /// let post_reform = cal.at_ymd(1582, Month::October, 15).unwrap();
     /// assert_eq!(post_reform.ordinal(), 278);
     /// ```
-    pub fn ordinal(&self) -> u32 {
+    pub const fn ordinal(&self) -> u32 {
         self.ordinal
     }
 
     /// Returns the zero-based ordinal number of the day within the year.  This
     /// is the same as [`Date::ordinal()`], except starting from 0 instead of
     /// 1.
-    pub fn ordinal0(&self) -> u32 {
+    pub const fn ordinal0(&self) -> u32 {
         self.ordinal - 1
     }
 
@@ -1625,7 +1625,7 @@ impl Date {
     /// let date = Calendar::GREGORIAN.at_ymd(2023, Month::May, 1).unwrap();
     /// assert_eq!(date.julian_day_number(), 2460066);
     /// ```
-    pub fn julian_day_number(&self) -> Jdnum {
+    pub const fn julian_day_number(&self) -> Jdnum {
         self.jdn
     }
 
@@ -1661,7 +1661,7 @@ impl Date {
     /// let post_reform = cal.at_ymd(1582, Month::October, 15).unwrap();
     /// assert!(!post_reform.is_julian());
     /// ```
-    pub fn is_julian(&self) -> bool {
+    pub const fn is_julian(&self) -> bool {
         match self.calendar.0 {
             inner::Calendar::Julian => true,
             inner::Calendar::Reforming { reformation, .. } => {
@@ -1689,7 +1689,7 @@ impl Date {
     /// let post_reform = cal.at_ymd(1582, Month::October, 15).unwrap();
     /// assert!(post_reform.is_gregorian());
     /// ```
-    pub fn is_gregorian(&self) -> bool {
+    pub const fn is_gregorian(&self) -> bool {
         match self.calendar.0 {
             inner::Calendar::Julian => false,
             inner::Calendar::Reforming { reformation, .. } => {
@@ -1804,7 +1804,7 @@ impl Date {
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-15");
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-16");
     /// ```
-    pub fn later(&self) -> Later {
+    pub const fn later(&self) -> Later {
         Later::new(*self)
     }
 
@@ -1823,7 +1823,7 @@ impl Date {
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-04");
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-03");
     /// ```
-    pub fn earlier(&self) -> Earlier {
+    pub const fn earlier(&self) -> Earlier {
         Earlier::new(*self)
     }
 
@@ -1843,7 +1843,7 @@ impl Date {
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-15");
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-16");
     /// ```
-    pub fn and_later(&self) -> AndLater {
+    pub const fn and_later(&self) -> AndLater {
         AndLater::new(*self)
     }
 
@@ -1863,7 +1863,7 @@ impl Date {
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-04");
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-03");
     /// ```
-    pub fn and_earlier(&self) -> AndEarlier {
+    pub const fn and_earlier(&self) -> AndEarlier {
         AndEarlier::new(*self)
     }
 }
@@ -1962,7 +1962,7 @@ pub enum Month {
 impl Month {
     /// Returns the English name of the month.  This is the same as the month's
     /// Rust identifier.
-    pub fn name(&self) -> &'static str {
+    pub const fn name(&self) -> &'static str {
         use Month::*;
         match self {
             January => "January",
@@ -1981,7 +1981,7 @@ impl Month {
     }
 
     /// Returns the first three letters of the English name of the month
-    pub fn short_name(&self) -> &'static str {
+    pub const fn short_name(&self) -> &'static str {
         use Month::*;
         match self {
             January => "Jan",
@@ -2003,18 +2003,18 @@ impl Month {
     ///
     /// These values are also available as the enumeration discriminants and
     /// can be accessed by casting, e.g., `Month::January as u32`.
-    pub fn number(&self) -> u32 {
+    pub const fn number(&self) -> u32 {
         *self as u32
     }
 
     /// Returns the zero-based number of the month, where January is 0.
-    pub fn number0(&self) -> u32 {
+    pub const fn number0(&self) -> u32 {
         self.number() - 1
     }
 
     /// Returns the month before the month in question.  Returns `None` for
     /// January.
-    pub fn pred(&self) -> Option<Month> {
+    pub const fn pred(&self) -> Option<Month> {
         use Month::*;
         match self {
             January => None,
@@ -2034,7 +2034,7 @@ impl Month {
 
     /// Returns the month after the month in question.  Returns `None` for
     /// December.
-    pub fn succ(&self) -> Option<Month> {
+    pub const fn succ(&self) -> Option<Month> {
         use Month::*;
         match self {
             January => Some(February),
@@ -2190,7 +2190,7 @@ pub enum Weekday {
 impl Weekday {
     /// Returns the English name of the weekday.  This is the same as the
     /// weekday's Rust identifier.
-    pub fn name(&self) -> &'static str {
+    pub const fn name(&self) -> &'static str {
         use Weekday::*;
         match self {
             Monday => "Monday",
@@ -2204,7 +2204,7 @@ impl Weekday {
     }
 
     /// Returns the first three letters of the English name of the weekday
-    pub fn short_name(&self) -> &'static str {
+    pub const fn short_name(&self) -> &'static str {
         use Weekday::*;
         match self {
             Monday => "Mon",
@@ -2221,13 +2221,13 @@ impl Weekday {
     ///
     /// These values are also available as the enumeration discriminants and
     /// can be accessed by casting, e.g., `Weekday::Monday as u32`.
-    pub fn number(&self) -> u32 {
+    pub const fn number(&self) -> u32 {
         *self as u32
     }
 
     /// Returns the zero-based number of the weekday, where Monday is 0 and
     /// Sunday is 6.
-    pub fn number0(&self) -> u32 {
+    pub const fn number0(&self) -> u32 {
         self.number() - 1
     }
 
@@ -2241,7 +2241,7 @@ impl Weekday {
 
     /// Returns the day of the week before this one.  Returns `None` for
     /// Monday.
-    pub fn pred(&self) -> Option<Weekday> {
+    pub const fn pred(&self) -> Option<Weekday> {
         use Weekday::*;
         match self {
             Monday => None,
@@ -2256,7 +2256,7 @@ impl Weekday {
 
     /// Returns the day of the week after this one.  Returns `None` for
     /// Sunday.
-    pub fn succ(&self) -> Option<Weekday> {
+    pub const fn succ(&self) -> Option<Weekday> {
         use Weekday::*;
         match self {
             Monday => Some(Tuesday),
