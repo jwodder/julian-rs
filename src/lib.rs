@@ -962,9 +962,14 @@ impl Calendar {
     ///
     /// Returns [`DateError::OrdinalOutOfRange`] if `ordinal` is zero or
     /// greater than the length of the year.
-    fn ordinal2ymddo(&self, year: i32, ordinal: u32) -> Result<(Month, u32, u32), DateError> {
+    // Silence false positive warning from assigning to `days` in
+    // `for_month!()` without using it again in the macro; cf.
+    // <https://github.com/rust-lang/rust/issues/24580>
+    #[allow(unused_assignments)]
+    const fn ordinal2ymddo(&self, year: i32, ordinal: u32) -> Result<(Month, u32, u32), DateError> {
+        use Month::*;
         let max_ordinal = self.year_length(year);
-        if !(1..=max_ordinal).contains(&ordinal) {
+        if ordinal < 1 || ordinal > max_ordinal {
             return Err(DateError::OrdinalOutOfRange {
                 year,
                 ordinal,
@@ -972,14 +977,24 @@ impl Calendar {
             });
         }
         let mut days = ordinal;
-        for month in MonthIter::new() {
-            if let Some(shape) = self.month_shape(year, month) {
-                if let Some(day) = shape.nth_day(days) {
-                    return Ok((month, day, days));
-                }
-                days -= shape.len();
+        // Iteration isn't allowed in const functions, so we need to manually —
+        // er, macro-ly — unroll the loop.
+        macro_rules! for_month {
+            ($($m:expr),*) => {
+                $(
+                    if let Some(shape) = self.month_shape(year, $m) {
+                        if let Some(day) = shape.nth_day(days) {
+                            return Ok(($m, day, days));
+                        }
+                        days -= shape.len();
+                    }
+                )*
             }
         }
+        for_month!(
+            January, February, March, April, May, June, July, August, September, October, November,
+            December
+        );
         unreachable!()
     }
 
