@@ -1001,12 +1001,30 @@ impl Calendar {
     /// [Private] Calculate the day of year for a given year, month, and day
     /// ordinal of month.  The day ordinal must be valid for the given month;
     /// otherwise, the result will be garbage.
-    fn ymdo2ordinal(&self, year: i32, month: Month, day_ordinal: u32) -> u32 {
-        MonthIter::new()
-            .take_while(|&m| m < month)
-            .filter_map(|m| self.month_shape(year, m).map(|ms| ms.len()))
-            .sum::<u32>()
-            + day_ordinal
+    // Silence false positive warning from assigning to `result` in
+    // `for_month!()` without using it again in the macro; cf.
+    // <https://github.com/rust-lang/rust/issues/24580>
+    #[allow(unused_assignments)]
+    const fn ymdo2ordinal(&self, year: i32, month: Month, day_ordinal: u32) -> u32 {
+        use Month::*;
+        let mut result = 0;
+        macro_rules! for_month {
+            ($($m:expr),*) => {
+                $(
+                    if $m.eq(month) {
+                        return result + day_ordinal;
+                    }
+                    if let Some(ms) = self.month_shape(year, $m) {
+                        result += ms.len();
+                    }
+                )*
+            }
+        }
+        for_month!(
+            January, February, March, April, May, June, July, August, September, October, November,
+            December
+        );
+        unreachable!()
     }
 
     /// [Private] Calculate the day ordinal for a given year, month, and day of
