@@ -280,7 +280,7 @@ pub(crate) const fn is_gregorian_leap_year(year: i32) -> bool {
 /// the proleptic Julian calendar.
 ///
 /// Valid for all `Jdnum` values.
-pub(crate) fn jdn2julian(jd: Jdnum) -> (i32, u32) {
+pub(crate) const fn jdn2julian(jd: Jdnum) -> (i32, u32) {
     let (year, ordinal) = decompose_julian(jd);
     (year + JDN0_YEAR, ordinal)
 }
@@ -301,7 +301,7 @@ pub(crate) const fn julian2jdn(year: i32, ordinal: u32) -> Option<Jdnum> {
 /// the proleptic Gregorian calendar.
 ///
 /// Valid for all `Jdnum` values.
-pub(crate) fn jdn2gregorian(jd: Jdnum) -> (i32, u32) {
+pub(crate) const fn jdn2gregorian(jd: Jdnum) -> (i32, u32) {
     const COMMON_CENTURY_DAYS: Jdnum = COMMON_YEAR_LENGTH * 100 + 24;
     // Calculate relative to a nearby quadricentennial.  Shift towards zero in
     // order to avoid overflow/underflow.
@@ -320,7 +320,7 @@ pub(crate) fn jdn2gregorian(jd: Jdnum) -> (i32, u32) {
     let mut quad_point = jd.rem_euclid(GREGORIAN_CYCLE_DAYS);
     // Add a "virtual leap day" to the end of each centennial year after the
     // zeroth so that `decompose_julian()` can be applied.
-    if let Some(after_first_year) = sub(quad_point, LEAP_YEAR_LENGTH) {
+    if let Some(after_first_year) = quad_point.checked_sub(LEAP_YEAR_LENGTH) {
         // This is the one point at which we need to use truncated division
         // rather than Euclidean division.
         quad_point += after_first_year / COMMON_CENTURY_DAYS;
@@ -378,7 +378,8 @@ pub(crate) const fn gregorian2jdn(year: i32, ordinal: u32) -> Option<Jdnum> {
 /// of the year will be positive.
 ///
 /// Valid for all `Jdnum` values.
-fn decompose_julian(days: Jdnum) -> (i32, u32) {
+#[allow(clippy::cast_sign_loss)]
+const fn decompose_julian(days: Jdnum) -> (i32, u32) {
     let mut year: i32 = days.div_euclid(JULIAN_LEAP_CYCLE_DAYS) * JULIAN_LEAP_CYCLE_YEARS;
     let mut ordinal: Jdnum = days.rem_euclid(JULIAN_LEAP_CYCLE_DAYS);
     // Add a "virtual leap day" to the end of each common year so that
@@ -388,10 +389,7 @@ fn decompose_julian(days: Jdnum) -> (i32, u32) {
     }
     year += ordinal.div_euclid(LEAP_YEAR_LENGTH);
     ordinal %= LEAP_YEAR_LENGTH;
-    (
-        year,
-        u32::try_from(ordinal + 1).expect("ordinal plus one should fit in u32"),
-    )
+    (year, (ordinal + 1) as u32)
 }
 
 /// Given a (possibly negative) number of years and a one-based positive day of
@@ -420,11 +418,6 @@ const fn compose_julian(years: i32, ordinal: u32) -> Option<Jdnum> {
     // `common_days` and `leap_days` are both negative numbers of large
     // magnitude:
     Some(common_days + (leap_days + ((ordinal - 1) as Jdnum)))
-}
-
-#[inline]
-const fn sub(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
-    x.checked_sub(y)
 }
 
 pub(crate) fn cmp_range<T: Ord + std::fmt::Debug>(value: T, lower: T, upper: T) -> RangeOrdering {
