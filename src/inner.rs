@@ -402,7 +402,6 @@ const fn compose_julian(years: i32, ordinal: u32) -> Option<Jdnum> {
     Some(common_days + (leap_days + ((ordinal - 1) as Jdnum)))
 }
 
-#[allow(clippy::missing_assert_message)]
 const fn cmp_int_range(value: i32, lower: i32, upper: i32) -> RangeOrdering {
     debug_assert!(lower <= upper);
     if value < lower {
@@ -428,7 +427,6 @@ const fn cmp_int_range(value: i32, lower: i32, upper: i32) -> RangeOrdering {
     }
 }
 
-#[allow(clippy::missing_assert_message)]
 const fn cmp_ym_range(
     value: (i32, Month),
     lower: (i32, Month),

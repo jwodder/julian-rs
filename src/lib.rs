@@ -849,7 +849,7 @@ impl Calendar {
     /// assert_eq!(cal2.year_length(48901), 0);
     /// assert_eq!(cal2.year_length(48902), 365);
     /// ```
-    pub fn year_length(&self, year: i32) -> u32 {
+    pub const fn year_length(&self, year: i32) -> u32 {
         match self.0 {
             inner::Calendar::Julian | inner::Calendar::Gregorian => match self.year_kind(year) {
                 YearKind::Common => COMMON_YEAR_LENGTH as u32,
@@ -860,7 +860,7 @@ impl Calendar {
                 YearKind::Common => COMMON_YEAR_LENGTH as u32,
                 YearKind::Leap => LEAP_YEAR_LENGTH as u32,
                 k @ (YearKind::ReformCommon | YearKind::ReformLeap) => {
-                    let length = if k == YearKind::ReformCommon {
+                    let length = if matches!(k, YearKind::ReformCommon) {
                         COMMON_YEAR_LENGTH as u32
                     } else {
                         LEAP_YEAR_LENGTH as u32
@@ -872,11 +872,10 @@ impl Calendar {
                         // because the `pre_reform.ordinal` subtrahend that
                         // produced it counted the leap day but the
                         // `post_reform.ordinal` minuend did not.
-                        let correction =
-                            u32::from(year % 100 == 0 && year % 400 != 0 && k.is_leap());
+                        let correction = (year % 100 == 0 && year % 400 != 0 && k.is_leap()) as u32;
                         length - gap.ordinal_gap - correction
                     } else {
-                        debug_assert!(year == gap.pre_reform.year, "A reform year that is not the post-reform year should equal the pre-reform year, but year={year:?} != gap.pre_reform.year={:?}", gap.pre_reform.year);
+                        debug_assert!(year == gap.pre_reform.year);
                         gap.pre_reform.ordinal
                     }
                 }
