@@ -551,9 +551,9 @@ impl Calendar {
     /// assert_eq!(date.month(), Month::April);
     /// assert_eq!(date.day(), 30);
     /// ```
-    pub fn at_jdn(&self, jdn: Jdnum) -> Date {
+    pub const fn at_jdn(&self, jdn: Jdnum) -> Date {
         use inner::Calendar::*;
-        let (year, mut ordinal) = if self.0 == Julian
+        let (year, mut ordinal) = if matches!(self.0, Julian)
             || matches!(self.0, Reforming { reformation, .. } if jdn < reformation)
         {
             inner::jdn2julian(jdn)
@@ -566,7 +566,7 @@ impl Calendar {
             }
         }
         let Ok((month, day, day_ordinal)) = self.ordinal2ymddo(year, ordinal) else {
-            unreachable!("ordinal should be within range for year");
+            unreachable!();
         };
         Date {
             calendar: *self,
@@ -1738,7 +1738,7 @@ impl Date {
     /// let julian_date = gregorian_date.convert_to(Calendar::JULIAN);
     /// assert_eq!(julian_date.to_string(), "2023-04-18");
     /// ```
-    pub fn convert_to(&self, calendar: Calendar) -> Date {
+    pub const fn convert_to(&self, calendar: Calendar) -> Date {
         calendar.at_jdn(self.julian_day_number())
     }
 
