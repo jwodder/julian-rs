@@ -1,4 +1,8 @@
-use crate::{Month, MonthIter, ParseMonthError, TryIntoMonthError};
+use crate::{
+    errors::{ParseMonthError, TryIntoMonthError},
+    iter::MonthIter,
+    Month,
+};
 use rstest::rstest;
 
 #[test]

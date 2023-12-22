@@ -1,4 +1,7 @@
-use crate::{Calendar, DateError, Month, ParseDateError};
+use crate::{
+    errors::{DateError, ParseDateError},
+    Calendar, Month,
+};
 use assert_matches::assert_matches;
 use rstest::rstest;
 

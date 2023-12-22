@@ -1,4 +1,4 @@
-use julian::{ncal, Calendar, Date, Jdnum, ReformingError};
+use julian::{errors::ReformingError, ncal, Calendar, Date, Jdnum};
 use lexopt::{Arg, Parser, ValueExt};
 use std::collections::BTreeMap;
 use std::fmt::{self, Write};

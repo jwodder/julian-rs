@@ -1,4 +1,7 @@
-use crate::{ParseWeekdayError, TryIntoWeekdayError, Weekday};
+use crate::{
+    errors::{ParseWeekdayError, TryIntoWeekdayError},
+    Weekday,
+};
 use rstest::rstest;
 
 #[test]

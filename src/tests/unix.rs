@@ -1,4 +1,4 @@
-use crate::{jdn2unix, unix2jdn, ArithmeticError, Calendar, Jdnum, Month};
+use crate::{errors::ArithmeticError, jdn2unix, unix2jdn, Calendar, Jdnum, Month};
 use rstest::rstest;
 
 #[rstest]

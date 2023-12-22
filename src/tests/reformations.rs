@@ -1,6 +1,6 @@
 use crate::{
-    inner, ncal, Calendar, DateError, Jdnum, Month, MonthKind, MonthShape, ReformingError,
-    YearKind, REFORM1582_JDN,
+    errors::{DateError, ReformingError},
+    inner, ncal, Calendar, Jdnum, Month, MonthKind, MonthShape, YearKind, REFORM1582_JDN,
 };
 use rstest::rstest;
 
