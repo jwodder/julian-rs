@@ -263,3 +263,5 @@ unwrap_used = "deny"
 used_underscore_binding = "deny"
 wildcard_dependencies = "deny"
 zero_sized_map_values = "deny"
+
+missing_const_for_fn = "deny"
