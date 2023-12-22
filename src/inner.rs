@@ -123,14 +123,14 @@ pub(crate) enum GapKind {
 }
 
 impl GapKind {
-    pub(crate) fn for_dates(
+    pub(crate) const fn for_dates(
         pre_year: i32,
         pre_month: Month,
         post_year: i32,
         post_month: Month,
     ) -> GapKind {
         if pre_year == post_year {
-            if pre_month == post_month {
+            if pre_month.eq(post_month) {
                 GapKind::IntraMonth
             } else {
                 GapKind::CrossMonth

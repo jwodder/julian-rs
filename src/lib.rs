@@ -342,23 +342,24 @@ impl Calendar {
     /// occurs while converting `reformation` to a calendar date.  This can
     /// only happen for Julian day numbers greater than 2147439588
     /// (corresponding to the date 5874777-10-17 N.S. or 5874657-03-02 O.S.).
-    pub fn reforming(reformation: Jdnum) -> Result<Calendar, ReformingError> {
-        let pre_reform = Calendar::JULIAN.at_jdn(
-            reformation
-                .checked_sub(1)
-                .ok_or(ReformingError::InvalidReformation)?,
-        );
+    pub const fn reforming(reformation: Jdnum) -> Result<Calendar, ReformingError> {
+        let pre_reform = Calendar::JULIAN.at_jdn(match reformation.checked_sub(1) {
+            Some(jdn) => jdn,
+            None => return Err(ReformingError::InvalidReformation),
+        });
         let post_reform = Calendar::GREGORIAN.at_jdn(reformation);
         let mut ordinal = post_reform.ordinal();
         if post_reform.year % 100 == 0
             && post_reform.year % 400 != 0
-            && post_reform.month > Month::February
+            && Month::February.lt(post_reform.month)
         {
             ordinal += 1;
         }
-        if Calendar::JULIAN.get_jdn(post_reform.year(), ordinal)? <= reformation {
-            return Err(ReformingError::InvalidReformation);
-        }
+        match Calendar::JULIAN.get_jdn(post_reform.year(), ordinal) {
+            Ok(date) if date <= reformation => return Err(ReformingError::InvalidReformation),
+            Ok(_) => (),
+            Err(ArithmeticError) => return Err(ReformingError::Arithmetic),
+        };
         let kind = inner::GapKind::for_dates(
             pre_reform.year,
             pre_reform.month,
