@@ -720,9 +720,9 @@ impl Calendar {
     /// assert_eq!(date.month(), Month::October);
     /// assert_eq!(date.day(), 15);
     /// ```
-    pub fn first_gregorian_date(&self) -> Option<Date> {
+    pub const fn first_gregorian_date(&self) -> Option<Date> {
         if let inner::Calendar::Reforming { reformation, gap } = self.0 {
-            let day_ordinal = if gap.kind == inner::GapKind::IntraMonth {
+            let day_ordinal = if matches!(gap.kind, inner::GapKind::IntraMonth) {
                 gap.pre_reform.day + 1
             } else {
                 1
