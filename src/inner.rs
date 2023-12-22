@@ -93,35 +93,17 @@ pub(crate) struct ReformGap {
 }
 
 impl ReformGap {
-    pub(crate) fn cmp_year(&self, year: i32) -> RangeOrdering {
-        cmp_range(year, self.pre_reform.year, self.post_reform.year)
+    pub(crate) const fn cmp_year(&self, year: i32) -> RangeOrdering {
+        cmp_int_range(year, self.pre_reform.year, self.post_reform.year)
     }
 
-    pub(crate) fn cmp_year_month(&self, year: i32, month: Month) -> RangeOrdering {
-        cmp_range(
+    pub(crate) const fn cmp_year_month(&self, year: i32, month: Month) -> RangeOrdering {
+        cmp_ym_range(
             (year, month),
             (self.pre_reform.year, self.pre_reform.month),
             (self.post_reform.year, self.post_reform.month),
         )
     }
-
-    /*
-    pub(crate) fn cmp_ymd(&self, year: i32, month: Month, day: u32) -> RangeOrdering {
-        cmp_range(
-            (year, month, day),
-            (
-                self.pre_reform.year,
-                self.pre_reform.month,
-                self.pre_reform.day,
-            ),
-            (
-                self.post_reform.year,
-                self.post_reform.month,
-                self.post_reform.day,
-            ),
-        )
-    }
-    */
 }
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
@@ -141,14 +123,14 @@ pub(crate) enum GapKind {
 }
 
 impl GapKind {
-    pub(crate) fn for_dates(
+    pub(crate) const fn for_dates(
         pre_year: i32,
         pre_month: Month,
         post_year: i32,
         post_month: Month,
     ) -> GapKind {
         if pre_year == post_year {
-            if pre_month == post_month {
+            if pre_month.eq(post_month) {
                 GapKind::IntraMonth
             } else {
                 GapKind::CrossMonth
@@ -186,11 +168,11 @@ pub(crate) struct DateParser<'a> {
 }
 
 impl<'a> DateParser<'a> {
-    pub(crate) fn new(data: &'a str) -> Self {
+    pub(crate) const fn new(data: &'a str) -> Self {
         DateParser { data }
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
+    pub(crate) const fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
 
@@ -268,11 +250,11 @@ pub(crate) fn scan<P: FnMut(char) -> bool>(s: &str, mut predicate: P) -> (&str, 
     s.split_at(boundary)
 }
 
-pub(crate) fn is_julian_leap_year(year: i32) -> bool {
+pub(crate) const fn is_julian_leap_year(year: i32) -> bool {
     year % JULIAN_LEAP_CYCLE_YEARS == 0
 }
 
-pub(crate) fn is_gregorian_leap_year(year: i32) -> bool {
+pub(crate) const fn is_gregorian_leap_year(year: i32) -> bool {
     year % JULIAN_LEAP_CYCLE_YEARS == 0 && (year % 100 != 0 || year % GREGORIAN_CYCLE_YEARS == 0)
 }
 
@@ -280,7 +262,7 @@ pub(crate) fn is_gregorian_leap_year(year: i32) -> bool {
 /// the proleptic Julian calendar.
 ///
 /// Valid for all `Jdnum` values.
-pub(crate) fn jdn2julian(jd: Jdnum) -> (i32, u32) {
+pub(crate) const fn jdn2julian(jd: Jdnum) -> (i32, u32) {
     let (year, ordinal) = decompose_julian(jd);
     (year + JDN0_YEAR, ordinal)
 }
@@ -289,15 +271,19 @@ pub(crate) fn jdn2julian(jd: Jdnum) -> (i32, u32) {
 /// corresponding Julian day number.
 ///
 /// Returns None on arithmetic underflow/overflow.
-pub(crate) fn julian2jdn(year: i32, ordinal: u32) -> Option<Jdnum> {
-    compose_julian(sub(year, JDN0_YEAR)?, ordinal)
+pub(crate) const fn julian2jdn(year: i32, ordinal: u32) -> Option<Jdnum> {
+    // Use a match because `?` isn't allowed in const fn's.
+    match year.checked_sub(JDN0_YEAR) {
+        Some(years) => compose_julian(years, ordinal),
+        None => None,
+    }
 }
 
 /// Converts a Julian day number to the corresponding year and day of year in
 /// the proleptic Gregorian calendar.
 ///
 /// Valid for all `Jdnum` values.
-pub(crate) fn jdn2gregorian(jd: Jdnum) -> (i32, u32) {
+pub(crate) const fn jdn2gregorian(jd: Jdnum) -> (i32, u32) {
     const COMMON_CENTURY_DAYS: Jdnum = COMMON_YEAR_LENGTH * 100 + 24;
     // Calculate relative to a nearby quadricentennial.  Shift towards zero in
     // order to avoid overflow/underflow.
@@ -316,7 +302,7 @@ pub(crate) fn jdn2gregorian(jd: Jdnum) -> (i32, u32) {
     let mut quad_point = jd.rem_euclid(GREGORIAN_CYCLE_DAYS);
     // Add a "virtual leap day" to the end of each centennial year after the
     // zeroth so that `decompose_julian()` can be applied.
-    if let Some(after_first_year) = sub(quad_point, LEAP_YEAR_LENGTH) {
+    if let Some(after_first_year) = quad_point.checked_sub(LEAP_YEAR_LENGTH) {
         // This is the one point at which we need to use truncated division
         // rather than Euclidean division.
         quad_point += after_first_year / COMMON_CENTURY_DAYS;
@@ -330,34 +316,40 @@ pub(crate) fn jdn2gregorian(jd: Jdnum) -> (i32, u32) {
 /// corresponding Julian day number.
 ///
 /// Returns None on arithmetic underflow/overflow.
-pub(crate) fn gregorian2jdn(year: i32, ordinal: u32) -> Option<Jdnum> {
+#[allow(clippy::cast_possible_wrap)]
+pub(crate) const fn gregorian2jdn(year: i32, ordinal: u32) -> Option<Jdnum> {
+    // Tuple comparison doesn't work in const contexts
+    if year < -5884323
+        || (year == -5884323 && ordinal < 135)
+        || (year == 5874898 && ordinal > 154)
+        || year > 5874898
+    {
+        // Would overflow/underflow
+        return None;
+    }
     // JDN 0 = day 328 of year -4713 in the proleptic Gregorian calendar
     // Number of centennials from -4713 through `year`
     //   = ceil((year + 4700) / 100)  [real division]
     //   = (year + 4700 + 99) / 100   [Euclidean division]
     //   = (year + 4800 - 1) / 100
     //   = (year - 1) / 100 + 48
-    let centennials = sub(year, 1)?.div_euclid(100) + 48;
+    let centennials = (year - 1).div_euclid(100) + 48;
     // Number of quadricentennials from -4713 through `year`
     let quads = centennials.div_euclid(4);
-    let ydiff = add(year, 4712)?;
+    let ydiff = year + 4712;
     // Number of leap days from the start of -4712 up to (but not
     // including) the start of `year`
     // Subtract one leap day for each non-leap centennial
     //   = subtract `centennials - quads`
-    let leap_days = sub(
-        // We can't use `compose_julian()` here, as that order of
-        // operations (specifically, not subtracting `centennials - quads`
-        // in the middle) would lead to overflow for some JDN less than
-        // Jdnum::MAX.
-        add(ydiff, JULIAN_LEAP_CYCLE_YEARS - 1)?.div_euclid(JULIAN_LEAP_CYCLE_YEARS),
-        centennials - quads,
-    )?;
-    let year_days = mul(ydiff, COMMON_YEAR_LENGTH)?;
+    // We can't use `compose_julian()` here, as that order of operations
+    // (specifically, not subtracting `centennials - quads` in the middle)
+    // would lead to overflow for some JDN less than Jdnum::MAX.
+    let leap_days = (ydiff + (JULIAN_LEAP_CYCLE_YEARS - 1)).div_euclid(JULIAN_LEAP_CYCLE_YEARS)
+        - (centennials - quads);
+    let year_days = ydiff * COMMON_YEAR_LENGTH;
     // Add 38 (JDN of -4712-01-01 N.S.)
-    let offset =
-        Jdnum::try_from(ordinal - 1).expect("ordinal minus one should fix in Jdnum type") + 38;
-    add(add(year_days, offset)?, leap_days)
+    let offset = ((ordinal - 1) as Jdnum) + 38;
+    Some((year_days + offset) + leap_days)
 }
 
 /// Given a number of days from the start of a period in which every fourth
@@ -368,7 +360,8 @@ pub(crate) fn gregorian2jdn(year: i32, ordinal: u32) -> Option<Jdnum> {
 /// of the year will be positive.
 ///
 /// Valid for all `Jdnum` values.
-fn decompose_julian(days: Jdnum) -> (i32, u32) {
+#[allow(clippy::cast_sign_loss)]
+const fn decompose_julian(days: Jdnum) -> (i32, u32) {
     let mut year: i32 = days.div_euclid(JULIAN_LEAP_CYCLE_DAYS) * JULIAN_LEAP_CYCLE_YEARS;
     let mut ordinal: Jdnum = days.rem_euclid(JULIAN_LEAP_CYCLE_DAYS);
     // Add a "virtual leap day" to the end of each common year so that
@@ -378,10 +371,7 @@ fn decompose_julian(days: Jdnum) -> (i32, u32) {
     }
     year += ordinal.div_euclid(LEAP_YEAR_LENGTH);
     ordinal %= LEAP_YEAR_LENGTH;
-    (
-        year,
-        u32::try_from(ordinal + 1).expect("ordinal plus one should fit in u32"),
-    )
+    (year, (ordinal + 1) as u32)
 }
 
 /// Given a (possibly negative) number of years and a one-based positive day of
@@ -389,53 +379,110 @@ fn decompose_julian(days: Jdnum) -> (i32, u32) {
 /// the initial zero year, return the total number of days.
 ///
 /// Returns `None` on arithmetic underflow/overflow.
-fn compose_julian(years: i32, ordinal: u32) -> Option<Jdnum> {
+#[allow(clippy::cast_possible_wrap)]
+const fn compose_julian(years: i32, ordinal: u32) -> Option<Jdnum> {
+    // Tuple comparison doesn't work in const contexts
+    if years < -5879490
+        || (years == -5879490 && ordinal < 75)
+        || (years == 5879489 && ordinal > 290)
+        || years > 5879489
+    {
+        // Would overflow/underflow
+        return None;
+    }
     debug_assert!(
         ordinal > 0,
         "compose_julian: ordinal must be greater than zero"
     );
-    let common_days = mul(years, COMMON_YEAR_LENGTH)?;
-    let leap_days = add(years, JULIAN_LEAP_CYCLE_YEARS - 1)?.div_euclid(JULIAN_LEAP_CYCLE_YEARS);
-    add(
-        common_days,
-        add(
-            leap_days,
-            Jdnum::try_from(ordinal - 1).expect("ordinal minus one should fix in Jdnum type"),
-        )?,
-    )
+    let common_days = years * COMMON_YEAR_LENGTH;
+    let leap_days = (years + JULIAN_LEAP_CYCLE_YEARS - 1).div_euclid(JULIAN_LEAP_CYCLE_YEARS);
+    // Add `leap_days + (ordinal - 1)` first to avoid underflow when
+    // `common_days` and `leap_days` are both negative numbers of large
+    // magnitude:
+    Some(common_days + (leap_days + ((ordinal - 1) as Jdnum)))
 }
 
-#[inline]
-fn add(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
-    x.checked_add(y)
+const fn cmp_int_range(value: i32, lower: i32, upper: i32) -> RangeOrdering {
+    debug_assert!(lower <= upper);
+    if value < lower {
+        RangeOrdering::Less
+    } else if lower == value {
+        if value < upper {
+            RangeOrdering::EqLower
+        } else {
+            // debug_assert_eq! isn't const.
+            debug_assert!(value == upper);
+            RangeOrdering::EqBoth
+        }
+    } else {
+        debug_assert!(lower < value);
+        if value < upper {
+            RangeOrdering::Between
+        } else if value == upper {
+            RangeOrdering::EqUpper
+        } else {
+            debug_assert!(upper < value);
+            RangeOrdering::Greater
+        }
+    }
 }
 
-#[inline]
-fn sub(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
-    x.checked_sub(y)
-}
-
-#[inline]
-fn mul(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
-    x.checked_mul(y)
-}
-
-// There is no need to check division, as it only fails with a divisor of zero
-// or negative one, which we're not using.
-
-pub(crate) fn cmp_range<T: Ord + std::fmt::Debug>(value: T, lower: T, upper: T) -> RangeOrdering {
-    assert!(
-        lower <= upper,
-        "cmp_range: expected lower <= upper; got lower={lower:?}, upper={upper:?}"
+const fn cmp_ym_range(
+    value: (i32, Month),
+    lower: (i32, Month),
+    upper: (i32, Month),
+) -> RangeOrdering {
+    let (year, month) = value;
+    let (lower_year, lower_month) = lower;
+    let (upper_year, upper_month) = upper;
+    debug_assert!(
+        lower_year < upper_year || (lower_year == upper_year && lower_month.le(upper_month))
     );
-    match (value.cmp(&lower), value.cmp(&upper)) {
-        (Ordering::Less, _) => RangeOrdering::Less,
-        (Ordering::Equal, Ordering::Less) => RangeOrdering::EqLower,
-        (Ordering::Equal, Ordering::Equal) => RangeOrdering::EqBoth,
-        (Ordering::Equal, Ordering::Greater) => unreachable!(),
-        (Ordering::Greater, Ordering::Less) => RangeOrdering::Between,
-        (Ordering::Greater, Ordering::Equal) => RangeOrdering::EqUpper,
-        (Ordering::Greater, Ordering::Greater) => RangeOrdering::Greater,
+    if year < lower_year {
+        RangeOrdering::Less
+    } else if lower_year == year {
+        if month.lt(lower_month) {
+            RangeOrdering::Less
+        } else if month.eq(lower_month) {
+            if year < upper_year || (year == upper_year && month.lt(upper_month)) {
+                RangeOrdering::EqLower
+            } else {
+                debug_assert!(year == upper_year && month.eq(upper_month));
+                RangeOrdering::EqBoth
+            }
+        } else {
+            debug_assert!(lower_month.lt(month));
+            if year < upper_year {
+                RangeOrdering::Between
+            } else {
+                debug_assert!(year == upper_year);
+                if month.lt(upper_month) {
+                    RangeOrdering::Between
+                } else if month.eq(upper_month) {
+                    RangeOrdering::EqUpper
+                } else {
+                    debug_assert!(upper_month.lt(month));
+                    RangeOrdering::Greater
+                }
+            }
+        }
+    } else {
+        debug_assert!(lower_year < year);
+        if year < upper_year {
+            RangeOrdering::Between
+        } else if year == upper_year {
+            if month.lt(upper_month) {
+                RangeOrdering::Between
+            } else if month.eq(upper_month) {
+                RangeOrdering::EqUpper
+            } else {
+                debug_assert!(upper_month.lt(month));
+                RangeOrdering::Greater
+            }
+        } else {
+            debug_assert!(upper_year < year);
+            RangeOrdering::Greater
+        }
     }
 }
 
@@ -458,6 +505,8 @@ mod tests {
     #[template]
     #[rstest]
     #[case(-2147483648, -5879490, 75)]
+    #[case(-2147483647, -5879490, 76)]
+    #[case(-2147483284, -5879489, 74)]
     #[case(-1462, -5, 365)]
     #[case(-1461, -4, 1)]
     #[case(-1096, -4, 366)]
@@ -480,6 +529,8 @@ mod tests {
     #[case(1461, 4, 1)]
     #[case(1826, 4, 366)]
     #[case(1827, 5, 1)]
+    #[case(2147483282, 5879488, 291)]
+    #[case(2147483646, 5879489, 289)]
     #[case(2147483647, 5879489, 290)]
     fn year_days(#[case] days: Jdnum, #[case] years: i32, #[case] ordinal: u32) {}
 
@@ -491,6 +542,15 @@ mod tests {
     #[apply(year_days)]
     fn test_compose_julian(#[case] days: Jdnum, #[case] years: i32, #[case] ordinal: u32) {
         assert_eq!(compose_julian(years, ordinal), Some(days));
+    }
+
+    #[rstest]
+    #[case(-5879491, 76)]
+    #[case(-5879490, 74)]
+    #[case(5879489, 291)]
+    #[case(5879490, 289)]
+    fn test_compose_julian_out_of_bounds(#[case] years: i32, #[case] ordinal: u32) {
+        assert_eq!(compose_julian(years, ordinal), None);
     }
 
     #[template]
@@ -535,6 +595,8 @@ mod tests {
     #[template]
     #[rstest]
     #[case(-2147483648, -5884323, 135)]
+    #[case(-2147483647, -5884323, 136)]
+    #[case(-2147483284, -5884322, 134)]
     #[case(-214725, -5300, 1)]
     #[case(-178201, -5200, 1)]
     #[case(-141676, -5100, 1)]
@@ -579,6 +641,8 @@ mod tests {
     #[case(113993, -4400, 1)]
     #[case(114358, -4400, 366)]
     #[case(150518, -4300, 1)]
+    #[case(2147483283, 5874897, 155)]
+    #[case(2147483646, 5874898, 153)]
     #[case(2147483647, 5874898, 154)]
     fn jd_gregorian_yj(#[case] jd: Jdnum, #[case] year: i32, #[case] ordinal: u32) {}
 
@@ -592,36 +656,120 @@ mod tests {
         assert_eq!(gregorian2jdn(year, ordinal), Some(jd));
     }
 
-    #[test]
-    fn test_gregorian_to_pre_min_jdn() {
-        assert_eq!(gregorian2jdn(-5884323, 134), None);
+    #[rstest]
+    #[case(-5884324, 136)]
+    #[case(-5884323, 134)]
+    #[case(5874898, 155)]
+    #[case(5874899, 153)]
+    fn test_gregorian2jdn_out_of_bounds(#[case] year: i32, #[case] ordinal: u32) {
+        assert_eq!(gregorian2jdn(year, ordinal), None);
     }
 
     #[test]
-    fn test_gregorian_to_past_max_jdn() {
-        assert_eq!(gregorian2jdn(5874898, 155), None);
-    }
-
-    #[test]
-    fn cmp_nontrivial_range() {
+    fn cmp_nontrivial_int_range() {
         use RangeOrdering::*;
-        assert_eq!(cmp_range(1, 5, 10), Less);
-        assert_eq!(cmp_range(4, 5, 10), Less);
-        assert_eq!(cmp_range(5, 5, 10), EqLower);
-        assert_eq!(cmp_range(6, 5, 10), Between);
-        assert_eq!(cmp_range(10, 5, 10), EqUpper);
-        assert_eq!(cmp_range(11, 5, 10), Greater);
-        assert_eq!(cmp_range(15, 5, 10), Greater);
+        assert_eq!(cmp_int_range(1, 5, 10), Less);
+        assert_eq!(cmp_int_range(4, 5, 10), Less);
+        assert_eq!(cmp_int_range(5, 5, 10), EqLower);
+        assert_eq!(cmp_int_range(6, 5, 10), Between);
+        assert_eq!(cmp_int_range(10, 5, 10), EqUpper);
+        assert_eq!(cmp_int_range(11, 5, 10), Greater);
+        assert_eq!(cmp_int_range(15, 5, 10), Greater);
     }
 
     #[test]
-    fn cmp_trivial_range() {
+    fn cmp_trivial_int_range() {
         use RangeOrdering::*;
-        assert_eq!(cmp_range(1, 7, 7), Less);
-        assert_eq!(cmp_range(6, 7, 7), Less);
-        assert_eq!(cmp_range(7, 7, 7), EqBoth);
-        assert_eq!(cmp_range(8, 7, 7), Greater);
-        assert_eq!(cmp_range(10, 7, 7), Greater);
+        assert_eq!(cmp_int_range(1, 7, 7), Less);
+        assert_eq!(cmp_int_range(6, 7, 7), Less);
+        assert_eq!(cmp_int_range(7, 7, 7), EqBoth);
+        assert_eq!(cmp_int_range(8, 7, 7), Greater);
+        assert_eq!(cmp_int_range(10, 7, 7), Greater);
+    }
+
+    #[rstest]
+    #[case(1999, Month::January, RangeOrdering::Less)]
+    #[case(1999, Month::April, RangeOrdering::Less)]
+    #[case(1999, Month::June, RangeOrdering::Less)]
+    #[case(1999, Month::August, RangeOrdering::Less)]
+    #[case(1999, Month::December, RangeOrdering::Less)]
+    #[case(2020, Month::January, RangeOrdering::Less)]
+    #[case(2020, Month::April, RangeOrdering::Less)]
+    #[case(2020, Month::July, RangeOrdering::Less)]
+    #[case(2020, Month::August, RangeOrdering::EqLower)]
+    #[case(2020, Month::September, RangeOrdering::Between)]
+    #[case(2020, Month::December, RangeOrdering::Between)]
+    #[case(2022, Month::January, RangeOrdering::Between)]
+    #[case(2022, Month::April, RangeOrdering::Between)]
+    #[case(2022, Month::June, RangeOrdering::Between)]
+    #[case(2022, Month::August, RangeOrdering::Between)]
+    #[case(2022, Month::December, RangeOrdering::Between)]
+    #[case(2023, Month::March, RangeOrdering::Between)]
+    #[case(2023, Month::April, RangeOrdering::EqUpper)]
+    #[case(2023, Month::June, RangeOrdering::Greater)]
+    #[case(2023, Month::July, RangeOrdering::Greater)]
+    #[case(2023, Month::August, RangeOrdering::Greater)]
+    #[case(2023, Month::September, RangeOrdering::Greater)]
+    #[case(2023, Month::December, RangeOrdering::Greater)]
+    #[case(2525, Month::January, RangeOrdering::Greater)]
+    #[case(2525, Month::April, RangeOrdering::Greater)]
+    #[case(2525, Month::June, RangeOrdering::Greater)]
+    #[case(2525, Month::August, RangeOrdering::Greater)]
+    #[case(2525, Month::December, RangeOrdering::Greater)]
+    fn cmp_multi_year_ym_range(#[case] year: i32, #[case] month: Month, #[case] r: RangeOrdering) {
+        assert_eq!(
+            cmp_ym_range((year, month), (2020, Month::August), (2023, Month::April)),
+            r
+        );
+    }
+
+    #[rstest]
+    #[case(2022, Month::February, RangeOrdering::Less)]
+    #[case(2022, Month::April, RangeOrdering::Less)]
+    #[case(2022, Month::June, RangeOrdering::Less)]
+    #[case(2022, Month::August, RangeOrdering::Less)]
+    #[case(2022, Month::December, RangeOrdering::Less)]
+    #[case(2023, Month::January, RangeOrdering::Less)]
+    #[case(2023, Month::March, RangeOrdering::Less)]
+    #[case(2023, Month::April, RangeOrdering::EqLower)]
+    #[case(2023, Month::May, RangeOrdering::Between)]
+    #[case(2023, Month::July, RangeOrdering::Between)]
+    #[case(2023, Month::August, RangeOrdering::EqUpper)]
+    #[case(2023, Month::September, RangeOrdering::Greater)]
+    #[case(2023, Month::December, RangeOrdering::Greater)]
+    #[case(2024, Month::January, RangeOrdering::Greater)]
+    #[case(2024, Month::April, RangeOrdering::Greater)]
+    #[case(2024, Month::June, RangeOrdering::Greater)]
+    #[case(2024, Month::August, RangeOrdering::Greater)]
+    #[case(2024, Month::October, RangeOrdering::Greater)]
+    fn cmp_single_year_ym_range(#[case] year: i32, #[case] month: Month, #[case] r: RangeOrdering) {
+        assert_eq!(
+            cmp_ym_range((year, month), (2023, Month::April), (2023, Month::August)),
+            r
+        );
+    }
+
+    #[rstest]
+    #[case(2022, Month::January, RangeOrdering::Less)]
+    #[case(2022, Month::June, RangeOrdering::Less)]
+    #[case(2022, Month::July, RangeOrdering::Less)]
+    #[case(2022, Month::August, RangeOrdering::Less)]
+    #[case(2022, Month::December, RangeOrdering::Less)]
+    #[case(2023, Month::January, RangeOrdering::Less)]
+    #[case(2023, Month::June, RangeOrdering::Less)]
+    #[case(2023, Month::July, RangeOrdering::EqBoth)]
+    #[case(2023, Month::August, RangeOrdering::Greater)]
+    #[case(2023, Month::October, RangeOrdering::Greater)]
+    #[case(2024, Month::January, RangeOrdering::Greater)]
+    #[case(2024, Month::June, RangeOrdering::Greater)]
+    #[case(2024, Month::July, RangeOrdering::Greater)]
+    #[case(2024, Month::August, RangeOrdering::Greater)]
+    #[case(2024, Month::December, RangeOrdering::Greater)]
+    fn cmp_trivial_ym_range(#[case] year: i32, #[case] month: Month, #[case] r: RangeOrdering) {
+        assert_eq!(
+            cmp_ym_range((year, month), (2023, Month::July), (2023, Month::July)),
+            r
+        );
     }
 
     #[test]

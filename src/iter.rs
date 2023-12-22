@@ -14,7 +14,7 @@ pub struct Days {
 }
 
 impl Days {
-    pub(crate) fn new(month_shape: MonthShape) -> Self {
+    pub(crate) const fn new(month_shape: MonthShape) -> Self {
         Days {
             month_shape,
             inner: 1..=(month_shape.len()),
@@ -55,7 +55,7 @@ pub struct Dates {
 }
 
 impl Dates {
-    pub(crate) fn new(month_shape: MonthShape) -> Self {
+    pub(crate) const fn new(month_shape: MonthShape) -> Self {
         Dates {
             month_shape,
             inner: 1..=(month_shape.len()),
@@ -98,7 +98,7 @@ pub struct Later {
 }
 
 impl Later {
-    pub(crate) fn new(date: Date) -> Later {
+    pub(crate) const fn new(date: Date) -> Later {
         Later { date: Some(date) }
     }
 }
@@ -127,7 +127,7 @@ pub struct Earlier {
 }
 
 impl Earlier {
-    pub(crate) fn new(date: Date) -> Earlier {
+    pub(crate) const fn new(date: Date) -> Earlier {
         Earlier { date: Some(date) }
     }
 }
@@ -156,7 +156,7 @@ pub struct AndLater {
 }
 
 impl AndLater {
-    pub(crate) fn new(date: Date) -> AndLater {
+    pub(crate) const fn new(date: Date) -> AndLater {
         AndLater { date: Some(date) }
     }
 }
@@ -186,7 +186,7 @@ pub struct AndEarlier {
 }
 
 impl AndEarlier {
-    pub(crate) fn new(date: Date) -> AndEarlier {
+    pub(crate) const fn new(date: Date) -> AndEarlier {
         AndEarlier { date: Some(date) }
     }
 }
@@ -230,7 +230,7 @@ pub struct MonthIter(RangeInclusive<u16>);
 
 impl MonthIter {
     /// Construct a new `MonthIter`
-    pub fn new() -> MonthIter {
+    pub const fn new() -> MonthIter {
         MonthIter(1..=12)
     }
 }

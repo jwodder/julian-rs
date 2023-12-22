@@ -250,26 +250,26 @@ pub enum YearKind {
 
 impl YearKind {
     /// Returns true if the year kind is `Common` or `ReformCommon`
-    pub fn is_common(&self) -> bool {
+    pub const fn is_common(&self) -> bool {
         use YearKind::*;
         matches!(self, Common | ReformCommon)
     }
 
     /// Returns true if the year kind is `Leap` or `ReformLeap`
-    pub fn is_leap(&self) -> bool {
+    pub const fn is_leap(&self) -> bool {
         use YearKind::*;
         matches!(self, Leap | ReformLeap)
     }
 
     /// Returns true if the year kind is `ReformCommon` or `ReformLeap`
-    pub fn is_reform(&self) -> bool {
+    pub const fn is_reform(&self) -> bool {
         use YearKind::*;
         matches!(self, ReformCommon | ReformLeap)
     }
 
     /// Returns true if the year kind is `Skipped`
-    pub fn is_skipped(&self) -> bool {
-        self == &YearKind::Skipped
+    pub const fn is_skipped(&self) -> bool {
+        matches!(self, YearKind::Skipped)
     }
 }
 
@@ -342,23 +342,24 @@ impl Calendar {
     /// occurs while converting `reformation` to a calendar date.  This can
     /// only happen for Julian day numbers greater than 2147439588
     /// (corresponding to the date 5874777-10-17 N.S. or 5874657-03-02 O.S.).
-    pub fn reforming(reformation: Jdnum) -> Result<Calendar, ReformingError> {
-        let pre_reform = Calendar::JULIAN.at_jdn(
-            reformation
-                .checked_sub(1)
-                .ok_or(ReformingError::InvalidReformation)?,
-        );
+    pub const fn reforming(reformation: Jdnum) -> Result<Calendar, ReformingError> {
+        let pre_reform = Calendar::JULIAN.at_jdn(match reformation.checked_sub(1) {
+            Some(jdn) => jdn,
+            None => return Err(ReformingError::InvalidReformation),
+        });
         let post_reform = Calendar::GREGORIAN.at_jdn(reformation);
         let mut ordinal = post_reform.ordinal();
         if post_reform.year % 100 == 0
             && post_reform.year % 400 != 0
-            && post_reform.month > Month::February
+            && Month::February.lt(post_reform.month)
         {
             ordinal += 1;
         }
-        if Calendar::JULIAN.get_jdn(post_reform.year(), ordinal)? <= reformation {
-            return Err(ReformingError::InvalidReformation);
-        }
+        match Calendar::JULIAN.get_jdn(post_reform.year(), ordinal) {
+            Ok(date) if date <= reformation => return Err(ReformingError::InvalidReformation),
+            Ok(_) => (),
+            Err(ArithmeticError) => return Err(ReformingError::Arithmetic),
+        };
         let kind = inner::GapKind::for_dates(
             pre_reform.year,
             pre_reform.month,
@@ -447,9 +448,11 @@ impl Calendar {
     /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs while
     /// converting the time.  This can only happen if the timestamp is less
     /// than -185753453990400 or greater than 185331720383999.
-    pub fn at_unix_time(&self, unix_time: i64) -> Result<(Date, u32), ArithmeticError> {
-        let (jdn, secs) = unix2jdn(unix_time)?;
-        Ok((self.at_jdn(jdn), secs))
+    pub const fn at_unix_time(&self, unix_time: i64) -> Result<(Date, u32), ArithmeticError> {
+        match unix2jdn(unix_time) {
+            Ok((jdn, secs)) => Ok((self.at_jdn(jdn), secs)),
+            Err(e) => Err(e),
+        }
     }
 
     /// Returns the date of the calendar with the given year, month, and day of
@@ -485,10 +488,16 @@ impl Calendar {
     /// while calculating the date's Julian day number.  This can only happen
     /// for dates before -5884323-05-15 (-5884202-03-16 O.S.) or after
     /// 5874898-06-03 (5874777-10-17 O.S.).
-    pub fn at_ymd(&self, year: i32, month: Month, day: u32) -> Result<Date, DateError> {
-        let day_ordinal = self.get_day_ordinal(year, month, day)?;
+    pub const fn at_ymd(&self, year: i32, month: Month, day: u32) -> Result<Date, DateError> {
+        let day_ordinal = match self.get_day_ordinal(year, month, day) {
+            Ok(d) => d,
+            Err(e) => return Err(e),
+        };
         let ordinal = self.ymdo2ordinal(year, month, day_ordinal);
-        let jdn = self.get_jdn(year, ordinal)?;
+        let jdn = match self.get_jdn(year, ordinal) {
+            Ok(jdn) => jdn,
+            Err(ArithmeticError) => return Err(DateError::Arithmetic),
+        };
         Ok(Date {
             calendar: *self,
             year,
@@ -524,9 +533,15 @@ impl Calendar {
     /// while calculating the date's Julian day number.  This can only happen
     /// for dates before -5884323-135 (-5884202-075 O.S.) or after 5874898-154
     /// (5874777-290 O.S.).
-    pub fn at_ordinal_date(&self, year: i32, ordinal: u32) -> Result<Date, DateError> {
-        let (month, day, day_ordinal) = self.ordinal2ymddo(year, ordinal)?;
-        let jdn = self.get_jdn(year, ordinal)?;
+    pub const fn at_ordinal_date(&self, year: i32, ordinal: u32) -> Result<Date, DateError> {
+        let (month, day, day_ordinal) = match self.ordinal2ymddo(year, ordinal) {
+            Ok(mdo) => mdo,
+            Err(e) => return Err(e),
+        };
+        let jdn = match self.get_jdn(year, ordinal) {
+            Ok(jdn) => jdn,
+            Err(ArithmeticError) => return Err(DateError::Arithmetic),
+        };
         Ok(Date {
             calendar: *self,
             year,
@@ -551,9 +566,9 @@ impl Calendar {
     /// assert_eq!(date.month(), Month::April);
     /// assert_eq!(date.day(), 30);
     /// ```
-    pub fn at_jdn(&self, jdn: Jdnum) -> Date {
+    pub const fn at_jdn(&self, jdn: Jdnum) -> Date {
         use inner::Calendar::*;
-        let (year, mut ordinal) = if self.0 == Julian
+        let (year, mut ordinal) = if matches!(self.0, Julian)
             || matches!(self.0, Reforming { reformation, .. } if jdn < reformation)
         {
             inner::jdn2julian(jdn)
@@ -566,7 +581,7 @@ impl Calendar {
             }
         }
         let Ok((month, day, day_ordinal)) = self.ordinal2ymddo(year, ordinal) else {
-            unreachable!("ordinal should be within range for year");
+            unreachable!();
         };
         Date {
             calendar: *self,
@@ -632,7 +647,7 @@ impl Calendar {
     /// assert!(Calendar::GREGORIAN.is_proleptic());
     /// assert!(!Calendar::REFORM1582.is_proleptic());
     /// ```
-    pub fn is_proleptic(&self) -> bool {
+    pub const fn is_proleptic(&self) -> bool {
         matches!(self.0, inner::Calendar::Julian | inner::Calendar::Gregorian)
     }
 
@@ -647,13 +662,13 @@ impl Calendar {
     /// assert!(!Calendar::GREGORIAN.is_reforming());
     /// assert!(Calendar::REFORM1582.is_reforming());
     /// ```
-    pub fn is_reforming(&self) -> bool {
+    pub const fn is_reforming(&self) -> bool {
         matches!(self.0, inner::Calendar::Reforming { .. })
     }
 
     /// If this is a "reforming" calendar, returns the Julian day number of the
     /// reformation (the first day on which the Gregorian calendar is used)
-    pub fn reformation(&self) -> Option<Jdnum> {
+    pub const fn reformation(&self) -> Option<Jdnum> {
         if let inner::Calendar::Reforming { reformation, .. } = self.0 {
             Some(reformation)
         } else {
@@ -675,7 +690,7 @@ impl Calendar {
     /// assert_eq!(date.month(), Month::October);
     /// assert_eq!(date.day(), 4);
     /// ```
-    pub fn last_julian_date(&self) -> Option<Date> {
+    pub const fn last_julian_date(&self) -> Option<Date> {
         if let inner::Calendar::Reforming { reformation, gap } = self.0 {
             Some(Date {
                 calendar: *self,
@@ -705,9 +720,9 @@ impl Calendar {
     /// assert_eq!(date.month(), Month::October);
     /// assert_eq!(date.day(), 15);
     /// ```
-    pub fn first_gregorian_date(&self) -> Option<Date> {
+    pub const fn first_gregorian_date(&self) -> Option<Date> {
         if let inner::Calendar::Reforming { reformation, gap } = self.0 {
-            let day_ordinal = if gap.kind == inner::GapKind::IntraMonth {
+            let day_ordinal = if matches!(gap.kind, inner::GapKind::IntraMonth) {
                 gap.pre_reform.day + 1
             } else {
                 1
@@ -743,7 +758,7 @@ impl Calendar {
     /// assert_eq!(cal2.year_kind(48901), YearKind::Skipped);
     /// assert_eq!(cal2.year_kind(48902), YearKind::Common);
     /// ```
-    pub fn year_kind(&self, year: i32) -> YearKind {
+    pub const fn year_kind(&self, year: i32) -> YearKind {
         match self.0 {
             inner::Calendar::Julian => {
                 if inner::is_julian_leap_year(year) {
@@ -770,13 +785,16 @@ impl Calendar {
                         }
                     }
                     EqLower => {
-                        if (gap.pre_reform.month, gap.pre_reform.day) == (Month::December, 31) {
+                        if matches!(
+                            (gap.pre_reform.month, gap.pre_reform.day),
+                            (Month::December, 31)
+                        ) {
                             if inner::is_julian_leap_year(year) {
                                 YearKind::Leap
                             } else {
                                 YearKind::Common
                             }
-                        } else if Month::February < gap.pre_reform.month
+                        } else if Month::February.lt(gap.pre_reform.month)
                             && inner::is_julian_leap_year(year)
                         {
                             YearKind::ReformLeap
@@ -786,9 +804,9 @@ impl Calendar {
                     }
                     Between => YearKind::Skipped,
                     EqBoth => {
-                        if (Month::February < gap.pre_reform.month
+                        if (Month::February.lt(gap.pre_reform.month)
                             && inner::is_julian_leap_year(year))
-                            || (gap.post_reform.month <= Month::February
+                            || (gap.post_reform.month.le(Month::February)
                                 && inner::is_gregorian_leap_year(year))
                         {
                             YearKind::ReformLeap
@@ -797,13 +815,16 @@ impl Calendar {
                         }
                     }
                     EqUpper => {
-                        if (gap.post_reform.month, gap.post_reform.day) == (Month::January, 1) {
+                        if matches!(
+                            (gap.post_reform.month, gap.post_reform.day),
+                            (Month::January, 1)
+                        ) {
                             if inner::is_gregorian_leap_year(year) {
                                 YearKind::Leap
                             } else {
                                 YearKind::Common
                             }
-                        } else if gap.post_reform.month <= Month::February
+                        } else if gap.post_reform.month.le(Month::February)
                             && inner::is_gregorian_leap_year(year)
                         {
                             YearKind::ReformLeap
@@ -843,7 +864,7 @@ impl Calendar {
     /// assert_eq!(cal2.year_length(48901), 0);
     /// assert_eq!(cal2.year_length(48902), 365);
     /// ```
-    pub fn year_length(&self, year: i32) -> u32 {
+    pub const fn year_length(&self, year: i32) -> u32 {
         match self.0 {
             inner::Calendar::Julian | inner::Calendar::Gregorian => match self.year_kind(year) {
                 YearKind::Common => COMMON_YEAR_LENGTH as u32,
@@ -854,7 +875,7 @@ impl Calendar {
                 YearKind::Common => COMMON_YEAR_LENGTH as u32,
                 YearKind::Leap => LEAP_YEAR_LENGTH as u32,
                 k @ (YearKind::ReformCommon | YearKind::ReformLeap) => {
-                    let length = if k == YearKind::ReformCommon {
+                    let length = if matches!(k, YearKind::ReformCommon) {
                         COMMON_YEAR_LENGTH as u32
                     } else {
                         LEAP_YEAR_LENGTH as u32
@@ -866,11 +887,10 @@ impl Calendar {
                         // because the `pre_reform.ordinal` subtrahend that
                         // produced it counted the leap day but the
                         // `post_reform.ordinal` minuend did not.
-                        let correction =
-                            u32::from(year % 100 == 0 && year % 400 != 0 && k.is_leap());
+                        let correction = (year % 100 == 0 && year % 400 != 0 && k.is_leap()) as u32;
                         length - gap.ordinal_gap - correction
                     } else {
-                        debug_assert!(year == gap.pre_reform.year, "A reform year that is not the post-reform year should equal the pre-reform year, but year={year:?} != gap.pre_reform.year={:?}", gap.pre_reform.year);
+                        debug_assert!(year == gap.pre_reform.year);
                         gap.pre_reform.ordinal
                     }
                 }
@@ -885,7 +905,7 @@ impl Calendar {
     /// Returns `None` if the month was completely skipped by a calendar
     /// reformation.  This can only happen for reformations of at least JDN
     /// 3145930 (3901-03-01 in the Gregorian calendar).
-    pub fn month_shape(&self, year: i32, month: Month) -> Option<MonthShape> {
+    pub const fn month_shape(&self, year: i32, month: Month) -> Option<MonthShape> {
         use inner::RangeOrdering::*;
         use Month::*;
         let length = match month {
@@ -894,7 +914,7 @@ impl Calendar {
                 if self.year_kind(year).is_leap() {
                     29
                 } else if let Some(gap) = self.gap() {
-                    if gap.cmp_year_month(year, February) == EqLower {
+                    if matches!(gap.cmp_year_month(year, February), EqLower) {
                         29
                     } else {
                         28
@@ -917,7 +937,7 @@ impl Calendar {
         let inshape = if let Some(gap) = self.gap() {
             match gap.cmp_year_month(year, month) {
                 EqLower | EqBoth => {
-                    if gap.kind == inner::GapKind::IntraMonth {
+                    if matches!(gap.kind, inner::GapKind::IntraMonth) {
                         inner::MonthShape::Gapped {
                             gap_start: gap.pre_reform.day + 1,
                             gap_end: gap.post_reform.day - 1,
@@ -957,9 +977,14 @@ impl Calendar {
     ///
     /// Returns [`DateError::OrdinalOutOfRange`] if `ordinal` is zero or
     /// greater than the length of the year.
-    fn ordinal2ymddo(&self, year: i32, ordinal: u32) -> Result<(Month, u32, u32), DateError> {
+    // Silence false positive warning from assigning to `days` in
+    // `for_month!()` without using it again in the macro; cf.
+    // <https://github.com/rust-lang/rust/issues/24580>
+    #[allow(unused_assignments)]
+    const fn ordinal2ymddo(&self, year: i32, ordinal: u32) -> Result<(Month, u32, u32), DateError> {
+        use Month::*;
         let max_ordinal = self.year_length(year);
-        if !(1..=max_ordinal).contains(&ordinal) {
+        if ordinal < 1 || ordinal > max_ordinal {
             return Err(DateError::OrdinalOutOfRange {
                 year,
                 ordinal,
@@ -967,26 +992,54 @@ impl Calendar {
             });
         }
         let mut days = ordinal;
-        for month in MonthIter::new() {
-            if let Some(shape) = self.month_shape(year, month) {
-                if let Some(day) = shape.nth_day(days) {
-                    return Ok((month, day, days));
-                }
-                days -= shape.len();
+        // Iteration isn't allowed in const functions, so we need to manually —
+        // er, macro-ly — unroll the loop.
+        macro_rules! for_month {
+            ($($m:expr),*) => {
+                $(
+                    if let Some(shape) = self.month_shape(year, $m) {
+                        if let Some(day) = shape.nth_day(days) {
+                            return Ok(($m, day, days));
+                        }
+                        days -= shape.len();
+                    }
+                )*
             }
         }
+        for_month!(
+            January, February, March, April, May, June, July, August, September, October, November,
+            December
+        );
         unreachable!()
     }
 
     /// [Private] Calculate the day of year for a given year, month, and day
     /// ordinal of month.  The day ordinal must be valid for the given month;
     /// otherwise, the result will be garbage.
-    fn ymdo2ordinal(&self, year: i32, month: Month, day_ordinal: u32) -> u32 {
-        MonthIter::new()
-            .take_while(|&m| m < month)
-            .filter_map(|m| self.month_shape(year, m).map(|ms| ms.len()))
-            .sum::<u32>()
-            + day_ordinal
+    // Silence false positive warning from assigning to `result` in
+    // `for_month!()` without using it again in the macro; cf.
+    // <https://github.com/rust-lang/rust/issues/24580>
+    #[allow(unused_assignments)]
+    const fn ymdo2ordinal(&self, year: i32, month: Month, day_ordinal: u32) -> u32 {
+        use Month::*;
+        let mut result = 0;
+        macro_rules! for_month {
+            ($($m:expr),*) => {
+                $(
+                    if $m.eq(month) {
+                        return result + day_ordinal;
+                    }
+                    if let Some(ms) = self.month_shape(year, $m) {
+                        result += ms.len();
+                    }
+                )*
+            }
+        }
+        for_month!(
+            January, February, March, April, May, June, July, August, September, October, November,
+            December
+        );
+        unreachable!()
     }
 
     /// [Private] Calculate the day ordinal for a given year, month, and day of
@@ -999,7 +1052,7 @@ impl Calendar {
     ///
     /// Returns [`DateError::SkippedDate`] if the given date (or the entirety
     /// of the month) was skipped by a calendar reformation.
-    fn get_day_ordinal(&self, year: i32, month: Month, day: u32) -> Result<u32, DateError> {
+    const fn get_day_ordinal(&self, year: i32, month: Month, day: u32) -> Result<u32, DateError> {
         if let Some(shape) = self.month_shape(year, month) {
             shape.day_ordinal_err(day)
         } else {
@@ -1013,25 +1066,29 @@ impl Calendar {
     /// # Errors
     ///
     /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs.
-    fn get_jdn(&self, year: i32, mut ordinal: u32) -> Result<Jdnum, ArithmeticError> {
+    const fn get_jdn(&self, year: i32, mut ordinal: u32) -> Result<Jdnum, ArithmeticError> {
         use inner::Calendar::*;
         if let Some(gap) = self.gap() {
             if year == gap.post_reform.year && ordinal >= gap.post_reform.ordinal {
                 ordinal += gap.ordinal_gap;
             }
         }
-        if self.0 == Julian
-            || matches!(self.0, Reforming {gap, ..} if (year, ordinal) < (gap.post_reform.year, gap.post_reform.ordinal))
+        let r = if matches!(self.0, Julian)
+            || matches!(self.0, Reforming {gap, ..} if year < gap.post_reform.year || (year == gap.post_reform.year && ordinal < gap.post_reform.ordinal))
         {
             inner::julian2jdn(year, ordinal)
         } else {
             inner::gregorian2jdn(year, ordinal)
-        }.ok_or(ArithmeticError)
+        };
+        match r {
+            Some(jdn) => Ok(jdn),
+            None => Err(ArithmeticError),
+        }
     }
 
     /// [Private] If this is a "reforming" calendar, returns the inner
     /// `ReformGap` field.
-    fn gap(&self) -> Option<inner::ReformGap> {
+    const fn gap(&self) -> Option<inner::ReformGap> {
         match self.0 {
             inner::Calendar::Reforming { gap, .. } => Some(gap),
             _ => None,
@@ -1041,7 +1098,7 @@ impl Calendar {
     /// [Private] Returns the next year after `year`, skipping any skipped
     /// years.  `year` itself must not be a skipped year or else the result
     /// will be garbage.
-    fn next_year_after(&self, year: i32) -> i32 {
+    const fn next_year_after(&self, year: i32) -> i32 {
         if let Some(gap) = self.gap() {
             if year == gap.pre_reform.year && gap.post_reform.year > gap.pre_reform.year {
                 return gap.post_reform.year;
@@ -1053,7 +1110,7 @@ impl Calendar {
     /// [Private] Returns the year immediately before `year`, skipping any
     /// skipped years.  `year` itself must not be a skipped year or else the
     /// result will be garbage.
-    fn prev_year_before(&self, year: i32) -> i32 {
+    const fn prev_year_before(&self, year: i32) -> i32 {
         if let Some(gap) = self.gap() {
             if year == gap.post_reform.year && gap.post_reform.year > gap.pre_reform.year {
                 return gap.pre_reform.year;
@@ -1084,17 +1141,17 @@ pub struct MonthShape {
 
 impl MonthShape {
     /// Returns the [`Calendar`] to which the month shape belongs
-    pub fn calendar(&self) -> Calendar {
+    pub const fn calendar(&self) -> Calendar {
         self.calendar
     }
 
     /// Returns the year in which the month occurs
-    pub fn year(&self) -> i32 {
+    pub const fn year(&self) -> i32 {
         self.year
     }
 
     /// Returns the [`Month`] value for the month
-    pub fn month(&self) -> Month {
+    pub const fn month(&self) -> Month {
         self.month
     }
 
@@ -1111,7 +1168,7 @@ impl MonthShape {
     /// assert_eq!(shape.len(), 21);
     /// ```
     #[allow(clippy::len_without_is_empty)]
-    pub fn len(&self) -> u32 {
+    pub const fn len(&self) -> u32 {
         use inner::MonthShape::*;
         match self.inner {
             Normal { max_day } => max_day,
@@ -1145,17 +1202,21 @@ impl MonthShape {
     /// assert!(shape.contains(31));
     /// assert!(!shape.contains(32));
     /// ```
-    pub fn contains(&self, day: u32) -> bool {
+    pub const fn contains(&self, day: u32) -> bool {
+        macro_rules! contains_day {
+            ($lower:expr, $upper:expr) => {
+                $lower <= day && day <= $upper
+            };
+        }
         use inner::MonthShape::*;
         match self.inner {
-            Normal { max_day } => (1..=max_day).contains(&day),
-            Headless { min_day, max_day } => (min_day..=max_day).contains(&day),
-            Tailless { max_day, .. } => (1..=max_day).contains(&day),
+            Normal { max_day } | Tailless { max_day, .. } => contains_day!(1, max_day),
+            Headless { min_day, max_day } => contains_day!(min_day, max_day),
             Gapped {
                 gap_start,
                 gap_end,
                 max_day,
-            } => (1..=max_day).contains(&day) && !(gap_start..=gap_end).contains(&day),
+            } => contains_day!(1, max_day) && !contains_day!(gap_start, gap_end),
         }
     }
 
@@ -1172,7 +1233,7 @@ impl MonthShape {
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// assert_eq!(shape.first_day(), 1);
     /// ```
-    pub fn first_day(&self) -> u32 {
+    pub const fn first_day(&self) -> u32 {
         use inner::MonthShape::*;
         match self.inner {
             Headless { min_day, .. } => min_day,
@@ -1192,7 +1253,7 @@ impl MonthShape {
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// assert_eq!(shape.last_day(), 31);
     /// ```
-    pub fn last_day(&self) -> u32 {
+    pub const fn last_day(&self) -> u32 {
         use inner::MonthShape::*;
         match self.inner {
             Normal { max_day } => max_day,
@@ -1223,8 +1284,11 @@ impl MonthShape {
     /// assert_eq!(shape.day_ordinal(31), Some(21));
     /// assert_eq!(shape.day_ordinal(32), None);
     /// ```
-    pub fn day_ordinal(&self, day: u32) -> Option<u32> {
-        self.day_ordinal_err(day).ok()
+    pub const fn day_ordinal(&self, day: u32) -> Option<u32> {
+        match self.day_ordinal_err(day) {
+            Ok(ordinal) => Some(ordinal),
+            Err(_) => None,
+        }
     }
 
     /// [Private] Converts a day of the month to the corresponding ordinal
@@ -1238,88 +1302,64 @@ impl MonthShape {
     ///
     /// Returns [`DateError::SkippedDate`] if the given date was skipped by a
     /// calendar reformation.
-    fn day_ordinal_err(&self, day: u32) -> Result<u32, DateError> {
+    const fn day_ordinal_err(&self, day: u32) -> Result<u32, DateError> {
         use inner::MonthShape::*;
         match self.inner {
-            Normal { max_day } => {
-                if (1..=max_day).contains(&day) {
-                    Ok(day)
-                } else {
-                    Err(DateError::DayOutOfRange {
-                        year: self.year,
-                        month: self.month,
-                        day,
-                        min_day: 1,
-                        max_day,
-                    })
-                }
+            Normal { max_day } if 1 <= day && day <= max_day => Ok(day),
+            Normal { max_day } => Err(DateError::DayOutOfRange {
+                year: self.year,
+                month: self.month,
+                day,
+                min_day: 1,
+                max_day,
+            }),
+            Headless { min_day, max_day } if min_day <= day && day <= max_day => {
+                Ok(day - min_day + 1)
             }
-            Headless { min_day, max_day } => {
-                if (min_day..=max_day).contains(&day) {
-                    Ok(day - min_day + 1)
-                } else if (1..min_day).contains(&day) {
-                    Err(DateError::SkippedDate {
-                        year: self.year,
-                        month: self.month,
-                        day,
-                    })
-                } else {
-                    Err(DateError::DayOutOfRange {
-                        year: self.year,
-                        month: self.month,
-                        day,
-                        min_day,
-                        max_day,
-                    })
-                }
-            }
+            Headless { min_day, .. } if 1 <= day && day < min_day => Err(DateError::SkippedDate {
+                year: self.year,
+                month: self.month,
+                day,
+            }),
+            Headless { min_day, max_day } => Err(DateError::DayOutOfRange {
+                year: self.year,
+                month: self.month,
+                day,
+                min_day,
+                max_day,
+            }),
+            Tailless { max_day, .. } if 1 <= day && day <= max_day => Ok(day),
             Tailless {
                 max_day,
                 natural_max_day,
-            } => {
-                if (1..=max_day).contains(&day) {
-                    Ok(day)
-                } else if ((max_day + 1)..=natural_max_day).contains(&day) {
-                    Err(DateError::SkippedDate {
-                        year: self.year,
-                        month: self.month,
-                        day,
-                    })
-                } else {
-                    Err(DateError::DayOutOfRange {
-                        year: self.year,
-                        month: self.month,
-                        day,
-                        min_day: 1,
-                        max_day,
-                    })
-                }
-            }
-            Gapped {
-                gap_start,
-                gap_end,
+            } if (max_day + 1) <= day && day <= natural_max_day => Err(DateError::SkippedDate {
+                year: self.year,
+                month: self.month,
+                day,
+            }),
+            Tailless { max_day, .. } => Err(DateError::DayOutOfRange {
+                year: self.year,
+                month: self.month,
+                day,
+                min_day: 1,
                 max_day,
-            } => {
-                if day == 0 || day > max_day {
-                    Err(DateError::DayOutOfRange {
-                        year: self.year,
-                        month: self.month,
-                        day,
-                        min_day: 1,
-                        max_day,
-                    })
-                } else if day < gap_start {
-                    Ok(day)
-                } else if day <= gap_end {
-                    Err(DateError::SkippedDate {
-                        year: self.year,
-                        month: self.month,
-                        day,
-                    })
-                } else {
-                    Ok(day - (gap_end - gap_start + 1))
-                }
-            }
+            }),
+            Gapped { max_day, .. } if day == 0 || day > max_day => Err(DateError::DayOutOfRange {
+                year: self.year,
+                month: self.month,
+                day,
+                min_day: 1,
+                max_day,
+            }),
+            Gapped { gap_start, .. } if day < gap_start => Ok(day),
+            Gapped { gap_end, .. } if day <= gap_end => Err(DateError::SkippedDate {
+                year: self.year,
+                month: self.month,
+                day,
+            }),
+            Gapped {
+                gap_start, gap_end, ..
+            } => Ok(day - (gap_end - gap_start + 1)),
         }
     }
 
@@ -1343,28 +1383,35 @@ impl MonthShape {
     /// assert_eq!(shape.nth_day(21), Some(31));
     /// assert_eq!(shape.nth_day(22), None);
     /// ```
-    pub fn nth_day(&self, day_ordinal: u32) -> Option<u32> {
+    #[allow(clippy::if_then_some_else_none)] // then_some() isn't const
+    pub const fn nth_day(&self, day_ordinal: u32) -> Option<u32> {
         use inner::MonthShape::*;
         match self.inner {
-            Normal { max_day } => (1..=max_day).contains(&day_ordinal).then_some(day_ordinal),
-            Headless { min_day, max_day } => (1..=(max_day - min_day + 1))
-                .contains(&day_ordinal)
-                .then_some(day_ordinal + min_day - 1),
-            Tailless { max_day, .. } => (1..=max_day).contains(&day_ordinal).then_some(day_ordinal),
+            Normal { max_day } | Tailless { max_day, .. }
+                if 1 <= day_ordinal && day_ordinal <= max_day =>
+            {
+                Some(day_ordinal)
+            }
+            Headless { min_day, max_day }
+                if 1 <= day_ordinal && day_ordinal <= (max_day - min_day + 1) =>
+            {
+                Some(day_ordinal + min_day - 1)
+            }
+            Gapped { .. } if day_ordinal == 0 => None,
+            Gapped { gap_start, .. } if day_ordinal < gap_start => Some(day_ordinal),
             Gapped {
                 gap_start,
                 gap_end,
                 max_day,
             } => {
-                if day_ordinal == 0 {
-                    None
-                } else if day_ordinal < gap_start {
-                    Some(day_ordinal)
+                let day = day_ordinal + (gap_end - gap_start + 1);
+                if day <= max_day {
+                    Some(day)
                 } else {
-                    let day = day_ordinal + (gap_end - gap_start + 1);
-                    (day <= max_day).then_some(day)
+                    None
                 }
             }
+            _ => None,
         }
     }
 
@@ -1383,10 +1430,12 @@ impl MonthShape {
     /// let date = shape.nth_date(5).unwrap();
     /// assert_eq!(date.to_string(), "1582-10-15");
     /// ```
-    pub fn nth_date(&self, day_ordinal: u32) -> Option<Date> {
-        let day = self.nth_day(day_ordinal)?;
+    pub const fn nth_date(&self, day_ordinal: u32) -> Option<Date> {
+        let Some(day) = self.nth_day(day_ordinal) else {
+            return None;
+        };
         let Ok(date) = self.calendar.at_ymd(self.year, self.month, day) else {
-            unreachable!("day should be within range for month");
+            unreachable!();
         };
         Some(date)
     }
@@ -1406,7 +1455,7 @@ impl MonthShape {
     /// assert_eq!(shape.gap(), Some(5..=14));
     /// ```
     #[allow(clippy::range_minus_one)]
-    pub fn gap(&self) -> Option<RangeInclusive<u32>> {
+    pub const fn gap(&self) -> Option<RangeInclusive<u32>> {
         use inner::MonthShape::*;
         match self.inner {
             Normal { .. } => None,
@@ -1432,7 +1481,7 @@ impl MonthShape {
     /// let shape = cal.month_shape(1582, Month::October).unwrap();
     /// assert_eq!(shape.kind(), MonthKind::Gapped);
     /// ```
-    pub fn kind(&self) -> MonthKind {
+    pub const fn kind(&self) -> MonthKind {
         use inner::MonthShape::*;
         match self.inner {
             Normal { .. } => MonthKind::Normal,
@@ -1458,12 +1507,12 @@ impl MonthShape {
     ///     25, 26, 27, 28, 29, 30, 31,
     /// ]);
     /// ```
-    pub fn days(&self) -> Days {
+    pub const fn days(&self) -> Days {
         Days::new(*self)
     }
 
     /// Returns an iterator over all [`Date`s][Date] within the month
-    pub fn dates(&self) -> Dates {
+    pub const fn dates(&self) -> Dates {
         Dates::new(*self)
     }
 }
@@ -1512,17 +1561,17 @@ pub struct Date {
 
 impl Date {
     /// Returns the [`Calendar`] to which the date belongs
-    pub fn calendar(&self) -> Calendar {
+    pub const fn calendar(&self) -> Calendar {
         self.calendar
     }
 
     /// Returns the date's year
-    pub fn year(&self) -> i32 {
+    pub const fn year(&self) -> i32 {
         self.year
     }
 
     /// Returns the date's month
-    pub fn month(&self) -> Month {
+    pub const fn month(&self) -> Month {
         self.month
     }
 
@@ -1544,7 +1593,7 @@ impl Date {
     /// let post_reform = cal.at_jdn(REFORM1582_JDN);
     /// assert_eq!(post_reform.day(), 15);
     /// ```
-    pub fn day(&self) -> u32 {
+    pub const fn day(&self) -> u32 {
         self.day
     }
 
@@ -1565,14 +1614,14 @@ impl Date {
     /// let post_reform = cal.at_jdn(REFORM1582_JDN);
     /// assert_eq!(post_reform.day_ordinal(), 5);
     /// ```
-    pub fn day_ordinal(&self) -> u32 {
+    pub const fn day_ordinal(&self) -> u32 {
         self.day_ordinal
     }
 
     /// Returns the zero-based ordinal number of the day within the month.
     /// This is the same as [`Date::day_ordinal()`], except starting from 0
     /// instead of 1.
-    pub fn day_ordinal0(&self) -> u32 {
+    pub const fn day_ordinal0(&self) -> u32 {
         self.day_ordinal - 1
     }
 
@@ -1604,14 +1653,14 @@ impl Date {
     /// let post_reform = cal.at_ymd(1582, Month::October, 15).unwrap();
     /// assert_eq!(post_reform.ordinal(), 278);
     /// ```
-    pub fn ordinal(&self) -> u32 {
+    pub const fn ordinal(&self) -> u32 {
         self.ordinal
     }
 
     /// Returns the zero-based ordinal number of the day within the year.  This
     /// is the same as [`Date::ordinal()`], except starting from 0 instead of
     /// 1.
-    pub fn ordinal0(&self) -> u32 {
+    pub const fn ordinal0(&self) -> u32 {
         self.ordinal - 1
     }
 
@@ -1625,7 +1674,7 @@ impl Date {
     /// let date = Calendar::GREGORIAN.at_ymd(2023, Month::May, 1).unwrap();
     /// assert_eq!(date.julian_day_number(), 2460066);
     /// ```
-    pub fn julian_day_number(&self) -> Jdnum {
+    pub const fn julian_day_number(&self) -> Jdnum {
         self.jdn
     }
 
@@ -1639,7 +1688,7 @@ impl Date {
     /// let date = Calendar::GREGORIAN.at_ymd(2023, Month::May, 1).unwrap();
     /// assert_eq!(date.weekday(), Weekday::Monday);
     /// ```
-    pub fn weekday(&self) -> Weekday {
+    pub const fn weekday(&self) -> Weekday {
         Weekday::for_jdn(self.jdn)
     }
 
@@ -1661,7 +1710,7 @@ impl Date {
     /// let post_reform = cal.at_ymd(1582, Month::October, 15).unwrap();
     /// assert!(!post_reform.is_julian());
     /// ```
-    pub fn is_julian(&self) -> bool {
+    pub const fn is_julian(&self) -> bool {
         match self.calendar.0 {
             inner::Calendar::Julian => true,
             inner::Calendar::Reforming { reformation, .. } => {
@@ -1689,7 +1738,7 @@ impl Date {
     /// let post_reform = cal.at_ymd(1582, Month::October, 15).unwrap();
     /// assert!(post_reform.is_gregorian());
     /// ```
-    pub fn is_gregorian(&self) -> bool {
+    pub const fn is_gregorian(&self) -> bool {
         match self.calendar.0 {
             inner::Calendar::Julian => false,
             inner::Calendar::Reforming { reformation, .. } => {
@@ -1711,7 +1760,7 @@ impl Date {
     /// let julian_date = gregorian_date.convert_to(Calendar::JULIAN);
     /// assert_eq!(julian_date.to_string(), "2023-04-18");
     /// ```
-    pub fn convert_to(&self, calendar: Calendar) -> Date {
+    pub const fn convert_to(&self, calendar: Calendar) -> Date {
         calendar.at_jdn(self.julian_day_number())
     }
 
@@ -1728,8 +1777,10 @@ impl Date {
     /// let next_date = date.succ().unwrap();
     /// assert_eq!(next_date.to_string(), "1582-10-15");
     /// ```
-    pub fn succ(&self) -> Option<Date> {
-        let jdn = self.jdn.checked_add(1)?;
+    pub const fn succ(&self) -> Option<Date> {
+        let Some(jdn) = self.jdn.checked_add(1) else {
+            return None;
+        };
         let mut year = self.year;
         let mut ordinal = self.ordinal + 1;
         let (month, day, day_ordinal) = match self.calendar().ordinal2ymddo(year, ordinal) {
@@ -1738,7 +1789,10 @@ impl Date {
                 year = self.calendar().next_year_after(year);
                 ordinal = 1;
                 // Erroring here shouldn't happen, but just in case...
-                self.calendar().ordinal2ymddo(year, ordinal).ok()?
+                match self.calendar().ordinal2ymddo(year, ordinal) {
+                    Ok(mdo) => mdo,
+                    Err(_) => return None,
+                }
             }
             // This shouldn't happen, but just in case...
             _ => return None,
@@ -1767,8 +1821,10 @@ impl Date {
     /// let next_date = date.pred().unwrap();
     /// assert_eq!(next_date.to_string(), "1582-10-04");
     /// ```
-    pub fn pred(&self) -> Option<Date> {
-        let jdn = self.jdn.checked_sub(1)?;
+    pub const fn pred(&self) -> Option<Date> {
+        let Some(jdn) = self.jdn.checked_sub(1) else {
+            return None;
+        };
         let mut year = self.year;
         let ordinal = if self.ordinal > 1 {
             self.ordinal - 1
@@ -1777,7 +1833,9 @@ impl Date {
             self.calendar().year_length(year)
         };
         // Erroring here shouldn't happen, but just in case...
-        let (month, day, day_ordinal) = self.calendar().ordinal2ymddo(year, ordinal).ok()?;
+        let Ok((month, day, day_ordinal)) = self.calendar().ordinal2ymddo(year, ordinal) else {
+            return None;
+        };
         Some(Date {
             calendar: self.calendar,
             year,
@@ -1804,7 +1862,7 @@ impl Date {
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-15");
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-16");
     /// ```
-    pub fn later(&self) -> Later {
+    pub const fn later(&self) -> Later {
         Later::new(*self)
     }
 
@@ -1823,7 +1881,7 @@ impl Date {
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-04");
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-03");
     /// ```
-    pub fn earlier(&self) -> Earlier {
+    pub const fn earlier(&self) -> Earlier {
         Earlier::new(*self)
     }
 
@@ -1843,7 +1901,7 @@ impl Date {
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-15");
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-16");
     /// ```
-    pub fn and_later(&self) -> AndLater {
+    pub const fn and_later(&self) -> AndLater {
         AndLater::new(*self)
     }
 
@@ -1863,7 +1921,7 @@ impl Date {
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-04");
     /// assert_eq!(iter.next().unwrap().to_string(), "1582-10-03");
     /// ```
-    pub fn and_earlier(&self) -> AndEarlier {
+    pub const fn and_earlier(&self) -> AndEarlier {
         AndEarlier::new(*self)
     }
 }
@@ -1962,7 +2020,7 @@ pub enum Month {
 impl Month {
     /// Returns the English name of the month.  This is the same as the month's
     /// Rust identifier.
-    pub fn name(&self) -> &'static str {
+    pub const fn name(&self) -> &'static str {
         use Month::*;
         match self {
             January => "January",
@@ -1981,7 +2039,7 @@ impl Month {
     }
 
     /// Returns the first three letters of the English name of the month
-    pub fn short_name(&self) -> &'static str {
+    pub const fn short_name(&self) -> &'static str {
         use Month::*;
         match self {
             January => "Jan",
@@ -2003,18 +2061,18 @@ impl Month {
     ///
     /// These values are also available as the enumeration discriminants and
     /// can be accessed by casting, e.g., `Month::January as u32`.
-    pub fn number(&self) -> u32 {
+    pub const fn number(&self) -> u32 {
         *self as u32
     }
 
     /// Returns the zero-based number of the month, where January is 0.
-    pub fn number0(&self) -> u32 {
+    pub const fn number0(&self) -> u32 {
         self.number() - 1
     }
 
     /// Returns the month before the month in question.  Returns `None` for
     /// January.
-    pub fn pred(&self) -> Option<Month> {
+    pub const fn pred(&self) -> Option<Month> {
         use Month::*;
         match self {
             January => None,
@@ -2034,7 +2092,7 @@ impl Month {
 
     /// Returns the month after the month in question.  Returns `None` for
     /// December.
-    pub fn succ(&self) -> Option<Month> {
+    pub const fn succ(&self) -> Option<Month> {
         use Month::*;
         match self {
             January => Some(February),
@@ -2050,6 +2108,21 @@ impl Month {
             November => Some(December),
             December => None,
         }
+    }
+
+    /// [Private] `const` equivalent of `==`
+    const fn eq(&self, other: Month) -> bool {
+        (*self as u32) == (other as u32)
+    }
+
+    /// [Private] `const` equivalent of `<`
+    const fn lt(&self, other: Month) -> bool {
+        (*self as u32) < (other as u32)
+    }
+
+    /// [Private] `const` equivalent of `<=`
+    const fn le(&self, other: Month) -> bool {
+        (*self as u32) <= (other as u32)
     }
 }
 
@@ -2190,7 +2263,7 @@ pub enum Weekday {
 impl Weekday {
     /// Returns the English name of the weekday.  This is the same as the
     /// weekday's Rust identifier.
-    pub fn name(&self) -> &'static str {
+    pub const fn name(&self) -> &'static str {
         use Weekday::*;
         match self {
             Monday => "Monday",
@@ -2204,7 +2277,7 @@ impl Weekday {
     }
 
     /// Returns the first three letters of the English name of the weekday
-    pub fn short_name(&self) -> &'static str {
+    pub const fn short_name(&self) -> &'static str {
         use Weekday::*;
         match self {
             Monday => "Mon",
@@ -2221,27 +2294,27 @@ impl Weekday {
     ///
     /// These values are also available as the enumeration discriminants and
     /// can be accessed by casting, e.g., `Weekday::Monday as u32`.
-    pub fn number(&self) -> u32 {
+    pub const fn number(&self) -> u32 {
         *self as u32
     }
 
     /// Returns the zero-based number of the weekday, where Monday is 0 and
     /// Sunday is 6.
-    pub fn number0(&self) -> u32 {
+    pub const fn number0(&self) -> u32 {
         self.number() - 1
     }
 
     /// Returns the weekday for the given Julian day number
-    pub fn for_jdn(jdn: Jdnum) -> Weekday {
-        match Weekday::try_from(jdn.rem_euclid(7) + 1) {
-            Ok(wd) => wd,
-            Err(_) => unreachable!("JDN computation should produce valid weekday number"),
+    pub const fn for_jdn(jdn: Jdnum) -> Weekday {
+        match Weekday::try_from_const(jdn.rem_euclid(7) + 1) {
+            Some(wd) => wd,
+            None => unreachable!(),
         }
     }
 
     /// Returns the day of the week before this one.  Returns `None` for
     /// Monday.
-    pub fn pred(&self) -> Option<Weekday> {
+    pub const fn pred(&self) -> Option<Weekday> {
         use Weekday::*;
         match self {
             Monday => None,
@@ -2256,7 +2329,7 @@ impl Weekday {
 
     /// Returns the day of the week after this one.  Returns `None` for
     /// Sunday.
-    pub fn succ(&self) -> Option<Weekday> {
+    pub const fn succ(&self) -> Option<Weekday> {
         use Weekday::*;
         match self {
             Monday => Some(Tuesday),
@@ -2266,6 +2339,21 @@ impl Weekday {
             Friday => Some(Saturday),
             Saturday => Some(Sunday),
             Sunday => None,
+        }
+    }
+
+    /// [Private] Like `TryFrom<Jdnum>`, but const and returning an `Option`
+    const fn try_from_const(index: Jdnum) -> Option<Weekday> {
+        use Weekday::*;
+        match index {
+            1 => Some(Monday),
+            2 => Some(Tuesday),
+            3 => Some(Wednesday),
+            4 => Some(Thursday),
+            5 => Some(Friday),
+            6 => Some(Saturday),
+            7 => Some(Sunday),
+            _ => None,
         }
     }
 }
@@ -2317,17 +2405,7 @@ macro_rules! impl_weekday_try_from {
             /// Returns [`TryIntoWeekdayError`] if the given number is less
             /// than one or greater than seven.
             fn try_from(value: $t) -> Result<Weekday, TryIntoWeekdayError> {
-                use Weekday::*;
-                match value {
-                    1 => Ok(Monday),
-                    2 => Ok(Tuesday),
-                    3 => Ok(Wednesday),
-                    4 => Ok(Thursday),
-                    5 => Ok(Friday),
-                    6 => Ok(Saturday),
-                    7 => Ok(Sunday),
-                    _ => Err(TryIntoWeekdayError),
-                }
+                Jdnum::try_from(value).ok().and_then(Weekday::try_from_const).ok_or(TryIntoWeekdayError)
             }
         }
       )*
@@ -2408,13 +2486,16 @@ pub fn system2jdn(t: SystemTime) -> Result<(Jdnum, u32), ArithmeticError> {
 /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs during
 /// conversion.  This can only happen if the timestamp is less than
 /// -185753453990400 or greater than 185331720383999.
-pub fn unix2jdn(unix_time: i64) -> Result<(Jdnum, u32), ArithmeticError> {
-    let jd = Jdnum::try_from(unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JDN as i64))
-        .map_err(|_| ArithmeticError)?;
-    let Ok(secs) = u32::try_from(unix_time.rem_euclid(SECONDS_IN_DAY)) else {
-        unreachable!("Unix time modulo seconds in day should fit in u32");
-    };
-    Ok((jd, secs))
+#[allow(clippy::cast_possible_truncation)]
+pub const fn unix2jdn(unix_time: i64) -> Result<(Jdnum, u32), ArithmeticError> {
+    let jd = unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JDN as i64);
+    if Jdnum::MIN as i64 <= jd && jd <= Jdnum::MAX as i64 {
+        let jd = jd as Jdnum;
+        let secs = unix_time.rem_euclid(SECONDS_IN_DAY) as u32;
+        Ok((jd, secs))
+    } else {
+        Err(ArithmeticError)
+    }
 }
 
 /// Converts a Julian day number to the [Unix time][] for midnight UTC on that
@@ -2430,8 +2511,8 @@ pub fn unix2jdn(unix_time: i64) -> Result<(Jdnum, u32), ArithmeticError> {
 /// let ts = jdn2unix(2460066);
 /// assert_eq!(ts, 1682899200);
 /// ```
-pub fn jdn2unix(jdn: Jdnum) -> i64 {
-    (i64::from(jdn) - (UNIX_EPOCH_JDN as i64)) * SECONDS_IN_DAY
+pub const fn jdn2unix(jdn: Jdnum) -> i64 {
+    ((jdn as i64) - (UNIX_EPOCH_JDN as i64)) * SECONDS_IN_DAY
 }
 
 #[cfg(test)]
