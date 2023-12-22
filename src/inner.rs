@@ -93,8 +93,32 @@ pub(crate) struct ReformGap {
 }
 
 impl ReformGap {
-    pub(crate) fn cmp_year(&self, year: i32) -> RangeOrdering {
-        cmp_range(year, self.pre_reform.year, self.post_reform.year)
+    #[allow(clippy::missing_assert_message)]
+    pub(crate) const fn cmp_year(&self, year: i32) -> RangeOrdering {
+        let lower = self.pre_reform.year;
+        let upper = self.post_reform.year;
+        debug_assert!(lower <= upper);
+        if year < lower {
+            RangeOrdering::Less
+        } else if lower == year {
+            if year < upper {
+                RangeOrdering::EqLower
+            } else {
+                // debug_assert_eq! isn't const.
+                debug_assert!(year == upper);
+                RangeOrdering::EqBoth
+            }
+        } else {
+            debug_assert!(lower < year);
+            if year < upper {
+                RangeOrdering::Between
+            } else if year == upper {
+                RangeOrdering::EqUpper
+            } else {
+                debug_assert!(upper < year);
+                RangeOrdering::Greater
+            }
+        }
     }
 
     pub(crate) fn cmp_year_month(&self, year: i32, month: Month) -> RangeOrdering {
@@ -104,24 +128,6 @@ impl ReformGap {
             (self.post_reform.year, self.post_reform.month),
         )
     }
-
-    /*
-    pub(crate) fn cmp_ymd(&self, year: i32, month: Month, day: u32) -> RangeOrdering {
-        cmp_range(
-            (year, month, day),
-            (
-                self.pre_reform.year,
-                self.pre_reform.month,
-                self.pre_reform.day,
-            ),
-            (
-                self.post_reform.year,
-                self.post_reform.month,
-                self.post_reform.day,
-            ),
-        )
-    }
-    */
 }
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]

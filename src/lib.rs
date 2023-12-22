@@ -743,7 +743,7 @@ impl Calendar {
     /// assert_eq!(cal2.year_kind(48901), YearKind::Skipped);
     /// assert_eq!(cal2.year_kind(48902), YearKind::Common);
     /// ```
-    pub fn year_kind(&self, year: i32) -> YearKind {
+    pub const fn year_kind(&self, year: i32) -> YearKind {
         match self.0 {
             inner::Calendar::Julian => {
                 if inner::is_julian_leap_year(year) {
@@ -770,13 +770,16 @@ impl Calendar {
                         }
                     }
                     EqLower => {
-                        if (gap.pre_reform.month, gap.pre_reform.day) == (Month::December, 31) {
+                        if matches!(
+                            (gap.pre_reform.month, gap.pre_reform.day),
+                            (Month::December, 31)
+                        ) {
                             if inner::is_julian_leap_year(year) {
                                 YearKind::Leap
                             } else {
                                 YearKind::Common
                             }
-                        } else if Month::February < gap.pre_reform.month
+                        } else if Month::February.lt(gap.pre_reform.month)
                             && inner::is_julian_leap_year(year)
                         {
                             YearKind::ReformLeap
@@ -786,9 +789,9 @@ impl Calendar {
                     }
                     Between => YearKind::Skipped,
                     EqBoth => {
-                        if (Month::February < gap.pre_reform.month
+                        if (Month::February.lt(gap.pre_reform.month)
                             && inner::is_julian_leap_year(year))
-                            || (gap.post_reform.month <= Month::February
+                            || (gap.post_reform.month.le(Month::February)
                                 && inner::is_gregorian_leap_year(year))
                         {
                             YearKind::ReformLeap
@@ -797,13 +800,16 @@ impl Calendar {
                         }
                     }
                     EqUpper => {
-                        if (gap.post_reform.month, gap.post_reform.day) == (Month::January, 1) {
+                        if matches!(
+                            (gap.post_reform.month, gap.post_reform.day),
+                            (Month::January, 1)
+                        ) {
                             if inner::is_gregorian_leap_year(year) {
                                 YearKind::Leap
                             } else {
                                 YearKind::Common
                             }
-                        } else if gap.post_reform.month <= Month::February
+                        } else if gap.post_reform.month.le(Month::February)
                             && inner::is_gregorian_leap_year(year)
                         {
                             YearKind::ReformLeap
@@ -2050,6 +2056,16 @@ impl Month {
             November => Some(December),
             December => None,
         }
+    }
+
+    /// [Private] `const` equivalent of `<`
+    const fn lt(&self, other: Month) -> bool {
+        (*self as u32) < (other as u32)
+    }
+
+    /// [Private] `const` equivalent of `<=`
+    const fn le(&self, other: Month) -> bool {
+        (*self as u32) <= (other as u32)
     }
 }
 
