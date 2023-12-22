@@ -485,10 +485,16 @@ impl Calendar {
     /// while calculating the date's Julian day number.  This can only happen
     /// for dates before -5884323-05-15 (-5884202-03-16 O.S.) or after
     /// 5874898-06-03 (5874777-10-17 O.S.).
-    pub fn at_ymd(&self, year: i32, month: Month, day: u32) -> Result<Date, DateError> {
-        let day_ordinal = self.get_day_ordinal(year, month, day)?;
+    pub const fn at_ymd(&self, year: i32, month: Month, day: u32) -> Result<Date, DateError> {
+        let day_ordinal = match self.get_day_ordinal(year, month, day) {
+            Ok(d) => d,
+            Err(e) => return Err(e),
+        };
         let ordinal = self.ymdo2ordinal(year, month, day_ordinal);
-        let jdn = self.get_jdn(year, ordinal)?;
+        let jdn = match self.get_jdn(year, ordinal) {
+            Ok(jdn) => jdn,
+            Err(ArithmeticError) => return Err(DateError::Arithmetic),
+        };
         Ok(Date {
             calendar: *self,
             year,
