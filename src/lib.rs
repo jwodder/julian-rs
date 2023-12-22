@@ -1019,7 +1019,7 @@ impl Calendar {
     ///
     /// Returns [`DateError::SkippedDate`] if the given date (or the entirety
     /// of the month) was skipped by a calendar reformation.
-    fn get_day_ordinal(&self, year: i32, month: Month, day: u32) -> Result<u32, DateError> {
+    const fn get_day_ordinal(&self, year: i32, month: Month, day: u32) -> Result<u32, DateError> {
         if let Some(shape) = self.month_shape(year, month) {
             shape.day_ordinal_err(day)
         } else {
@@ -1247,8 +1247,11 @@ impl MonthShape {
     /// assert_eq!(shape.day_ordinal(31), Some(21));
     /// assert_eq!(shape.day_ordinal(32), None);
     /// ```
-    pub fn day_ordinal(&self, day: u32) -> Option<u32> {
-        self.day_ordinal_err(day).ok()
+    pub const fn day_ordinal(&self, day: u32) -> Option<u32> {
+        match self.day_ordinal_err(day) {
+            Ok(ordinal) => Some(ordinal),
+            Err(_) => None,
+        }
     }
 
     /// [Private] Converts a day of the month to the corresponding ordinal
@@ -1262,88 +1265,64 @@ impl MonthShape {
     ///
     /// Returns [`DateError::SkippedDate`] if the given date was skipped by a
     /// calendar reformation.
-    fn day_ordinal_err(&self, day: u32) -> Result<u32, DateError> {
+    const fn day_ordinal_err(&self, day: u32) -> Result<u32, DateError> {
         use inner::MonthShape::*;
         match self.inner {
-            Normal { max_day } => {
-                if (1..=max_day).contains(&day) {
-                    Ok(day)
-                } else {
-                    Err(DateError::DayOutOfRange {
-                        year: self.year,
-                        month: self.month,
-                        day,
-                        min_day: 1,
-                        max_day,
-                    })
-                }
+            Normal { max_day } if 1 <= day && day <= max_day => Ok(day),
+            Normal { max_day } => Err(DateError::DayOutOfRange {
+                year: self.year,
+                month: self.month,
+                day,
+                min_day: 1,
+                max_day,
+            }),
+            Headless { min_day, max_day } if min_day <= day && day <= max_day => {
+                Ok(day - min_day + 1)
             }
-            Headless { min_day, max_day } => {
-                if (min_day..=max_day).contains(&day) {
-                    Ok(day - min_day + 1)
-                } else if (1..min_day).contains(&day) {
-                    Err(DateError::SkippedDate {
-                        year: self.year,
-                        month: self.month,
-                        day,
-                    })
-                } else {
-                    Err(DateError::DayOutOfRange {
-                        year: self.year,
-                        month: self.month,
-                        day,
-                        min_day,
-                        max_day,
-                    })
-                }
-            }
+            Headless { min_day, .. } if 1 <= day && day < min_day => Err(DateError::SkippedDate {
+                year: self.year,
+                month: self.month,
+                day,
+            }),
+            Headless { min_day, max_day } => Err(DateError::DayOutOfRange {
+                year: self.year,
+                month: self.month,
+                day,
+                min_day,
+                max_day,
+            }),
+            Tailless { max_day, .. } if 1 <= day && day <= max_day => Ok(day),
             Tailless {
                 max_day,
                 natural_max_day,
-            } => {
-                if (1..=max_day).contains(&day) {
-                    Ok(day)
-                } else if ((max_day + 1)..=natural_max_day).contains(&day) {
-                    Err(DateError::SkippedDate {
-                        year: self.year,
-                        month: self.month,
-                        day,
-                    })
-                } else {
-                    Err(DateError::DayOutOfRange {
-                        year: self.year,
-                        month: self.month,
-                        day,
-                        min_day: 1,
-                        max_day,
-                    })
-                }
-            }
-            Gapped {
-                gap_start,
-                gap_end,
+            } if (max_day + 1) <= day && day <= natural_max_day => Err(DateError::SkippedDate {
+                year: self.year,
+                month: self.month,
+                day,
+            }),
+            Tailless { max_day, .. } => Err(DateError::DayOutOfRange {
+                year: self.year,
+                month: self.month,
+                day,
+                min_day: 1,
                 max_day,
-            } => {
-                if day == 0 || day > max_day {
-                    Err(DateError::DayOutOfRange {
-                        year: self.year,
-                        month: self.month,
-                        day,
-                        min_day: 1,
-                        max_day,
-                    })
-                } else if day < gap_start {
-                    Ok(day)
-                } else if day <= gap_end {
-                    Err(DateError::SkippedDate {
-                        year: self.year,
-                        month: self.month,
-                        day,
-                    })
-                } else {
-                    Ok(day - (gap_end - gap_start + 1))
-                }
-            }
+            }),
+            Gapped { max_day, .. } if day == 0 || day > max_day => Err(DateError::DayOutOfRange {
+                year: self.year,
+                month: self.month,
+                day,
+                min_day: 1,
+                max_day,
+            }),
+            Gapped { gap_start, .. } if day < gap_start => Ok(day),
+            Gapped { gap_end, .. } if day <= gap_end => Err(DateError::SkippedDate {
+                year: self.year,
+                month: self.month,
+                day,
+            }),
+            Gapped {
+                gap_start, gap_end, ..
+            } => Ok(day - (gap_end - gap_start + 1)),
         }
     }
 
