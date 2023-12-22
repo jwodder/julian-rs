@@ -1430,10 +1430,12 @@ impl MonthShape {
     /// let date = shape.nth_date(5).unwrap();
     /// assert_eq!(date.to_string(), "1582-10-15");
     /// ```
-    pub fn nth_date(&self, day_ordinal: u32) -> Option<Date> {
-        let day = self.nth_day(day_ordinal)?;
+    pub const fn nth_date(&self, day_ordinal: u32) -> Option<Date> {
+        let Some(day) = self.nth_day(day_ordinal) else {
+            return None;
+        };
         let Ok(date) = self.calendar.at_ymd(self.year, self.month, day) else {
-            unreachable!("day should be within range for month");
+            unreachable!();
         };
         Some(date)
     }
