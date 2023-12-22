@@ -1349,28 +1349,35 @@ impl MonthShape {
     /// assert_eq!(shape.nth_day(21), Some(31));
     /// assert_eq!(shape.nth_day(22), None);
     /// ```
-    pub fn nth_day(&self, day_ordinal: u32) -> Option<u32> {
+    #[allow(clippy::if_then_some_else_none)] // then_some() isn't const
+    pub const fn nth_day(&self, day_ordinal: u32) -> Option<u32> {
         use inner::MonthShape::*;
         match self.inner {
-            Normal { max_day } => (1..=max_day).contains(&day_ordinal).then_some(day_ordinal),
-            Headless { min_day, max_day } => (1..=(max_day - min_day + 1))
-                .contains(&day_ordinal)
-                .then_some(day_ordinal + min_day - 1),
-            Tailless { max_day, .. } => (1..=max_day).contains(&day_ordinal).then_some(day_ordinal),
+            Normal { max_day } | Tailless { max_day, .. }
+                if 1 <= day_ordinal && day_ordinal <= max_day =>
+            {
+                Some(day_ordinal)
+            }
+            Headless { min_day, max_day }
+                if 1 <= day_ordinal && day_ordinal <= (max_day - min_day + 1) =>
+            {
+                Some(day_ordinal + min_day - 1)
+            }
+            Gapped { .. } if day_ordinal == 0 => None,
+            Gapped { gap_start, .. } if day_ordinal < gap_start => Some(day_ordinal),
             Gapped {
                 gap_start,
                 gap_end,
                 max_day,
             } => {
-                if day_ordinal == 0 {
-                    None
-                } else if day_ordinal < gap_start {
-                    Some(day_ordinal)
+                let day = day_ordinal + (gap_end - gap_start + 1);
+                if day <= max_day {
+                    Some(day)
                 } else {
-                    let day = day_ordinal + (gap_end - gap_start + 1);
-                    (day <= max_day).then_some(day)
+                    None
                 }
             }
+            _ => None,
         }
     }
 
