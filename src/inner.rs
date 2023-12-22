@@ -389,20 +389,27 @@ fn decompose_julian(days: Jdnum) -> (i32, u32) {
 /// the initial zero year, return the total number of days.
 ///
 /// Returns `None` on arithmetic underflow/overflow.
-fn compose_julian(years: i32, ordinal: u32) -> Option<Jdnum> {
+#[allow(clippy::cast_possible_wrap)]
+const fn compose_julian(years: i32, ordinal: u32) -> Option<Jdnum> {
+    // Tuple comparison doesn't work in const contexts
+    if years < -5879490
+        || (years == -5879490 && ordinal < 75)
+        || (years == 5879489 && ordinal > 290)
+        || years > 5879489
+    {
+        // Would overflow/underflow
+        return None;
+    }
     debug_assert!(
         ordinal > 0,
         "compose_julian: ordinal must be greater than zero"
     );
-    let common_days = mul(years, COMMON_YEAR_LENGTH)?;
-    let leap_days = add(years, JULIAN_LEAP_CYCLE_YEARS - 1)?.div_euclid(JULIAN_LEAP_CYCLE_YEARS);
-    add(
-        common_days,
-        add(
-            leap_days,
-            Jdnum::try_from(ordinal - 1).expect("ordinal minus one should fix in Jdnum type"),
-        )?,
-    )
+    let common_days = years * COMMON_YEAR_LENGTH;
+    let leap_days = (years + JULIAN_LEAP_CYCLE_YEARS - 1).div_euclid(JULIAN_LEAP_CYCLE_YEARS);
+    // Add `leap_days + (ordinal - 1)` first to avoid underflow when
+    // `common_days` and `leap_days` are both negative numbers of large
+    // magnitude:
+    Some(common_days + (leap_days + ((ordinal - 1) as Jdnum)))
 }
 
 #[inline]
@@ -458,6 +465,8 @@ mod tests {
     #[template]
     #[rstest]
     #[case(-2147483648, -5879490, 75)]
+    #[case(-2147483647, -5879490, 76)]
+    #[case(-2147483284, -5879489, 74)]
     #[case(-1462, -5, 365)]
     #[case(-1461, -4, 1)]
     #[case(-1096, -4, 366)]
@@ -480,6 +489,8 @@ mod tests {
     #[case(1461, 4, 1)]
     #[case(1826, 4, 366)]
     #[case(1827, 5, 1)]
+    #[case(2147483282, 5879488, 291)]
+    #[case(2147483646, 5879489, 289)]
     #[case(2147483647, 5879489, 290)]
     fn year_days(#[case] days: Jdnum, #[case] years: i32, #[case] ordinal: u32) {}
 
@@ -491,6 +502,15 @@ mod tests {
     #[apply(year_days)]
     fn test_compose_julian(#[case] days: Jdnum, #[case] years: i32, #[case] ordinal: u32) {
         assert_eq!(compose_julian(years, ordinal), Some(days));
+    }
+
+    #[rstest]
+    #[case(-5879491, 76)]
+    #[case(-5879490, 74)]
+    #[case(5879489, 291)]
+    #[case(5879490, 289)]
+    fn test_compose_julian_out_of_bounds(#[case] years: i32, #[case] ordinal: u32) {
+        assert_eq!(compose_julian(years, ordinal), None);
     }
 
     #[template]
