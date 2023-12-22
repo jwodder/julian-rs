@@ -2457,13 +2457,16 @@ pub fn system2jdn(t: SystemTime) -> Result<(Jdnum, u32), ArithmeticError> {
 /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs during
 /// conversion.  This can only happen if the timestamp is less than
 /// -185753453990400 or greater than 185331720383999.
-pub fn unix2jdn(unix_time: i64) -> Result<(Jdnum, u32), ArithmeticError> {
-    let jd = Jdnum::try_from(unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JDN as i64))
-        .map_err(|_| ArithmeticError)?;
-    let Ok(secs) = u32::try_from(unix_time.rem_euclid(SECONDS_IN_DAY)) else {
-        unreachable!("Unix time modulo seconds in day should fit in u32");
-    };
-    Ok((jd, secs))
+#[allow(clippy::cast_possible_truncation)]
+pub const fn unix2jdn(unix_time: i64) -> Result<(Jdnum, u32), ArithmeticError> {
+    let jd = unix_time.div_euclid(SECONDS_IN_DAY) + (UNIX_EPOCH_JDN as i64);
+    if Jdnum::MIN as i64 <= jd && jd <= Jdnum::MAX as i64 {
+        let jd = jd as Jdnum;
+        let secs = unix_time.rem_euclid(SECONDS_IN_DAY) as u32;
+        Ok((jd, secs))
+    } else {
+        Err(ArithmeticError)
+    }
 }
 
 /// Converts a Julian day number to the [Unix time][] for midnight UTC on that
@@ -2479,8 +2482,8 @@ pub fn unix2jdn(unix_time: i64) -> Result<(Jdnum, u32), ArithmeticError> {
 /// let ts = jdn2unix(2460066);
 /// assert_eq!(ts, 1682899200);
 /// ```
-pub fn jdn2unix(jdn: Jdnum) -> i64 {
-    (i64::from(jdn) - (UNIX_EPOCH_JDN as i64)) * SECONDS_IN_DAY
+pub const fn jdn2unix(jdn: Jdnum) -> i64 {
+    ((jdn as i64) - (UNIX_EPOCH_JDN as i64)) * SECONDS_IN_DAY
 }
 
 #[cfg(test)]
