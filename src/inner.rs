@@ -334,34 +334,40 @@ pub(crate) fn jdn2gregorian(jd: Jdnum) -> (i32, u32) {
 /// corresponding Julian day number.
 ///
 /// Returns None on arithmetic underflow/overflow.
-pub(crate) fn gregorian2jdn(year: i32, ordinal: u32) -> Option<Jdnum> {
+#[allow(clippy::cast_possible_wrap)]
+pub(crate) const fn gregorian2jdn(year: i32, ordinal: u32) -> Option<Jdnum> {
+    // Tuple comparison doesn't work in const contexts
+    if year < -5884323
+        || (year == -5884323 && ordinal < 135)
+        || (year == 5874898 && ordinal > 154)
+        || year > 5874898
+    {
+        // Would overflow/underflow
+        return None;
+    }
     // JDN 0 = day 328 of year -4713 in the proleptic Gregorian calendar
     // Number of centennials from -4713 through `year`
     //   = ceil((year + 4700) / 100)  [real division]
     //   = (year + 4700 + 99) / 100   [Euclidean division]
     //   = (year + 4800 - 1) / 100
     //   = (year - 1) / 100 + 48
-    let centennials = sub(year, 1)?.div_euclid(100) + 48;
+    let centennials = (year - 1).div_euclid(100) + 48;
     // Number of quadricentennials from -4713 through `year`
     let quads = centennials.div_euclid(4);
-    let ydiff = add(year, 4712)?;
+    let ydiff = year + 4712;
     // Number of leap days from the start of -4712 up to (but not
     // including) the start of `year`
     // Subtract one leap day for each non-leap centennial
     //   = subtract `centennials - quads`
-    let leap_days = sub(
-        // We can't use `compose_julian()` here, as that order of
-        // operations (specifically, not subtracting `centennials - quads`
-        // in the middle) would lead to overflow for some JDN less than
-        // Jdnum::MAX.
-        add(ydiff, JULIAN_LEAP_CYCLE_YEARS - 1)?.div_euclid(JULIAN_LEAP_CYCLE_YEARS),
-        centennials - quads,
-    )?;
-    let year_days = mul(ydiff, COMMON_YEAR_LENGTH)?;
+    // We can't use `compose_julian()` here, as that order of operations
+    // (specifically, not subtracting `centennials - quads` in the middle)
+    // would lead to overflow for some JDN less than Jdnum::MAX.
+    let leap_days = (ydiff + (JULIAN_LEAP_CYCLE_YEARS - 1)).div_euclid(JULIAN_LEAP_CYCLE_YEARS)
+        - (centennials - quads);
+    let year_days = ydiff * COMMON_YEAR_LENGTH;
     // Add 38 (JDN of -4712-01-01 N.S.)
-    let offset =
-        Jdnum::try_from(ordinal - 1).expect("ordinal minus one should fix in Jdnum type") + 38;
-    add(add(year_days, offset)?, leap_days)
+    let offset = ((ordinal - 1) as Jdnum) + 38;
+    Some((year_days + offset) + leap_days)
 }
 
 /// Given a number of days from the start of a period in which every fourth
@@ -417,22 +423,9 @@ const fn compose_julian(years: i32, ordinal: u32) -> Option<Jdnum> {
 }
 
 #[inline]
-const fn add(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
-    x.checked_add(y)
-}
-
-#[inline]
 const fn sub(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
     x.checked_sub(y)
 }
-
-#[inline]
-const fn mul(x: Jdnum, y: Jdnum) -> Option<Jdnum> {
-    x.checked_mul(y)
-}
-
-// There is no need to check division, as it only fails with a divisor of zero
-// or negative one, which we're not using.
 
 pub(crate) fn cmp_range<T: Ord + std::fmt::Debug>(value: T, lower: T, upper: T) -> RangeOrdering {
     assert!(
@@ -559,6 +552,8 @@ mod tests {
     #[template]
     #[rstest]
     #[case(-2147483648, -5884323, 135)]
+    #[case(-2147483647, -5884323, 136)]
+    #[case(-2147483284, -5884322, 134)]
     #[case(-214725, -5300, 1)]
     #[case(-178201, -5200, 1)]
     #[case(-141676, -5100, 1)]
@@ -603,6 +598,8 @@ mod tests {
     #[case(113993, -4400, 1)]
     #[case(114358, -4400, 366)]
     #[case(150518, -4300, 1)]
+    #[case(2147483283, 5874897, 155)]
+    #[case(2147483646, 5874898, 153)]
     #[case(2147483647, 5874898, 154)]
     fn jd_gregorian_yj(#[case] jd: Jdnum, #[case] year: i32, #[case] ordinal: u32) {}
 
@@ -616,14 +613,13 @@ mod tests {
         assert_eq!(gregorian2jdn(year, ordinal), Some(jd));
     }
 
-    #[test]
-    fn test_gregorian_to_pre_min_jdn() {
-        assert_eq!(gregorian2jdn(-5884323, 134), None);
-    }
-
-    #[test]
-    fn test_gregorian_to_past_max_jdn() {
-        assert_eq!(gregorian2jdn(5874898, 155), None);
+    #[rstest]
+    #[case(-5884324, 136)]
+    #[case(-5884323, 134)]
+    #[case(5874898, 155)]
+    #[case(5874899, 153)]
+    fn test_gregorian2jdn_out_of_bounds(#[case] year: i32, #[case] ordinal: u32) {
+        assert_eq!(gregorian2jdn(year, ordinal), None);
     }
 
     #[test]
