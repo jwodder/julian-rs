@@ -1,3 +1,7 @@
+v0.6.0 (in development)
+-----------------------
+- Increased MSRV to 1.66
+
 v0.5.0 (2023-12-22)
 -------------------
 - **Breaking:** Moved error types to `errors` module
