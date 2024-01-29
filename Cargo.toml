@@ -28,6 +28,7 @@ rstest_reuse = "0.6.0"
 
 [features]
 default = ["cli"]
+chrono = ["dep:chrono"]
 cli = ["dep:lexopt"]
 gentests = ["dep:anyhow", "dep:csv", "dep:serde"]
 
