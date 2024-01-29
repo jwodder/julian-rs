@@ -41,10 +41,10 @@ fn convert_post_reform_to_chrono() {
 #[test]
 fn convert_to_min_chrono() {
     let date = Calendar::GREGORIAN
-        .at_ymd(-262144, Month::January, 1)
+        .at_ymd(-262143, Month::January, 1)
         .unwrap();
     let chdate = NaiveDate::try_from(date).unwrap();
-    assert_eq!(chdate.year(), -262144);
+    assert_eq!(chdate.year(), -262143);
     assert_eq!(chdate.month(), 1);
     assert_eq!(chdate.day(), 1);
 }
@@ -52,7 +52,7 @@ fn convert_to_min_chrono() {
 #[test]
 fn convert_pre_min_chrono() {
     let date = Calendar::GREGORIAN
-        .at_ymd(-262145, Month::December, 31)
+        .at_ymd(-262144, Month::December, 31)
         .unwrap();
     assert_eq!(NaiveDate::try_from(date), Err(TryFromDateError));
 }
@@ -60,10 +60,10 @@ fn convert_pre_min_chrono() {
 #[test]
 fn convert_to_max_chrono() {
     let date = Calendar::GREGORIAN
-        .at_ymd(262143, Month::December, 31)
+        .at_ymd(262142, Month::December, 31)
         .unwrap();
     let chdate = NaiveDate::try_from(date).unwrap();
-    assert_eq!(chdate.year(), 262143);
+    assert_eq!(chdate.year(), 262142);
     assert_eq!(chdate.month(), 12);
     assert_eq!(chdate.day(), 31);
 }
@@ -71,7 +71,7 @@ fn convert_to_max_chrono() {
 #[test]
 fn convert_post_max_chrono() {
     let date = Calendar::GREGORIAN
-        .at_ymd(262144, Month::January, 1)
+        .at_ymd(262143, Month::January, 1)
         .unwrap();
     assert_eq!(NaiveDate::try_from(date), Err(TryFromDateError));
 }
@@ -100,7 +100,7 @@ fn convert_pre_gregorian_from_chrono() {
 fn convert_from_min_chrono() {
     let date = Date::from(NaiveDate::MIN);
     assert_eq!(date.calendar(), Calendar::GREGORIAN);
-    assert_eq!(date.year(), -262144);
+    assert_eq!(date.year(), -262143);
     assert_eq!(date.month(), Month::January);
     assert_eq!(date.day(), 1);
 }
@@ -109,7 +109,7 @@ fn convert_from_min_chrono() {
 fn convert_from_max_chrono() {
     let date = Date::from(NaiveDate::MAX);
     assert_eq!(date.calendar(), Calendar::GREGORIAN);
-    assert_eq!(date.year(), 262143);
+    assert_eq!(date.year(), 262142);
     assert_eq!(date.month(), Month::December);
     assert_eq!(date.day(), 31);
 }
