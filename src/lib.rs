@@ -183,7 +183,6 @@ pub mod ncal;
 use crate::errors::*;
 use crate::iter::*;
 use std::cmp::Ordering;
-use std::convert::TryFrom;
 use std::fmt;
 use std::ops::RangeInclusive;
 use std::str::FromStr;
