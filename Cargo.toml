@@ -2,7 +2,7 @@
 name = "julian"
 version = "0.6.0-dev"
 edition = "2021"
-rust-version = "1.66"
+rust-version = "1.67"
 description = "Convert between Julian day numbers and Julian & Gregorian calendars"
 authors = ["John Thorvald Wodder II <julian-rs@varonathe.org>"]
 repository = "https://github.com/jwodder/julian-rs"
