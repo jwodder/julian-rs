@@ -173,9 +173,6 @@
 //! | Gregorian calendar date | -5884323-05-15   | 5874898-06-03   |
 //! | Unix timestamp          | -185753453990400 | 185331720383999 |
 
-#[cfg(test)]
-extern crate rstest_reuse;
-
 pub mod errors;
 mod inner;
 pub mod iter;
