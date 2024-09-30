@@ -23,7 +23,7 @@ thiserror = "1.0.59"
 [dev-dependencies]
 assert_matches = "1.5.0"
 indoc = "2.0.5"
-rstest = { version = "0.22.0", default-features = false }
+rstest = { version = "0.23.0", default-features = false }
 rstest_reuse = "0.7.0"
 
 [features]
