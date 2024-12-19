@@ -1,6 +1,6 @@
 [package]
 name = "julian-cli"
-version = "0.6.0-dev"
+version = "0.6.0"
 edition.workspace = true
 rust-version.workspace = true
 description = "Command for converting between Julian day numbers and Julian & Gregorian calendars"
