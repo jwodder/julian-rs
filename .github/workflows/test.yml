@@ -64,7 +64,7 @@ jobs:
         run: cargo hack --workspace --exclude gentests --feature-powerset build --all-targets --verbose
 
       - name: Test crate
-        run: cargo hack --workspace --exclude gentests --feature-powerset --exclude-features gentests test --verbose
+        run: cargo hack --workspace --exclude gentests --feature-powerset test --verbose
 
   minimal-versions:
     runs-on: ubuntu-latest
