@@ -1,6 +1,7 @@
 v0.7.0 (in development)
 -----------------------
 - Increased MSRV to 1.81
+- Increase `julian` dependency to `0.7.0`
 
 v0.6.1 (2024-12-18)
 -------------------
