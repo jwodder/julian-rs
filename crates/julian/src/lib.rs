@@ -12,17 +12,10 @@
 //! Features
 //! ========
 //!
-//! The `julian` crate has the following optional features:
-//!
-//! - `cli` — Adds dependencies needed by the `julian` binary.  This is enabled
-//!   by default, but if you are using `julian` as a library, it is recommended
-//!   that you remove it by disabling default features.
+//! The `julian` crate has the following optional feature:
 //!
 //! - `chrono` — Enables converting values of certain `julian` types to the
 //!   corresponding [`chrono`] types and *vice versa*.
-//!
-//! - `gentests` — Used internally to install dependencies needed for a utility
-//!   binary.  Do not enable.
 //!
 //! Examples
 //! ========
