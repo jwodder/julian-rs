@@ -19,5 +19,9 @@ thiserror = "2.0.0"
 indoc = "2.0.5"
 rstest = { version = "0.23.0", default-features = false }
 
+[[bin]]
+name = "julian"
+path = "src/main.rs"
+
 [lints]
 workspace = true
