@@ -1,5 +1,5 @@
-v0.6.1 (in development)
------------------------
+v0.6.1 (2024-12-18)
+-------------------
 - Fix name of installed executable
 
 v0.6.0 (2024-12-18)
