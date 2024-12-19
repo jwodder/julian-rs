@@ -1,5 +1,5 @@
-v0.7.0 (in development)
------------------------
+v0.7.0 (2024-12-19)
+-------------------
 - Increased MSRV to 1.81
 - Added `std` feature for toggling `no_std` support
 - Added `time` feature for enabling conversions to & from `time` types

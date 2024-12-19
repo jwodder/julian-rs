@@ -11,7 +11,7 @@ keywords = ["calendar", "gregorian-calendar", "julian-calendar", "julian-day"]
 categories = ["command-line-utilities", "date-and-time"]
 
 [dependencies]
-julian = { version = "0.6.0", path = "../julian" }
+julian = { version = "0.7.0", path = "../julian" }
 lexopt = "0.3.0"
 thiserror = "2.0.0"
 
