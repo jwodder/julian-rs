@@ -1,3 +1,4 @@
+#![cfg_attr(not(test), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 //! `julian` is a Rust library for converting between [Julian day numbers][jdn]
 //! and dates in the [Gregorian calendar][] (either proleptic or with the
@@ -12,7 +13,11 @@
 //! Features
 //! ========
 //!
-//! The `julian` crate has the following optional feature:
+//! The `julian` crate has the following optional features:
+//!
+//! - `std` — This feature is enabled by default; disable it to build in no-std
+//!   mode.  When this feature is disabled, functions that use
+//!   [`std::time::SystemTime`] are not available.
 //!
 //! - `chrono` — Enables converting values of certain `julian` types to the
 //!   corresponding [`chrono`] types and *vice versa*.
@@ -172,10 +177,15 @@ pub mod iter;
 pub mod ncal;
 use crate::errors::*;
 use crate::iter::*;
-use std::cmp::Ordering;
-use std::fmt;
-use std::ops::RangeInclusive;
-use std::str::FromStr;
+use core::cmp::Ordering;
+use core::fmt;
+use core::ops::RangeInclusive;
+use core::str::FromStr;
+
+#[cfg(feature = "std")]
+extern crate std;
+
+#[cfg(feature = "std")]
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Type used for Julian day numbers in this crate
@@ -396,6 +406,8 @@ impl Calendar {
     /// converting the time.  This can only happen if the system time in UTC is
     /// before -5884323-05-15 (-5884202-03-16 O.S.) or after 5874898-06-03
     /// (5874777-10-17 O.S.).
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn now(&self) -> Result<(Date, u32), ArithmeticError> {
         self.at_system_time(SystemTime::now())
     }
@@ -409,6 +421,8 @@ impl Calendar {
     /// converting the time.  This can only happen if the system time in UTC is
     /// before -5884323-05-15 (-5884202-03-16 O.S.) or after 5874898-06-03
     /// (5874777-10-17 O.S.).
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn at_system_time(&self, t: SystemTime) -> Result<(Date, u32), ArithmeticError> {
         let (jdn, secs) = system2jdn(t)?;
         Ok((self.at_jdn(jdn), secs))
@@ -2134,21 +2148,32 @@ impl FromStr for Month {
     /// Parses a month from either its English name or just the first three
     /// letters of the name.  Input is treated case-insensitively.
     fn from_str(s: &str) -> Result<Month, ParseMonthError> {
-        use Month::*;
-        match s.to_ascii_lowercase().as_str() {
-            "january" | "jan" => Ok(January),
-            "february" | "feb" => Ok(February),
-            "march" | "mar" => Ok(March),
-            "april" | "apr" => Ok(April),
-            "may" => Ok(May),
-            "june" | "jun" => Ok(June),
-            "july" | "jul" => Ok(July),
-            "august" | "aug" => Ok(August),
-            "september" | "sep" => Ok(September),
-            "october" | "oct" => Ok(October),
-            "november" | "nov" => Ok(November),
-            "december" | "dec" => Ok(December),
-            _ => Err(ParseMonthError),
+        if s.eq_ignore_ascii_case("january") || s.eq_ignore_ascii_case("jan") {
+            Ok(Month::January)
+        } else if s.eq_ignore_ascii_case("february") || s.eq_ignore_ascii_case("feb") {
+            Ok(Month::February)
+        } else if s.eq_ignore_ascii_case("march") || s.eq_ignore_ascii_case("mar") {
+            Ok(Month::March)
+        } else if s.eq_ignore_ascii_case("april") || s.eq_ignore_ascii_case("apr") {
+            Ok(Month::April)
+        } else if s.eq_ignore_ascii_case("may") {
+            Ok(Month::May)
+        } else if s.eq_ignore_ascii_case("june") || s.eq_ignore_ascii_case("jun") {
+            Ok(Month::June)
+        } else if s.eq_ignore_ascii_case("july") || s.eq_ignore_ascii_case("jul") {
+            Ok(Month::July)
+        } else if s.eq_ignore_ascii_case("august") || s.eq_ignore_ascii_case("aug") {
+            Ok(Month::August)
+        } else if s.eq_ignore_ascii_case("september") || s.eq_ignore_ascii_case("sep") {
+            Ok(Month::September)
+        } else if s.eq_ignore_ascii_case("october") || s.eq_ignore_ascii_case("oct") {
+            Ok(Month::October)
+        } else if s.eq_ignore_ascii_case("november") || s.eq_ignore_ascii_case("nov") {
+            Ok(Month::November)
+        } else if s.eq_ignore_ascii_case("december") || s.eq_ignore_ascii_case("dec") {
+            Ok(Month::December)
+        } else {
+            Err(ParseMonthError)
         }
     }
 }
@@ -2366,16 +2391,22 @@ impl FromStr for Weekday {
     /// Parses a weekday from either its English name or just the first three
     /// letters of the name.  Input is treated case-insensitively.
     fn from_str(s: &str) -> Result<Weekday, ParseWeekdayError> {
-        use Weekday::*;
-        match s.to_ascii_lowercase().as_str() {
-            "sunday" | "sun" => Ok(Sunday),
-            "monday" | "mon" => Ok(Monday),
-            "tuesday" | "tue" => Ok(Tuesday),
-            "wednesday" | "wed" => Ok(Wednesday),
-            "thursday" | "thu" => Ok(Thursday),
-            "friday" | "fri" => Ok(Friday),
-            "saturday" | "sat" => Ok(Saturday),
-            _ => Err(ParseWeekdayError),
+        if s.eq_ignore_ascii_case("sunday") || s.eq_ignore_ascii_case("sun") {
+            Ok(Weekday::Sunday)
+        } else if s.eq_ignore_ascii_case("monday") || s.eq_ignore_ascii_case("mon") {
+            Ok(Weekday::Monday)
+        } else if s.eq_ignore_ascii_case("tuesday") || s.eq_ignore_ascii_case("tue") {
+            Ok(Weekday::Tuesday)
+        } else if s.eq_ignore_ascii_case("wednesday") || s.eq_ignore_ascii_case("wed") {
+            Ok(Weekday::Wednesday)
+        } else if s.eq_ignore_ascii_case("thursday") || s.eq_ignore_ascii_case("thu") {
+            Ok(Weekday::Thursday)
+        } else if s.eq_ignore_ascii_case("friday") || s.eq_ignore_ascii_case("fri") {
+            Ok(Weekday::Friday)
+        } else if s.eq_ignore_ascii_case("saturday") || s.eq_ignore_ascii_case("sat") {
+            Ok(Weekday::Saturday)
+        } else {
+            Err(ParseWeekdayError)
         }
     }
 }
@@ -2446,6 +2477,8 @@ impl From<Weekday> for chrono::Weekday {
 /// conversion.  This can only happen if the system time in UTC is before
 /// -5884323-05-15 (-5884202-03-16 O.S.) or after 5874898-06-03 (5874777-10-17
 /// O.S.).
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn system2jdn(t: SystemTime) -> Result<(Jdnum, u32), ArithmeticError> {
     let ts = match t.duration_since(UNIX_EPOCH) {
         Ok(d) => i64::try_from(d.as_secs()),

@@ -1,3 +1,8 @@
+v0.7.0 (in development)
+-----------------------
+- Increased MSRV to 1.81
+- Added `std` feature for toggling `no_std` support
+
 v0.6.0 (2024-12-18)
 -------------------
 - Increased MSRV to 1.67
