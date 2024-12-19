@@ -1,0 +1,23 @@
+[package]
+name = "julian-cli"
+version = "0.6.0-dev"
+edition.workspace = true
+rust-version.workspace = true
+description = "Command for converting between Julian day numbers and Julian & Gregorian calendars"
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords = ["calendar", "gregorian-calendar", "julian-calendar", "julian-day"]
+categories = ["command-line-utilities", "date-and-time"]
+
+[dependencies]
+julian = { version = "0.6.0-dev", path = "../julian" }
+lexopt = "0.3.0"
+thiserror = "2.0.0"
+
+[dev-dependencies]
+indoc = "2.0.5"
+rstest = { version = "0.23.0", default-features = false }
+
+[lints]
+workspace = true

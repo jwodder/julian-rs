@@ -1,0 +1,30 @@
+[package]
+name = "julian"
+version = "0.6.0-dev"
+edition.workspace = true
+rust-version.workspace = true
+description = "Convert between Julian day numbers and Julian & Gregorian calendars"
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords = ["calendar", "gregorian-calendar", "julian-calendar", "julian-day"]
+categories = ["date-and-time"]
+
+[dependencies]
+chrono = { version = "0.4.38", optional = true, default-features = false }
+thiserror = "2.0.0"
+
+[dev-dependencies]
+assert_matches = "1.5.0"
+rstest = { version = "0.23.0", default-features = false }
+rstest_reuse = "0.7.0"
+
+[features]
+chrono = ["dep:chrono"]
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

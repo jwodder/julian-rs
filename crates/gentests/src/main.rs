@@ -153,10 +153,15 @@ fn main() -> anyhow::Result<()> {
         .nth(1)
         .map(PathBuf::from)
         .unwrap_or_default();
-    let outdir = project_root.join("src").join("tests").join("autogen");
+    let outdir = project_root
+        .join("crates")
+        .join("julian")
+        .join("src")
+        .join("tests")
+        .join("autogen");
     create_dir_all(&outdir)
         .with_context(|| format!("Failed to create directory at {}", outdir.display()))?;
-    let data_dir = project_root.join("data");
+    let data_dir = project_root.join("testdata");
     make_jdn_tests(data_dir.join("jdn.csv"), outdir.join("jdn.rs"))?;
     make_reforming_tests(data_dir.join("reforming.csv"), outdir.join("reforming.rs"))?;
     Ok(())

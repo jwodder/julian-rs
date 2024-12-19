@@ -72,6 +72,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "gentests"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "csv",
+ "serde",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -104,15 +113,21 @@ checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
 name = "julian"
 version = "0.6.0-dev"
 dependencies = [
- "anyhow",
  "assert_matches",
  "chrono",
- "csv",
- "indoc",
- "lexopt",
  "rstest",
  "rstest_reuse",
- "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "julian-cli"
+version = "0.6.0-dev"
+dependencies = [
+ "indoc",
+ "julian",
+ "lexopt",
+ "rstest",
  "thiserror",
 ]
 
