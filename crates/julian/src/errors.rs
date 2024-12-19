@@ -3,13 +3,13 @@ use crate::Month;
 use core::num::ParseIntError;
 use thiserror::Error;
 
-#[cfg(feature = "chrono")]
-#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
+#[cfg(any(feature = "chrono", feature = "time"))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "chrono", feature = "time"))))]
 /// Error returned when converting a [`Date`][crate::Date] to a
-/// [`chrono::naive::NaiveDate`] fails due to the source date being outside the
-/// range of the target type.
+/// [`chrono::naive::NaiveDate`] or [`time::Date`] fails due to the source date
+/// being outside the range of the target type.
 #[derive(Clone, Copy, Debug, Default, Error, Hash, Eq, Ord, PartialEq, PartialOrd)]
-#[error("date out of range for chrono::naive::NaiveDate")]
+#[error("date out of range for foreign date type")]
 pub struct TryFromDateError;
 
 /// Error returned when parsing a month fails

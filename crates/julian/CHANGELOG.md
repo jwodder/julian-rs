@@ -2,6 +2,10 @@ v0.7.0 (in development)
 -----------------------
 - Increased MSRV to 1.81
 - Added `std` feature for toggling `no_std` support
+- Added `time` feature for enabling conversions to & from `time` types
+- **Breaking:** The `impl<T: chrono::Datelike> From<T> for Date` conversion
+  enabled by the `chrono` feature has been changed to just `impl
+  From<chrono::NaiveDate> for Date`
 
 v0.6.0 (2024-12-18)
 -------------------
