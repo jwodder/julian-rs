@@ -22,6 +22,9 @@
 //! - `chrono` — Enables converting values of certain `julian` types to the
 //!   corresponding [`chrono`] types and *vice versa*.
 //!
+//! - `time` — Enables converting values of certain `julian` types to the
+//!   corresponding [`time`] types and *vice versa*.
+//!
 //! Examples
 //! ========
 //!
@@ -1964,10 +1967,11 @@ impl fmt::Display for Date {
 
 #[cfg(feature = "chrono")]
 #[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
-impl<T: chrono::Datelike> From<T> for Date {
-    /// Convert a [`chrono::Datelike`] value to the corresponding `Date` in the
-    /// proleptic Gregorian calendar
-    fn from(date: T) -> Date {
+impl From<chrono::NaiveDate> for Date {
+    /// Convert a [`chrono::NaiveDate`] value to the corresponding `Date` in
+    /// the proleptic Gregorian calendar
+    fn from(date: chrono::NaiveDate) -> Date {
+        use chrono::Datelike;
         Calendar::GREGORIAN
             .at_ymd(
                 date.year(),
@@ -1997,6 +2001,42 @@ impl TryFrom<Date> for chrono::naive::NaiveDate {
         }
         chrono::naive::NaiveDate::from_ymd_opt(date.year(), date.month().number(), date.day())
             .ok_or(TryFromDateError)
+    }
+}
+
+#[cfg(feature = "time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "time")))]
+impl From<time::Date> for Date {
+    /// Convert a [`time::Date`] value to the corresponding `Date` in the
+    /// proleptic Gregorian calendar
+    fn from(date: time::Date) -> Date {
+        Calendar::GREGORIAN
+            .at_ymd(date.year(), Month::from(date.month()), date.day().into())
+            .expect("time date should be valid for proleptic Gregorian calendar")
+    }
+}
+
+#[cfg(feature = "time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "time")))]
+impl TryFrom<Date> for time::Date {
+    type Error = TryFromDateError;
+
+    /// Convert a [`Date`] to a [`time::Date`].  The source date is converted
+    /// to the proleptic Gregorian calendar first, if necessary.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TryFromDateError`] if the source date is outside the valid
+    /// range for a `time::Date`.
+    fn try_from(mut date: Date) -> Result<time::Date, TryFromDateError> {
+        if !date.is_gregorian() {
+            date = date.convert_to(Calendar::GREGORIAN);
+        }
+        let Ok(day) = u8::try_from(date.day()) else {
+            unreachable!("day-of-month should fit in a u8");
+        };
+        time::Date::from_calendar_date(date.year(), date.month().into(), day)
+            .map_err(|_| TryFromDateError)
     }
 }
 
@@ -2259,6 +2299,50 @@ impl From<Month> for chrono::Month {
     }
 }
 
+#[cfg(feature = "time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "time")))]
+impl From<time::Month> for Month {
+    /// Convert a [`time::Month`] to a [`Month`]
+    fn from(m: time::Month) -> Month {
+        match m {
+            time::Month::January => Month::January,
+            time::Month::February => Month::February,
+            time::Month::March => Month::March,
+            time::Month::April => Month::April,
+            time::Month::May => Month::May,
+            time::Month::June => Month::June,
+            time::Month::July => Month::July,
+            time::Month::August => Month::August,
+            time::Month::September => Month::September,
+            time::Month::October => Month::October,
+            time::Month::November => Month::November,
+            time::Month::December => Month::December,
+        }
+    }
+}
+
+#[cfg(feature = "time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "time")))]
+impl From<Month> for time::Month {
+    /// Convert a [`Month`] to a [`time::Month`]
+    fn from(m: Month) -> time::Month {
+        match m {
+            Month::January => time::Month::January,
+            Month::February => time::Month::February,
+            Month::March => time::Month::March,
+            Month::April => time::Month::April,
+            Month::May => time::Month::May,
+            Month::June => time::Month::June,
+            Month::July => time::Month::July,
+            Month::August => time::Month::August,
+            Month::September => time::Month::September,
+            Month::October => time::Month::October,
+            Month::November => time::Month::November,
+            Month::December => time::Month::December,
+        }
+    }
+}
+
 /// An enumeration of the seven days of the week.
 ///
 /// This type follows the ISO convention of designating Monday as the first day
@@ -2468,6 +2552,40 @@ impl From<Weekday> for chrono::Weekday {
     }
 }
 
+#[cfg(feature = "time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "time")))]
+impl From<time::Weekday> for Weekday {
+    /// Convert a [`time::Weekday`] to a [`Weekday`]
+    fn from(wd: time::Weekday) -> Weekday {
+        match wd {
+            time::Weekday::Sunday => Weekday::Sunday,
+            time::Weekday::Monday => Weekday::Monday,
+            time::Weekday::Tuesday => Weekday::Tuesday,
+            time::Weekday::Wednesday => Weekday::Wednesday,
+            time::Weekday::Thursday => Weekday::Thursday,
+            time::Weekday::Friday => Weekday::Friday,
+            time::Weekday::Saturday => Weekday::Saturday,
+        }
+    }
+}
+
+#[cfg(feature = "time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "time")))]
+impl From<Weekday> for time::Weekday {
+    /// Convert a [`Weekday`] to a [`time::Weekday`]
+    fn from(wd: Weekday) -> time::Weekday {
+        match wd {
+            Weekday::Sunday => time::Weekday::Sunday,
+            Weekday::Monday => time::Weekday::Monday,
+            Weekday::Tuesday => time::Weekday::Tuesday,
+            Weekday::Wednesday => time::Weekday::Wednesday,
+            Weekday::Thursday => time::Weekday::Thursday,
+            Weekday::Friday => time::Weekday::Friday,
+            Weekday::Saturday => time::Weekday::Saturday,
+        }
+    }
+}
+
 /// Converts a [`std::time::SystemTime`] instance to the corresponding Julian
 /// day number, along with a count of seconds since midnight UTC.
 ///
@@ -2549,6 +2667,7 @@ mod tests {
     mod month;
     mod parse_date;
     mod reformations;
+    mod time_crate;
     mod unix;
     mod weekday;
     mod year_kind;

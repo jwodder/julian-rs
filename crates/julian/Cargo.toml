@@ -13,6 +13,7 @@ categories = ["date-and-time"]
 [dependencies]
 chrono = { version = "0.4.38", optional = true, default-features = false }
 thiserror = { version = "2.0.0", default-features = false }
+time = { version = "0.3.37", default-features = false, optional = true }
 
 [dev-dependencies]
 assert_matches = "1.5.0"
@@ -23,6 +24,7 @@ rstest_reuse = "0.7.0"
 default = ["std"]
 chrono = ["dep:chrono"]
 std = []
+time = ["dep:time"]
 
 [lints]
 workspace = true
