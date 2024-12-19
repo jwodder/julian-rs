@@ -1,7 +1,7 @@
 //! Iterator types
 use crate::{Date, Month, MonthShape};
-use std::iter::FusedIterator;
-use std::ops::RangeInclusive;
+use core::iter::FusedIterator;
+use core::ops::RangeInclusive;
 
 /// An iterator over the days of a month.
 ///

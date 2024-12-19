@@ -1,6 +1,6 @@
 use super::{errors::ParseDateError, Jdnum, Month, COMMON_YEAR_LENGTH, LEAP_YEAR_LENGTH};
-use std::cmp::Ordering;
-use std::hash::{Hash, Hasher};
+use core::cmp::Ordering;
+use core::hash::{Hash, Hasher};
 
 // Julian-calendar year in which Julian day number 0 occurs
 const JDN0_YEAR: i32 = -4712;
@@ -192,7 +192,7 @@ impl<'a> DateParser<'a> {
     pub(crate) fn parse_int(&mut self) -> Result<i32, ParseDateError> {
         let mut first = true;
         match scan(self.data, |c| {
-            (std::mem::replace(&mut first, false) && (c == '-' || c == '+')) || c.is_ascii_digit()
+            (core::mem::replace(&mut first, false) && (c == '-' || c == '+')) || c.is_ascii_digit()
         }) {
             ("", _) => match self.data.chars().next() {
                 Some(got) => Err(ParseDateError::InvalidIntStart { got }),

@@ -1,6 +1,6 @@
 //! Error types
 use crate::Month;
-use std::num::ParseIntError;
+use core::num::ParseIntError;
 use thiserror::Error;
 
 #[cfg(feature = "chrono")]
