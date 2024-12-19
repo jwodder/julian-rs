@@ -1,5 +1,5 @@
-v0.6.0 (in development)
------------------------
+v0.6.0 (2024-12-18)
+-------------------
 - Increased MSRV to 1.67
 - **Breaking:** Split off CLI into a separate `julian-cli` crate
 
