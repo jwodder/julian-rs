@@ -113,15 +113,10 @@ checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
 name = "julian"
 version = "0.6.0-dev"
 dependencies = [
- "anyhow",
  "assert_matches",
  "chrono",
- "csv",
- "indoc",
- "lexopt",
  "rstest",
  "rstest_reuse",
- "serde",
  "thiserror",
 ]
 
