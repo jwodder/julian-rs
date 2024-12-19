@@ -13,7 +13,11 @@
 //! Features
 //! ========
 //!
-//! The `julian` crate has the following optional feature:
+//! The `julian` crate has the following optional features:
+//!
+//! - `std` — This feature is enabled by default; disable it to build in no-std
+//!   mode.  When this feature is disabled, functions that use
+//!   [`std::time::SystemTime`] are not available.
 //!
 //! - `chrono` — Enables converting values of certain `julian` types to the
 //!   corresponding [`chrono`] types and *vice versa*.
