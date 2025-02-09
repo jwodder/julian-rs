@@ -154,6 +154,27 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all --check
 
+  check-no-std:
+    # Ensure that no-std usage works by checking the code on a core-only target
+    # Based on <https://github.com/KodrAus/rust-no-std>
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install nightly Rust for thumbv6m-none-eabi target
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          targets: thumbv6m-none-eabi
+
+      - name: Activate cache
+        if: "!startsWith(github.head_ref, 'renovate/')"
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check code for thumbv6m-none-eabi target
+        run: cargo check -p julian --no-default-features --target thumbv6m-none-eabi
+
   docs:
     runs-on: ubuntu-latest
     steps:
