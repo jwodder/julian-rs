@@ -80,6 +80,8 @@ impl Command {
                 println!();
                 println!("Convert Julian day numbers to & from calendar dates");
                 println!();
+                println!("Visit <https://github.com/jwodder/julian-rs> for more information.");
+                println!();
                 println!("Options:");
                 println!("  -c, --countries   List the country codes accepted by the --reformation option");
                 println!();
