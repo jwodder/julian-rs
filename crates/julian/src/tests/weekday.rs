@@ -254,3 +254,10 @@ fn try_from_eight() {
         "value out of range for weekday number; must be from 1 through 7"
     );
 }
+
+#[test]
+fn pad_display() {
+    let wd = Weekday::Monday;
+    assert_eq!(format!("{wd:.^10}"), "..Monday..");
+    assert_eq!(format!("{wd:.4}"), "Mond");
+}

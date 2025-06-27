@@ -2175,9 +2175,9 @@ impl fmt::Display for Month {
     /// letters of the English name.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if f.alternate() {
-            write!(f, "{}", self.short_name())
+            f.pad(self.short_name())
         } else {
-            write!(f, "{}", self.name())
+            f.pad(self.name())
         }
     }
 }
@@ -2462,9 +2462,9 @@ impl fmt::Display for Weekday {
     /// letters of the English name.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if f.alternate() {
-            write!(f, "{}", self.short_name())
+            f.pad(self.short_name())
         } else {
-            write!(f, "{}", self.name())
+            f.pad(self.name())
         }
     }
 }
