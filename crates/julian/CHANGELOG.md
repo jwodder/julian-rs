@@ -1,3 +1,8 @@
+v0.7.1 (in development)
+-----------------------
+- The `Display` impls for `Month` and `Weekday` now support width, fill,
+  alignment, and precision flags
+
 v0.7.0 (2024-12-19)
 -------------------
 - Increased MSRV to 1.81

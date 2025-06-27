@@ -474,3 +474,10 @@ fn month_iter_rev() {
     assert_eq!(iter.size_hint(), (0, Some(0)));
     assert_eq!(iter.next(), None);
 }
+
+#[test]
+fn pad_display() {
+    let m = Month::April;
+    assert_eq!(format!("{m:.^10}"), "..April...");
+    assert_eq!(format!("{m:.4}"), "Apri");
+}
