@@ -1,3 +1,7 @@
+v0.8.0 (in development)
+-----------------------
+- Increased MSRV to 1.88
+
 v0.7.1 (2025-06-27)
 -------------------
 - The `Display` impls for `Month` and `Weekday` now support width, fill,
