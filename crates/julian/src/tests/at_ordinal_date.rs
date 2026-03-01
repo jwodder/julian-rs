@@ -1,4 +1,4 @@
-use crate::{errors::DateError, Calendar, Month};
+use crate::{Calendar, Month, errors::DateError};
 use rstest::rstest;
 
 #[rstest]
@@ -1126,6 +1126,8 @@ fn at_ordinal_date_err(#[case] year: i32, #[case] ordinal: u32, #[case] max_ordi
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        format!("day-of-year ordinal {ordinal} is outside of valid range 1-{max_ordinal} for year {year}")
+        format!(
+            "day-of-year ordinal {ordinal} is outside of valid range 1-{max_ordinal} for year {year}"
+        )
     );
 }

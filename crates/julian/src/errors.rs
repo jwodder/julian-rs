@@ -76,7 +76,9 @@ pub enum DateError {
     /// [`Calendar::at_ordinal_date()`][crate::Calendar::at_ordinal_date] if
     /// the given day of year value was zero or greater than the length of the
     /// given year
-    #[error("day-of-year ordinal {ordinal} is outside of valid range 1-{max_ordinal} for year {year:04}")]
+    #[error(
+        "day-of-year ordinal {ordinal} is outside of valid range 1-{max_ordinal} for year {year:04}"
+    )]
     OrdinalOutOfRange {
         /// The year value supplied
         year: i32,

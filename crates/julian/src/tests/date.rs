@@ -1,4 +1,4 @@
-use crate::{ncal, Calendar, Jdnum, Month, Weekday};
+use crate::{Calendar, Jdnum, Month, Weekday, ncal};
 
 #[test]
 fn display() {

@@ -1,6 +1,6 @@
 use crate::{
-    errors::{DateError, ParseDateError},
     Calendar, Month,
+    errors::{DateError, ParseDateError},
 };
 use assert_matches::assert_matches;
 use rstest::rstest;
@@ -315,7 +315,9 @@ fn invalid_ordinal_date(#[case] year: i32, #[case] ordinal: u32, #[case] max_ord
     );
     assert_eq!(
         r.unwrap_err().to_string(),
-        format!("invalid calendar date: day-of-year ordinal {ordinal} is outside of valid range 1-{max_ordinal} for year {year}")
+        format!(
+            "invalid calendar date: day-of-year ordinal {ordinal} is outside of valid range 1-{max_ordinal} for year {year}"
+        )
     );
 }
 

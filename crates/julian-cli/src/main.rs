@@ -1,4 +1,4 @@
-use julian::{errors::ReformingError, ncal, Calendar, Date, Jdnum};
+use julian::{Calendar, Date, Jdnum, errors::ReformingError, ncal};
 use lexopt::{Arg, Parser, ValueExt};
 use std::collections::BTreeMap;
 use std::fmt::{self, Write};
@@ -83,7 +83,9 @@ impl Command {
                 println!("Visit <https://github.com/jwodder/julian-rs> for more information.");
                 println!();
                 println!("Options:");
-                println!("  -c, --countries   List the country codes accepted by the --reformation option");
+                println!(
+                    "  -c, --countries   List the country codes accepted by the --reformation option"
+                );
                 println!();
                 println!(
                     "  -j, --julian      Read & write dates in the Julian calendar instead of the"
@@ -100,23 +102,31 @@ impl Command {
                 );
                 println!("                    366 (the ordinal date)");
                 println!();
-                println!("  -q, --quiet       Do not print the input value before each output value.  Do");
+                println!(
+                    "  -q, --quiet       Do not print the input value before each output value.  Do"
+                );
                 println!("                    not print \"JDN\" before Julian day numbers.");
                 println!();
                 println!("  -r <jdn>, --reformation <jdn>");
-                println!("                    Read & write dates using a reforming calendar in which the");
+                println!(
+                    "                    Read & write dates using a reforming calendar in which the"
+                );
                 println!(
                     "                    Gregorian calendar is first observed on the date with the"
                 );
                 println!("                    given Julian day number");
                 println!();
-                println!("                    A two-letter country code may be given in place of a JDN in");
+                println!(
+                    "                    A two-letter country code may be given in place of a JDN in"
+                );
                 println!(
                     "                    order to use the calendar reformation as it was observed in"
                 );
                 println!("                    that country.");
                 println!();
-                println!("  -s, --style       Mark dates in reforming calendars as \"O.S.\" (Old Style) or");
+                println!(
+                    "  -s, --style       Mark dates in reforming calendars as \"O.S.\" (Old Style) or"
+                );
                 println!("                    \"N.S.\" (New Style)");
                 println!();
                 println!("  -h, --help        Display this help message and exit");

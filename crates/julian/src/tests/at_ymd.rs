@@ -1,4 +1,4 @@
-use crate::{errors::DateError, ncal, Calendar, Month};
+use crate::{Calendar, Month, errors::DateError, ncal};
 
 #[test]
 fn day_0() {
