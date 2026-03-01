@@ -1,7 +1,7 @@
 use crate::{
+    Month,
     errors::{ParseMonthError, TryIntoMonthError},
     iter::MonthIter,
-    Month,
 };
 use rstest::rstest;
 

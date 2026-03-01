@@ -1,6 +1,6 @@
 #![cfg(feature = "chrono")]
-use crate::{errors::TryFromDateError, Calendar, Date, Month, Weekday};
-use chrono::{naive::NaiveDate, Datelike};
+use crate::{Calendar, Date, Month, Weekday, errors::TryFromDateError};
+use chrono::{Datelike, naive::NaiveDate};
 
 #[test]
 fn convert_gregorian_to_chrono() {

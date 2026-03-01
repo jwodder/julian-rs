@@ -1,5 +1,5 @@
 #![cfg(feature = "time")]
-use crate::{errors::TryFromDateError, Calendar, Date, Month, Weekday};
+use crate::{Calendar, Date, Month, Weekday, errors::TryFromDateError};
 
 #[test]
 fn convert_gregorian_to_time() {

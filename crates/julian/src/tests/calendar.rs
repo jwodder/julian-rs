@@ -1,4 +1,4 @@
-use crate::{iter::MonthIter, ncal, Calendar, Month, MonthKind, YearKind, REFORM1582_JDN};
+use crate::{Calendar, Month, MonthKind, REFORM1582_JDN, YearKind, iter::MonthIter, ncal};
 
 #[test]
 fn julian_properties() {

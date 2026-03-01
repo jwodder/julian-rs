@@ -581,10 +581,11 @@ impl Calendar {
         } else {
             inner::jdn2gregorian(jdn)
         };
-        if let Some(gap) = self.gap() {
-            if year == gap.post_reform.year && ordinal > gap.ordinal_gap_start {
-                ordinal -= gap.ordinal_gap;
-            }
+        if let Some(gap) = self.gap()
+            && year == gap.post_reform.year
+            && ordinal > gap.ordinal_gap_start
+        {
+            ordinal -= gap.ordinal_gap;
         }
         let Ok((month, day, day_ordinal)) = self.ordinal2ymddo(year, ordinal) else {
             unreachable!();
@@ -912,8 +913,8 @@ impl Calendar {
     /// reformation.  This can only happen for reformations of at least JDN
     /// 3145930 (3901-03-01 in the Gregorian calendar).
     pub const fn month_shape(&self, year: i32, month: Month) -> Option<MonthShape> {
-        use inner::RangeOrdering::*;
         use Month::*;
+        use inner::RangeOrdering::*;
         let length = match month {
             January => 31,
             February => {
@@ -1074,10 +1075,11 @@ impl Calendar {
     /// Returns [`ArithmeticError`] if numeric overflow/underflow occurs.
     const fn get_jdn(&self, year: i32, mut ordinal: u32) -> Result<Jdnum, ArithmeticError> {
         use inner::Calendar::*;
-        if let Some(gap) = self.gap() {
-            if year == gap.post_reform.year && ordinal >= gap.post_reform.ordinal {
-                ordinal += gap.ordinal_gap;
-            }
+        if let Some(gap) = self.gap()
+            && year == gap.post_reform.year
+            && ordinal >= gap.post_reform.ordinal
+        {
+            ordinal += gap.ordinal_gap;
         }
         let r = if matches!(self.0, Julian)
             || matches!(self.0, Reforming {gap, ..} if year < gap.post_reform.year || (year == gap.post_reform.year && ordinal < gap.post_reform.ordinal))
@@ -1105,10 +1107,11 @@ impl Calendar {
     /// years.  `year` itself must not be a skipped year or else the result
     /// will be garbage.
     const fn next_year_after(&self, year: i32) -> i32 {
-        if let Some(gap) = self.gap() {
-            if year == gap.pre_reform.year && gap.post_reform.year > gap.pre_reform.year {
-                return gap.post_reform.year;
-            }
+        if let Some(gap) = self.gap()
+            && year == gap.pre_reform.year
+            && gap.post_reform.year > gap.pre_reform.year
+        {
+            return gap.post_reform.year;
         }
         year + 1
     }
@@ -1117,10 +1120,11 @@ impl Calendar {
     /// skipped years.  `year` itself must not be a skipped year or else the
     /// result will be garbage.
     const fn prev_year_before(&self, year: i32) -> i32 {
-        if let Some(gap) = self.gap() {
-            if year == gap.post_reform.year && gap.post_reform.year > gap.pre_reform.year {
-                return gap.pre_reform.year;
-            }
+        if let Some(gap) = self.gap()
+            && year == gap.post_reform.year
+            && gap.post_reform.year > gap.pre_reform.year
+        {
+            return gap.pre_reform.year;
         }
         year - 1
     }
@@ -1411,11 +1415,7 @@ impl MonthShape {
                 max_day,
             } => {
                 let day = day_ordinal + (gap_end - gap_start + 1);
-                if day <= max_day {
-                    Some(day)
-                } else {
-                    None
-                }
+                if day <= max_day { Some(day) } else { None }
             }
             _ => None,
         }
@@ -2253,7 +2253,9 @@ macro_rules! impl_month_try_from {
     }
 }
 
-impl_month_try_from!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+impl_month_try_from!(
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize
+);
 
 #[cfg(feature = "chrono")]
 #[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
@@ -2516,7 +2518,9 @@ macro_rules! impl_weekday_try_from {
     }
 }
 
-impl_weekday_try_from!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+impl_weekday_try_from!(
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize
+);
 
 #[cfg(feature = "chrono")]
 #[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]

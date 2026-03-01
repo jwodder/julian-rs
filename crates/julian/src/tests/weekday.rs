@@ -1,6 +1,6 @@
 use crate::{
-    errors::{ParseWeekdayError, TryIntoWeekdayError},
     Weekday,
+    errors::{ParseWeekdayError, TryIntoWeekdayError},
 };
 use rstest::rstest;
 

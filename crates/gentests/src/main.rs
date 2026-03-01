@@ -10,7 +10,7 @@
 /// itself.
 use anyhow::Context;
 use serde::Deserialize;
-use std::fs::{create_dir_all, File};
+use std::fs::{File, create_dir_all};
 use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
 
