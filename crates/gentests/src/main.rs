@@ -32,7 +32,7 @@ impl JdnRecord {
         self.jdn.to_string().replace('-', "neg_")
     }
 
-    fn julian_date(&self) -> Date<'_> {
+    const fn julian_date(&self) -> Date<'_> {
         Date {
             jdn: self.jdn,
             year: self.jyear,
@@ -42,7 +42,7 @@ impl JdnRecord {
         }
     }
 
-    fn gregorian_date(&self) -> Date<'_> {
+    const fn gregorian_date(&self) -> Date<'_> {
         Date {
             jdn: self.jdn,
             year: self.gyear,
