@@ -1,4 +1,4 @@
-v0.7.0 (in development)
+v0.6.3 (in development)
 -----------------------
 - Add URL of GitHub repository to `--help` output
 - Increased MSRV to 1.88
