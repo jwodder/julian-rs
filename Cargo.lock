@@ -117,15 +117,6 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "julian"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f6a512aa084efd924c90124c684e806617166753ba4619dc76aa077a84bde4e"
-dependencies = [
- "thiserror",
-]
-
-[[package]]
-name = "julian"
 version = "0.8.0-dev"
 dependencies = [
  "assert_matches",
@@ -138,10 +129,10 @@ dependencies = [
 
 [[package]]
 name = "julian-cli"
-version = "0.6.3-dev"
+version = "0.7.0-dev"
 dependencies = [
  "indoc",
- "julian 0.7.1",
+ "julian",
  "lexopt",
  "rstest",
  "thiserror",
