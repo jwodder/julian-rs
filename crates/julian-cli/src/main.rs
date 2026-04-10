@@ -1,7 +1,13 @@
-use julian::{Calendar, Date, Jdnum, errors::ReformingError, ncal};
+use julian::{
+    Calendar, Date, Jdnum,
+    errors::{ParseDateError, ReformingError},
+    ncal,
+};
 use lexopt::{Arg, Parser, ValueExt};
 use std::collections::BTreeMap;
-use std::fmt::{self, Write};
+use std::fmt::{self, Write as _};
+use std::io::{self, Write as _};
+use std::process::ExitCode;
 use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -52,15 +58,16 @@ impl Command {
         Ok(Command::Run(opts, args))
     }
 
-    fn run(self) -> Result<(), lexopt::Error> {
+    fn run(self) -> Result<String, Error> {
+        let mut s = String::new();
         match self {
             Command::Run(opts, args) => {
                 for ln in opts.run(args)? {
-                    println!("{ln}");
+                    writeln!(&mut s, "{ln}")?;
                 }
             }
             Command::Countries => {
-                println!("Code  Country         Reformation  Last Julian  First Gregorian");
+                writeln!(&mut s, "Code  Country         Reformation  Last Julian  First Gregorian")?;
                 for (code, (country, reform)) in national_reformations() {
                     let cal = Calendar::reforming(reform)
                         .expect("ncal reformation date should be valid reformation date");
@@ -70,73 +77,61 @@ impl Command {
                     let first_gregorian = cal
                         .first_gregorian_date()
                         .expect("reforming calendar should have first Gregorian date");
-                    println!(
+                    writeln!(
+                        &mut s,
                         "{code}    {country:<14}  JDN {reform}  {last_julian}   {first_gregorian}"
-                    );
+                    )?;
                 }
             }
             Command::Help => {
-                println!("Usage: julian [<options>] [<date> ...]");
-                println!();
-                println!("Convert Julian day numbers to & from calendar dates");
-                println!();
-                println!("Visit <https://github.com/jwodder/julian-rs> for more information.");
-                println!();
-                println!("Options:");
-                println!(
-                    "  -c, --countries   List the country codes accepted by the --reformation option"
-                );
-                println!();
-                println!(
-                    "  -j, --julian      Read & write dates in the Julian calendar instead of the"
-                );
-                println!("                    Gregorian");
-                println!();
-                println!("  -J, --json        Output JSON");
-                println!();
-                println!(
-                    "  -o, --ordinal     Output calendar dates in the form \"YYYY-JJJ\", where the"
-                );
-                println!(
-                    "                    part after the hyphen is the day of the year from 001 to"
-                );
-                println!("                    366 (the ordinal date)");
-                println!();
-                println!(
-                    "  -q, --quiet       Do not print the input value before each output value.  Do"
-                );
-                println!("                    not print \"JDN\" before Julian day numbers.");
-                println!();
-                println!("  -r <jdn>, --reformation <jdn>");
-                println!(
-                    "                    Read & write dates using a reforming calendar in which the"
-                );
-                println!(
-                    "                    Gregorian calendar is first observed on the date with the"
-                );
-                println!("                    given Julian day number");
-                println!();
-                println!(
-                    "                    A two-letter country code may be given in place of a JDN in"
-                );
-                println!(
-                    "                    order to use the calendar reformation as it was observed in"
-                );
-                println!("                    that country.");
-                println!();
-                println!(
-                    "  -s, --style       Mark dates in reforming calendars as \"O.S.\" (Old Style) or"
-                );
-                println!("                    \"N.S.\" (New Style)");
-                println!();
-                println!("  -h, --help        Display this help message and exit");
-                println!("  -V, --version     Show the program version and exit");
+                return Ok(concat!(
+                    "Usage: julian [<options>] [<date> ...]\n",
+                    "\n",
+                    "Convert Julian day numbers to & from calendar dates\n",
+                    "\n",
+                    "Visit <https://github.com/jwodder/julian-rs> for more information.\n",
+                    "\n",
+                    "Options:\n",
+                    "  -c, --countries   List the country codes accepted by the --reformation option\n",
+                    "\n",
+                    "  -j, --julian      Read & write dates in the Julian calendar instead of the\n",
+                    "                    Gregorian\n",
+                    "\n",
+                    "  -J, --json        Output JSON\n",
+                    "\n",
+                    "  -o, --ordinal     Output calendar dates in the form \"YYYY-JJJ\", where the\n",
+                    "                    part after the hyphen is the day of the year from 001 to\n",
+                    "                    366 (the ordinal date)\n",
+                    "\n",
+                    "  -q, --quiet       Do not print the input value before each output value.  Do\n",
+                    "                    not print \"JDN\" before Julian day numbers.\n",
+                    "\n",
+                    "  -r <jdn>, --reformation <jdn>\n",
+                    "                    Read & write dates using a reforming calendar in which the\n",
+                    "                    Gregorian calendar is first observed on the date with the\n",
+                    "                    given Julian day number\n",
+                    "\n",
+                    "                    A two-letter country code may be given in place of a JDN in\n",
+                    "                    order to use the calendar reformation as it was observed in\n",
+                    "                    that country.\n",
+                    "\n",
+                    "  -s, --style       Mark dates in reforming calendars as \"O.S.\" (Old Style) or\n",
+                    "                    \"N.S.\" (New Style)\n",
+                    "\n",
+                    "  -h, --help        Display this help message and exit\n",
+                    "  -V, --version     Show the program version and exit\n",
+                ).to_string())
             }
             Command::Version => {
-                println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+                writeln!(
+                    &mut s,
+                    "{} {}",
+                    env!("CARGO_PKG_NAME"),
+                    env!("CARGO_PKG_VERSION")
+                )?;
             }
         }
-        Ok(())
+        Ok(s)
     }
 }
 
@@ -162,31 +157,22 @@ impl Default for Options {
 }
 
 impl Options {
-    fn run(&self, args: Vec<String>) -> Result<Vec<String>, lexopt::Error> {
+    fn run(&self, args: Vec<String>) -> Result<Vec<String>, Error> {
         let mut output = Vec::with_capacity(args.len() + 2);
         if self.json {
-            output.push(json_start(self.calendar).expect("formatting a String should not fail"));
+            output.push(json_start(self.calendar)?);
         }
         if args.is_empty() {
             let (now, _) = self
                 .calendar
                 .now()
                 .expect("JDN for system time should fit in i32");
-            output.push(
-                self.date_to_jdn(now)
-                    .expect("formatting a String should not fail"),
-            );
+            output.push(self.date_to_jdn(now)?);
         } else {
             for arg in args {
                 match self.parse_arg(arg)? {
-                    Argument::Date(when) => output.push(
-                        self.date_to_jdn(when)
-                            .expect("formatting a String should not fail"),
-                    ),
-                    Argument::Jdn(jdn) => output.push(
-                        self.jdn_to_date(jdn)
-                            .expect("formatting a String should not fail"),
-                    ),
+                    Argument::Date(when) => output.push(self.date_to_jdn(when)?),
+                    Argument::Jdn(jdn) => output.push(self.jdn_to_date(jdn)?),
                 }
             }
         }
@@ -207,22 +193,16 @@ impl Options {
         Ok(output)
     }
 
-    fn parse_arg(&self, s: String) -> Result<Argument, lexopt::Error> {
-        if s.match_indices('-').any(|(i, _)| i > 0) {
-            match self.calendar.parse_date(&s) {
+    fn parse_arg(&self, arg: String) -> Result<Argument, Error> {
+        if arg.match_indices('-').any(|(i, _)| i > 0) {
+            match self.calendar.parse_date(&arg) {
                 Ok(d) => Ok(Argument::Date(d)),
-                Err(e) => Err(lexopt::Error::ParsingFailed {
-                    value: s,
-                    error: Box::new(e),
-                }),
+                Err(e) => Err(Error::ParseDate { arg, source: e }),
             }
         } else {
-            match s.parse::<Jdnum>() {
+            match arg.parse::<Jdnum>() {
                 Ok(jdn) => Ok(Argument::Jdn(jdn)),
-                Err(e) => Err(lexopt::Error::ParsingFailed {
-                    value: s,
-                    error: Box::new(e),
-                }),
+                Err(e) => Err(Error::ParseJdnum { arg, source: e }),
             }
         }
     }
@@ -277,8 +257,23 @@ enum Argument {
     Jdn(Jdnum),
 }
 
-fn main() -> Result<(), lexopt::Error> {
-    Command::from_parser(Parser::from_env())?.run()
+fn main() -> ExitCode {
+    match Command::from_parser(Parser::from_env())
+        .map_err(Error::Usage)
+        .and_then(Command::run)
+        .and_then(|s| {
+            io::stdout()
+                .lock()
+                .write_all(s.as_bytes())
+                .map_err(Error::Write)
+        }) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) if e.is_epipe_write() => ExitCode::SUCCESS,
+        Err(e) => {
+            let _ = writeln!(io::stderr().lock(), "julian: {e}");
+            ExitCode::FAILURE
+        }
+    }
 }
 
 fn parse_reformation(s: &str) -> Result<Calendar, ReformationError> {
@@ -396,6 +391,29 @@ fn date2json(when: Date) -> Result<String, fmt::Error> {
     writeln!(&mut s)?;
     write!(&mut s, "{:8}}}", "")?;
     Ok(s)
+}
+
+#[derive(Debug, Error)]
+enum Error {
+    #[error(transparent)]
+    Usage(#[from] lexopt::Error),
+    #[error(transparent)]
+    Write(#[from] io::Error),
+    #[error("{source}: {arg:?}")]
+    ParseDate { arg: String, source: ParseDateError },
+    #[error("{source}: {arg:?}")]
+    ParseJdnum {
+        arg: String,
+        source: std::num::ParseIntError,
+    },
+    #[error("String formatting failed: {0}")]
+    Fmt(#[from] fmt::Error),
+}
+
+impl Error {
+    fn is_epipe_write(&self) -> bool {
+        matches!(self, Error::Write(e) if e.kind() == io::ErrorKind::BrokenPipe)
+    }
 }
 
 #[cfg(test)]
@@ -1363,6 +1381,51 @@ mod tests {
                     }
                 ]
             }"#}
+        );
+    }
+
+    #[test]
+    fn countries() {
+        let cmd = Command::Countries;
+        assert_eq!(
+            cmd.run().unwrap(),
+            concat!(
+                "Code  Country         Reformation  Last Julian  First Gregorian\n",
+                "AL    Albania         JDN 2419751  1912-11-30   1912-12-14\n",
+                "AT    Austria         JDN 2299527  1583-10-05   1583-10-16\n",
+                "AU    Australia       JDN 2361222  1752-09-02   1752-09-14\n",
+                "BE    Belgium         JDN 2299232  1582-12-14   1582-12-25\n",
+                "BG    Bulgaria        JDN 2420968  1916-03-31   1916-04-14\n",
+                "CA    Canada          JDN 2361222  1752-09-02   1752-09-14\n",
+                "CH    Switzerland     JDN 2325606  1655-02-28   1655-03-11\n",
+                "CN    China           JDN 2419403  1911-12-18   1912-01-01\n",
+                "CZ    Czech Republic  JDN 2299620  1584-01-06   1584-01-17\n",
+                "DE    Germany         JDN 2342032  1700-02-18   1700-03-01\n",
+                "DK    Denmark         JDN 2342032  1700-02-18   1700-03-01\n",
+                "ES    Spain           JDN 2299161  1582-10-04   1582-10-15\n",
+                "FI    Finland         JDN 2361390  1753-02-17   1753-03-01\n",
+                "FR    France          JDN 2299227  1582-12-09   1582-12-20\n",
+                "GB    United Kingdom  JDN 2361222  1752-09-02   1752-09-14\n",
+                "GR    Greece          JDN 2423868  1924-03-09   1924-03-23\n",
+                "HU    Hungary         JDN 2301004  1587-10-21   1587-11-01\n",
+                "IS    Iceland         JDN 2342304  1700-11-16   1700-11-28\n",
+                "IT    Italy           JDN 2299161  1582-10-04   1582-10-15\n",
+                "JP    Japan           JDN 2421960  1918-12-18   1919-01-01\n",
+                "LI    Lithuania       JDN 2421640  1918-02-01   1918-02-15\n",
+                "LU    Luxembourg      JDN 2299232  1582-12-14   1582-12-25\n",
+                "LV    Latvia          JDN 2421640  1918-02-01   1918-02-15\n",
+                "NL    Netherlands     JDN 2299232  1582-12-14   1582-12-25\n",
+                "NO    Norway          JDN 2342032  1700-02-18   1700-03-01\n",
+                "PL    Poland          JDN 2299161  1582-10-04   1582-10-15\n",
+                "PT    Portugal        JDN 2299161  1582-10-04   1582-10-15\n",
+                "RO    Romania         JDN 2422063  1919-03-31   1919-04-14\n",
+                "RU    Russia          JDN 2421639  1918-01-31   1918-02-14\n",
+                "SE    Sweden          JDN 2361390  1753-02-17   1753-03-01\n",
+                "SI    Slovnia         JDN 2422036  1919-03-04   1919-03-18\n",
+                "TR    Turkey          JDN 2424882  1926-12-18   1927-01-01\n",
+                "US    United States   JDN 2361222  1752-09-02   1752-09-14\n",
+                "YU    Yugoslavia      JDN 2422036  1919-03-04   1919-03-18\n",
+            )
         );
     }
 }
