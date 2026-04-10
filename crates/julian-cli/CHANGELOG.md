@@ -1,5 +1,5 @@
-v0.6.3 (in development)
------------------------
+v0.6.3 (2026-04-10)
+-------------------
 - Add URL of GitHub repository to `--help` output
 - Increased MSRV to 1.88
 - Don't panic when writing to stdout fails due to a broken pipe
