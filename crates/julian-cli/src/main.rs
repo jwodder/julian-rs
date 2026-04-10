@@ -58,17 +58,16 @@ impl Command {
         Ok(Command::Run(opts, args))
     }
 
-    fn run(self) -> Result<(), Error> {
-        let mut out = io::stdout().lock();
+    fn run(self) -> Result<String, Error> {
+        let mut s = String::new();
         match self {
             Command::Run(opts, args) => {
                 for ln in opts.run(args)? {
-                    writeln!(&mut out, "{ln}")?;
+                    writeln!(&mut s, "{ln}")?;
                 }
-                Ok(())
             }
             Command::Countries => {
-                writeln!(&mut out, "Code  Country         Reformation  Last Julian  First Gregorian")?;
+                writeln!(&mut s, "Code  Country         Reformation  Last Julian  First Gregorian")?;
                 for (code, (country, reform)) in national_reformations() {
                     let cal = Calendar::reforming(reform)
                         .expect("ncal reformation date should be valid reformation date");
@@ -79,65 +78,60 @@ impl Command {
                         .first_gregorian_date()
                         .expect("reforming calendar should have first Gregorian date");
                     writeln!(
-                        &mut out,
+                        &mut s,
                         "{code}    {country:<14}  JDN {reform}  {last_julian}   {first_gregorian}"
                     )?;
                 }
-                Ok(())
             }
             Command::Help => {
-                write!(
-                    &mut out,
-                    concat!(
-                        "Usage: julian [<options>] [<date> ...]\n",
-                        "\n",
-                        "Convert Julian day numbers to & from calendar dates\n",
-                        "\n",
-                        "Visit <https://github.com/jwodder/julian-rs> for more information.\n",
-                        "\n",
-                        "Options:\n",
-                        "  -c, --countries   List the country codes accepted by the --reformation option\n",
-                        "\n",
-                        "  -j, --julian      Read & write dates in the Julian calendar instead of the\n",
-                        "                    Gregorian\n",
-                        "\n",
-                        "  -J, --json        Output JSON\n",
-                        "\n",
-                        "  -o, --ordinal     Output calendar dates in the form \"YYYY-JJJ\", where the\n",
-                        "                    part after the hyphen is the day of the year from 001 to\n",
-                        "                    366 (the ordinal date)\n",
-                        "\n",
-                        "  -q, --quiet       Do not print the input value before each output value.  Do\n",
-                        "                    not print \"JDN\" before Julian day numbers.\n",
-                        "\n",
-                        "  -r <jdn>, --reformation <jdn>\n",
-                        "                    Read & write dates using a reforming calendar in which the\n",
-                        "                    Gregorian calendar is first observed on the date with the\n",
-                        "                    given Julian day number\n",
-                        "\n",
-                        "                    A two-letter country code may be given in place of a JDN in\n",
-                        "                    order to use the calendar reformation as it was observed in\n",
-                        "                    that country.\n",
-                        "\n",
-                        "  -s, --style       Mark dates in reforming calendars as \"O.S.\" (Old Style) or\n",
-                        "                    \"N.S.\" (New Style)\n",
-                        "\n",
-                        "  -h, --help        Display this help message and exit\n",
-                        "  -V, --version     Show the program version and exit\n",
-                    )
-                )
-                .map_err(Error::Write)
+                return Ok(concat!(
+                    "Usage: julian [<options>] [<date> ...]\n",
+                    "\n",
+                    "Convert Julian day numbers to & from calendar dates\n",
+                    "\n",
+                    "Visit <https://github.com/jwodder/julian-rs> for more information.\n",
+                    "\n",
+                    "Options:\n",
+                    "  -c, --countries   List the country codes accepted by the --reformation option\n",
+                    "\n",
+                    "  -j, --julian      Read & write dates in the Julian calendar instead of the\n",
+                    "                    Gregorian\n",
+                    "\n",
+                    "  -J, --json        Output JSON\n",
+                    "\n",
+                    "  -o, --ordinal     Output calendar dates in the form \"YYYY-JJJ\", where the\n",
+                    "                    part after the hyphen is the day of the year from 001 to\n",
+                    "                    366 (the ordinal date)\n",
+                    "\n",
+                    "  -q, --quiet       Do not print the input value before each output value.  Do\n",
+                    "                    not print \"JDN\" before Julian day numbers.\n",
+                    "\n",
+                    "  -r <jdn>, --reformation <jdn>\n",
+                    "                    Read & write dates using a reforming calendar in which the\n",
+                    "                    Gregorian calendar is first observed on the date with the\n",
+                    "                    given Julian day number\n",
+                    "\n",
+                    "                    A two-letter country code may be given in place of a JDN in\n",
+                    "                    order to use the calendar reformation as it was observed in\n",
+                    "                    that country.\n",
+                    "\n",
+                    "  -s, --style       Mark dates in reforming calendars as \"O.S.\" (Old Style) or\n",
+                    "                    \"N.S.\" (New Style)\n",
+                    "\n",
+                    "  -h, --help        Display this help message and exit\n",
+                    "  -V, --version     Show the program version and exit\n",
+                ).to_string())
             }
             Command::Version => {
                 writeln!(
-                    &mut out,
+                    &mut s,
                     "{} {}",
                     env!("CARGO_PKG_NAME"),
                     env!("CARGO_PKG_VERSION")
-                )
-                .map_err(Error::Write)
+                )?;
             }
         }
+        Ok(s)
     }
 }
 
@@ -267,7 +261,12 @@ fn main() -> ExitCode {
     match Command::from_parser(Parser::from_env())
         .map_err(Error::Usage)
         .and_then(Command::run)
-    {
+        .and_then(|s| {
+            io::stdout()
+                .lock()
+                .write_all(s.as_bytes())
+                .map_err(Error::Write)
+        }) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) if e.is_epipe_write() => ExitCode::SUCCESS,
         Err(e) => {
@@ -1382,6 +1381,51 @@ mod tests {
                     }
                 ]
             }"#}
+        );
+    }
+
+    #[test]
+    fn countries() {
+        let cmd = Command::Countries;
+        assert_eq!(
+            cmd.run().unwrap(),
+            concat!(
+                "Code  Country         Reformation  Last Julian  First Gregorian\n",
+                "AL    Albania         JDN 2419751  1912-11-30   1912-12-14\n",
+                "AT    Austria         JDN 2299527  1583-10-05   1583-10-16\n",
+                "AU    Australia       JDN 2361222  1752-09-02   1752-09-14\n",
+                "BE    Belgium         JDN 2299232  1582-12-14   1582-12-25\n",
+                "BG    Bulgaria        JDN 2420968  1916-03-31   1916-04-14\n",
+                "CA    Canada          JDN 2361222  1752-09-02   1752-09-14\n",
+                "CH    Switzerland     JDN 2325606  1655-02-28   1655-03-11\n",
+                "CN    China           JDN 2419403  1911-12-18   1912-01-01\n",
+                "CZ    Czech Republic  JDN 2299620  1584-01-06   1584-01-17\n",
+                "DE    Germany         JDN 2342032  1700-02-18   1700-03-01\n",
+                "DK    Denmark         JDN 2342032  1700-02-18   1700-03-01\n",
+                "ES    Spain           JDN 2299161  1582-10-04   1582-10-15\n",
+                "FI    Finland         JDN 2361390  1753-02-17   1753-03-01\n",
+                "FR    France          JDN 2299227  1582-12-09   1582-12-20\n",
+                "GB    United Kingdom  JDN 2361222  1752-09-02   1752-09-14\n",
+                "GR    Greece          JDN 2423868  1924-03-09   1924-03-23\n",
+                "HU    Hungary         JDN 2301004  1587-10-21   1587-11-01\n",
+                "IS    Iceland         JDN 2342304  1700-11-16   1700-11-28\n",
+                "IT    Italy           JDN 2299161  1582-10-04   1582-10-15\n",
+                "JP    Japan           JDN 2421960  1918-12-18   1919-01-01\n",
+                "LI    Lithuania       JDN 2421640  1918-02-01   1918-02-15\n",
+                "LU    Luxembourg      JDN 2299232  1582-12-14   1582-12-25\n",
+                "LV    Latvia          JDN 2421640  1918-02-01   1918-02-15\n",
+                "NL    Netherlands     JDN 2299232  1582-12-14   1582-12-25\n",
+                "NO    Norway          JDN 2342032  1700-02-18   1700-03-01\n",
+                "PL    Poland          JDN 2299161  1582-10-04   1582-10-15\n",
+                "PT    Portugal        JDN 2299161  1582-10-04   1582-10-15\n",
+                "RO    Romania         JDN 2422063  1919-03-31   1919-04-14\n",
+                "RU    Russia          JDN 2421639  1918-01-31   1918-02-14\n",
+                "SE    Sweden          JDN 2361390  1753-02-17   1753-03-01\n",
+                "SI    Slovnia         JDN 2422036  1919-03-04   1919-03-18\n",
+                "TR    Turkey          JDN 2424882  1926-12-18   1927-01-01\n",
+                "US    United States   JDN 2361222  1752-09-02   1752-09-14\n",
+                "YU    Yugoslavia      JDN 2422036  1919-03-04   1919-03-18\n",
+            )
         );
     }
 }
