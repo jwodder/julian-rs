@@ -210,7 +210,7 @@ jobs:
           toolchain: stable
 
       - name: Activate cache
-        if: "!startsWith(github.head_ref, 'dependabot/')"
+        if: "!startsWith(github.head_ref, 'renovate/')"
         uses: Swatinem/rust-cache@v2
 
       - name: Run gentests
