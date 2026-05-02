@@ -106,7 +106,7 @@ impl Command {
                     "  -q, --quiet       Do not print the input value before each output value.  Do\n",
                     "                    not print \"JDN\" before Julian day numbers.\n",
                     "\n",
-                    "  -r <jdn>, --reformation <jdn>\n",
+                    "  -r JDN, --reformation JDN\n",
                     "                    Read & write dates using a reforming calendar in which the\n",
                     "                    Gregorian calendar is first observed on the date with the\n",
                     "                    given Julian day number\n",

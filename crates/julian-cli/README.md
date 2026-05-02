@@ -70,8 +70,6 @@ Options
     version of `ncal.c` as of 2023-04-26][src], so blame Debian for any
     historical inaccuracies.
 
-- `-h`, `--help` — Display a summary of the command-line options and exit
-
 - `-j`, `--julian` — Read & write dates using the proleptic Julian calendar
 
 - `-J`, `--json` — Output JSON.  See [JSON Output](#json-output) below for more
@@ -84,18 +82,20 @@ Options
 - `-q`, `--quiet` — Do not print the input value before each output value.  Do
   not print "JDN" before Julian day numbers.
 
-- `-r <jdn>`, `--reformation <jdn>` — Read & write dates using a reforming
+- `-r JDN`, `--reformation JDN` — Read & write dates using a reforming
   calendar in which the Gregorian calendar is first observed on the date with
   the given Julian day number.
 
-    A two-letter country code (case insensitive) may be given in place of a JDN
-    in order to use the calendar reformation as it was observed in that
-    country.  Run `julian --countries` to get a list of recognized country
-    codes and their corresponding dates.
+  A two-letter country code (case insensitive) may be given in place of a JDN
+  in order to use the calendar reformation as it was observed in that country.
+  Run `julian --countries` to get a list of recognized country codes and their
+  corresponding dates.
 
 - `-s`, `--style` — Mark dates in reforming calendars as "O.S." (Old Style) or
   "N.S." (New Style)".  Has no effect when `-r`/`--reformation` is not given or
   when `-o`/`--ordinal` is given.
+
+- `-h`, `--help` — Display a summary of the command-line options and exit
 
 - `-V`, `--version` — Show the program version and exit
 
